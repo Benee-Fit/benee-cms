@@ -42,35 +42,6 @@ export const database =
           ],
   });
 
-// Add connection testing and validation
-const validateConnection = async () => {
-  if (process.env.NODE_ENV !== 'production') {
-    try {
-      await database.$connect();
-      // We're keeping this log statement for development troubleshooting
-      if (process.env.DEBUG) {
-        // eslint-disable-next-line no-console
-        console.info('[Database] Successfully connected to PostgreSQL');
-      }
-    } catch (e) {
-      // Use standard console.error here as this is critical system information
-      // eslint-disable-next-line no-console
-      console.error(
-        '[Database] Error connecting to PostgreSQL:',
-        e instanceof Error ? e.message : String(e)
-      );
-      // Don't throw - let application handle errors when using the client
-    }
-  }
-};
-
-// Start connection validation without blocking
-if (process.env.NODE_ENV !== 'production') {
-  validateConnection().catch(() => {
-    // Intentionally empty - errors are already logged in validateConnection
-  });
-}
-
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = database;
 }
