@@ -24,6 +24,8 @@ export const metadata: Metadata = {
 
 const App = async () => {
   const pages = await database.page.findMany();
+  console.log('Fetched pages:', pages);
+
   const { orgId } = await auth();
 
   if (!orgId) {
