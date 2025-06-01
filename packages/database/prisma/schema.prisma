@@ -19,3 +19,11 @@ model Page {
   id   Int    @id @default(autoincrement())
   name String
 }
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
