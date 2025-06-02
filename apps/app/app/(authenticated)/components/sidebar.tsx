@@ -68,10 +68,34 @@ const data = {
   },
   navMain: [
     {
+      title: 'HR Portal',
+      url: '/hr-portal',
+      icon: FolderIcon,
+      isActive: true,
+      items: [
+        {
+          title: 'Claims History',
+          url: '/hr-portal/claims-history',
+        },
+        {
+          title: 'Employee Trends',
+          url: '/hr-portal/employee-trends',
+        },
+        {
+          title: 'Enrolment',
+          url: '/hr-portal/enrolment',
+        },
+        {
+          title: 'Document Library',
+          url: '/hr-portal/document-library',
+        },
+      ],
+    },
+    {
       title: 'Playground',
       url: '#',
       icon: SquareTerminalIcon,
-      isActive: true,
+      isActive: false,
       items: [
         {
           title: 'History',
