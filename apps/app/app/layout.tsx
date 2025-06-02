@@ -2,6 +2,7 @@ import { env } from '@/env';
 import './styles.css';
 import { DesignSystemProvider } from '@repo/design-system';
 import { fonts } from '@repo/design-system/lib/fonts';
+import { Toolbar } from '@repo/feature-flags/components/toolbar';
 import type { ReactNode } from 'react';
 
 type RootLayoutProperties = {
@@ -21,6 +22,7 @@ const RootLayout = ({ children }: RootLayoutProperties) => (
       >
         {children}
       </DesignSystemProvider>
+      <Toolbar />
     </body>
   </html>
 );
