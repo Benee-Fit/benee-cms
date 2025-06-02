@@ -6,10 +6,17 @@ import type { NextConfig } from 'next';
 
 let nextConfig: NextConfig = withLogging({
   ...config,
-  // Change from standalone to export to avoid pnpm dependency issues on DigitalOcean
-  output: 'export',
-  // Enable static exports
-  distDir: 'out', // Optimizes for containerized environments
+  // Use standalone mode for server-rendered pages and API routes
+  output: 'standalone',
+  // Avoid including pnpm node_modules structure in the output
+  experimental: {
+    // This helps avoid the pnpm dependency issues during build
+    outputFileTracingExcludes: {
+      '*': [
+        'node_modules/.pnpm',
+      ],
+    },
+  }, // Optimizes for containerized environments
 });
 
 nextConfig.images?.remotePatterns?.push({
