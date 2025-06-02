@@ -1,13 +1,7 @@
-import { env } from '@/env';
 import { authMiddleware } from '@repo/auth/middleware';
 import { internationalizationMiddleware } from '@repo/internationalization/middleware';
 import { parseError } from '@repo/observability/error';
 import { secure } from '@repo/security';
-import {
-  noseconeMiddleware,
-  noseconeOptions,
-  noseconeOptionsWithToolbar,
-} from '@repo/security/middleware';
 import {
   type NextMiddleware,
   type NextRequest,
@@ -20,20 +14,12 @@ export const config = {
   matcher: ['/((?!_next/static|_next/image|ingest|favicon.ico).*)'],
 };
 
-const securityHeaders = env.FLAGS_SECRET
-  ? noseconeMiddleware(noseconeOptionsWithToolbar)
-  : noseconeMiddleware(noseconeOptions);
-
 const middleware = authMiddleware(async (_auth, request) => {
   const i18nResponse = internationalizationMiddleware(
     request as unknown as NextRequest
   );
   if (i18nResponse) {
     return i18nResponse;
-  }
-
-  if (!env.ARCJET_KEY) {
-    return securityHeaders();
   }
 
   try {
@@ -47,7 +33,7 @@ const middleware = authMiddleware(async (_auth, request) => {
       request
     );
 
-    return securityHeaders();
+    return NextResponse.next();
   } catch (error) {
     const message = parseError(error);
 
