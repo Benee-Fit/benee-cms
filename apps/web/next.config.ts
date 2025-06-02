@@ -12,9 +12,7 @@ let nextConfig: NextConfig = withLogging({
   experimental: {
     // This helps avoid the pnpm dependency issues during build
     outputFileTracingExcludes: {
-      '*': [
-        'node_modules/.pnpm',
-      ],
+      '*': ['node_modules/.pnpm'],
     },
   }, // Optimizes for containerized environments
 });
