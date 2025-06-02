@@ -6,7 +6,10 @@ import type { NextConfig } from 'next';
 
 let nextConfig: NextConfig = withLogging({
   ...config,
-  output: 'standalone', // Optimizes for containerized environments
+  // Change from standalone to export to avoid pnpm dependency issues on DigitalOcean
+  output: 'export',
+  // Enable static exports
+  distDir: 'out', // Optimizes for containerized environments
 });
 
 nextConfig.images?.remotePatterns?.push({

@@ -12,6 +12,12 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
+# Install serve for static file serving
+if ! command -v serve &> /dev/null; then
+  echo "Installing serve package globally..."
+  npm install -g serve
+fi
+
 # Change to the app directory
 cd $APP_DIR
 
@@ -20,12 +26,13 @@ echo "Building the application..."
 npm run build
 
 # Check if build was successful
-if [ ! -d ".next" ]; then
-  echo "Error: Build failed or .next directory not found."
+if [ ! -d "out" ]; then
+  echo "Error: Build failed or output directory not found."
   exit 1
 fi
 
-# Start the application using the configured start script
+# Start the application by serving the static output
 # DigitalOcean will set PORT=8080
 echo "Starting the application..."
-npm start
+PORT=${PORT:-8080}
+serve -p $PORT out
