@@ -4,7 +4,10 @@ import { config, withAnalyzer } from '@repo/next-config';
 import { withLogging, withSentry } from '@repo/observability/next-config';
 import type { NextConfig } from 'next';
 
-let nextConfig: NextConfig = withLogging(config);
+let nextConfig: NextConfig = withLogging({
+  ...config,
+  output: 'standalone', // Optimizes for containerized environments
+});
 
 nextConfig.images?.remotePatterns?.push({
   protocol: 'https',
