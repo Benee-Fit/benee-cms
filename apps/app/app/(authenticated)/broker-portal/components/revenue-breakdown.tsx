@@ -54,6 +54,27 @@ interface RevenueBreakdownProps {
 
 export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
   const [timeframe, setTimeframe] = useState('ytd');
+  
+  // Mock revenue data for different timeframes
+  const revenueData = {
+    ytd: 1004200,
+    mtd: 124500,
+    qtd: 386700
+  };
+  
+  // Mock MRR data for different timeframes
+  const mrrData = {
+    ytd: 83700,
+    mtd: 89200,
+    qtd: 85800
+  };
+  
+  // Mock growth rates for different timeframes
+  const growthRates = {
+    ytd: 3.2,
+    mtd: 5.8,
+    qtd: 2.1
+  };
 
   // Mock data
   const teamMembers = [
@@ -170,7 +191,14 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                   <SelectItem value="qtd">Quarterly</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-3xl font-bold">$1,004,200</p>
+              <p className="text-3xl font-bold">
+                ${revenueData[timeframe as keyof typeof revenueData].toLocaleString()}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {timeframe === 'ytd' && 'Jan 1 - Dec 31, 2025'}
+                {timeframe === 'mtd' && 'Jun 1 - Jun 30, 2025'}
+                {timeframe === 'qtd' && 'Apr 1 - Jun 30, 2025'}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -180,12 +208,16 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">$83,700</p>
+              <p className="text-3xl font-bold">
+                ${mrrData[timeframe as keyof typeof mrrData].toLocaleString()}
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 <Badge variant="outline" className="mr-1">
-                  +3.2%
+                  +{growthRates[timeframe as keyof typeof growthRates]}%
                 </Badge>{' '}
-                from last month
+                from last {timeframe === 'ytd' && 'year'}
+                {timeframe === 'qtd' && 'quarter'}
+                {timeframe === 'mtd' && 'month'}
               </p>
             </CardContent>
           </Card>
@@ -220,7 +252,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </CardHeader>
           <CardContent className="p-4">
             <ChartContainer
-              className="h-[300px] aspect-[4/3] w-full" 
+              className="h-[300px] aspect-[4/3] w-full"
               config={{
                 current: {
                   label: 'Current Year',
@@ -261,7 +293,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 6 }}
-                  stroke="hsl(var(--primary) / 0.5)"
+                  stroke="black"
                 />
                 <ChartTooltip
                   content={({ active, payload }) => {
