@@ -4,9 +4,7 @@
   "bin": {
     "next-forge": "dist/index.js"
   },
-  "files": [
-    "dist/index.js"
-  ],
+  "files": ["dist/index.js"],
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
@@ -28,6 +26,7 @@
     "@repo/typescript-config": "workspace:*",
     "@turbo/gen": "^2.5.3",
     "@types/node": "^22.15.21",
+    "prisma": "^6.8.2",
     "tsup": "^8.5.0",
     "turbo": "^2.5.3",
     "typescript": "^5.8.3",
@@ -35,7 +34,7 @@
     "vitest": "^3.1.4"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "packageManager": "pnpm@10.11.0",
   "dependencies": {

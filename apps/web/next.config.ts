@@ -6,15 +6,10 @@ import type { NextConfig } from 'next';
 
 let nextConfig: NextConfig = withLogging({
   ...config,
-  // Use standalone mode for server-rendered pages and API routes
+  // Use standalone mode which supports middleware
   output: 'standalone',
-  // Avoid including pnpm node_modules structure in the output
-  experimental: {
-    // This helps avoid the pnpm dependency issues during build
-    outputFileTracingExcludes: {
-      '*': ['node_modules/.pnpm'],
-    },
-  }, // Optimizes for containerized environments
+  // Optimizes for containerized environments
+  distDir: '.next',
 });
 
 nextConfig.images?.remotePatterns?.push({
