@@ -37,5 +37,9 @@
     "@types/react-dom": "19.1.5",
     "concurrently": "^9.1.2",
     "typescript": "^5.8.3"
-  }
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "packageManager": "pnpm@10.11.0"
 }
