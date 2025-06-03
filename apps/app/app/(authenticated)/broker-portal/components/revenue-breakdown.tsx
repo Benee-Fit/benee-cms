@@ -96,44 +96,56 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
     { name: 'Renewals', value: 55, fill: '#666666' }, // Medium grey
   ];
 
-  // Mock data
+  // Mock data for Team Performance
   const teamMembers = [
     {
       name: 'John Smith',
-      revenue: 342500,
-      quotes: 56,
-      conversionRate: 68,
       clients: 14,
+      members: 350,
+      avgGroupSize: 25,
+      totalRevenue: 342500,
+      quotesSent: 56,
+      closeRate: 68,
+      avgDaysToClose: 15,
     },
     {
       name: 'Emily Davis',
-      revenue: 278900,
-      quotes: 42,
-      conversionRate: 72,
       clients: 12,
+      members: 420,
+      avgGroupSize: 35,
+      totalRevenue: 278900,
+      quotesSent: 42,
+      closeRate: 72,
+      avgDaysToClose: 12,
     },
     {
       name: 'Michael Johnson',
-      revenue: 197600,
-      quotes: 38,
-      conversionRate: 59,
       clients: 9,
+      members: 270,
+      avgGroupSize: 30,
+      totalRevenue: 197600,
+      quotesSent: 38,
+      closeRate: 59,
+      avgDaysToClose: 20,
     },
     {
       name: 'Sarah Williams',
-      revenue: 185200,
-      quotes: 31,
-      conversionRate: 64,
       clients: 8,
+      members: 320,
+      avgGroupSize: 40,
+      totalRevenue: 185200,
+      quotesSent: 31,
+      closeRate: 64,
+      avgDaysToClose: 18,
     },
   ];
 
   const commissionSplits = [
-    { carrier: 'Manulife', totalCommission: 54800, percentage: 28 },
-    { carrier: 'Sun Life', totalCommission: 42600, percentage: 22 },
-    { carrier: 'Great-West Life', totalCommission: 39000, percentage: 20 },
-    { carrier: 'Blue Cross', totalCommission: 31200, percentage: 16 },
-    { carrier: 'Other Carriers', totalCommission: 27300, percentage: 14 },
+    { partner: 'Manulife', type: 'Internal Broker', percentSplit: 28, clients: 45, dollarAmount: 54800, carrier: 'Manulife' },
+    { partner: 'Sun Life', type: 'Referral', percentSplit: 22, clients: 38, dollarAmount: 42600, carrier: 'Sun Life' },
+    { partner: 'Great-West Life', type: 'Internal Broker', percentSplit: 20, clients: 30, dollarAmount: 39000, carrier: 'Great-West Life' },
+    { partner: 'Blue Cross', type: 'Internal Broker', percentSplit: 16, clients: 25, dollarAmount: 31200, carrier: 'Blue Cross' },
+    { partner: 'Other Carriers', type: 'Referral', percentSplit: 14, clients: 20, dollarAmount: 27300, carrier: 'Various' },
   ];
 
   const revenueSources = [
@@ -587,29 +599,29 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Team Member</TableHead>
-                  <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Quotes</TableHead>
-                  <TableHead className="text-right">Conversion Rate</TableHead>
-                  <TableHead className="text-right">Clients</TableHead>
+                  <TableHead>Broker</TableHead>
+                  <TableHead className="text-right"># of Clients</TableHead>
+                  <TableHead className="text-right"># of Members</TableHead>
+                  <TableHead className="text-right">Avg. Group Size</TableHead>
+                  <TableHead className="text-right">Total Revenue</TableHead>
+                  <TableHead className="text-right">Quotes Sent</TableHead>
+                  <TableHead className="text-right">Close Rate</TableHead>
+                  <TableHead className="text-right">Avg. Days to Close</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {teamMembers.map((member) => (
                   <TableRow key={member.name}>
                     <TableCell className="font-medium">{member.name}</TableCell>
+                    <TableCell className="text-right">{member.clients}</TableCell>
+                    <TableCell className="text-right">{member.members}</TableCell>
+                    <TableCell className="text-right">{member.avgGroupSize}</TableCell>
                     <TableCell className="text-right">
-                      ${member.revenue.toLocaleString()}
+                      ${member.totalRevenue.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {member.quotes}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {member.conversionRate}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {member.clients}
-                    </TableCell>
+                    <TableCell className="text-right">{member.quotesSent}</TableCell>
+                    <TableCell className="text-right">{member.closeRate}%</TableCell>
+                    <TableCell className="text-right">{member.avgDaysToClose}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -628,23 +640,25 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Partner</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">% Split</TableHead>
+                  <TableHead className="text-right">Clients</TableHead>
+                  <TableHead className="text-right">$ Amount</TableHead>
                   <TableHead>Carrier</TableHead>
-                  <TableHead className="text-right">Total Commission</TableHead>
-                  <TableHead className="text-right">Percentage</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {commissionSplits.map((commission) => (
-                  <TableRow key={commission.carrier}>
-                    <TableCell className="font-medium">
-                      {commission.carrier}
-                    </TableCell>
+                  <TableRow key={commission.partner}>
+                    <TableCell className="font-medium">{commission.partner}</TableCell>
+                    <TableCell>{commission.type}</TableCell>
+                    <TableCell className="text-right">{commission.percentSplit}%</TableCell>
+                    <TableCell className="text-right">{commission.clients}</TableCell>
                     <TableCell className="text-right">
-                      ${commission.totalCommission.toLocaleString()}
+                      ${commission.dollarAmount.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {commission.percentage}%
-                    </TableCell>
+                    <TableCell>{commission.carrier}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
