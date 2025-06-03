@@ -68,10 +68,38 @@ const data = {
   },
   navMain: [
     {
+      title: 'Broker Portal',
+      url: '/broker-portal',
+      icon: PieChartIcon,
+      isActive: true,
+      items: [
+        {
+          title: 'Dashboard',
+          url: '/broker-portal',
+        },
+        {
+          title: 'Revenue Breakdown',
+          url: '/broker-portal#revenue',
+        },
+        {
+          title: 'Client Insights',
+          url: '/broker-portal#clients',
+        },
+        {
+          title: 'Industry Insight',
+          url: '/broker-portal#industry',
+        },
+        {
+          title: 'Outstanding Quotes',
+          url: '/broker-portal#quotes',
+        },
+      ],
+    },
+    {
       title: 'HR Portal',
       url: '/hr-portal',
       icon: FolderIcon,
-      isActive: true,
+      isActive: false,
       items: [
         {
           title: 'Claims History',
