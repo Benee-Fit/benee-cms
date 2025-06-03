@@ -40,7 +40,9 @@
   "packageManager": "pnpm@10.11.0",
   "dependencies": {
     "@clack/prompts": "^0.11.0",
-    "commander": "^14.0.0"
+    "@types/recharts": "^2.0.1",
+    "commander": "^14.0.0",
+    "recharts": "^2.15.3"
   },
   "type": "module"
 }

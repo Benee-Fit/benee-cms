@@ -7,14 +7,15 @@ import {
   CardTitle,
 } from '@repo/design-system/components/ui/card';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@repo/design-system/components/ui/tooltip';
-import Link from 'next/link';
-import { ArrowRight, BarChart3, FileSpreadsheet, LineChart, Users2 } from 'lucide-react';
+  ArrowRight,
+  BarChart3,
+  FileSpreadsheet,
+  LineChart,
+  Users2,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
+import { CalendarGrid } from './components/calendar-grid';
 import { BenefitSearchForm } from './components/chat/benefit-search-form';
 
 interface TileInfo {
@@ -71,48 +72,40 @@ export default function BrokerPortalPage() {
         </p>
       </div>
 
-      <section className="mb-8 bg-muted/30 p-6 rounded-lg border">
+      <section className="mt-10 mb-10 p-6 max-w-2xl mx-auto">
         <BenefitSearchForm />
       </section>
 
       <section className="py-6">
-        <TooltipProvider delayDuration={100}>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {tiles.map((tile) => (
-              <Tooltip key={tile.title}>
-                <TooltipTrigger asChild>
-                  <Link href={tile.href} className="h-full">
-                    <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200 ease-in-out group border-primary/30 hover:border-primary">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-lg font-semibold text-primary">
-                          {tile.title}
-                        </CardTitle>
-                        <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </CardHeader>
-                      <CardContent className="flex-grow">
-                        <p className="text-sm text-muted-foreground">
-                          {tile.description}
-                        </p>
-                      </CardContent>
-                      <div className="p-6 pt-0">
-                        <span className="text-xs text-primary group-hover:underline flex items-center">
-                          Go to {tile.title}{' '}
-                          <ArrowRight className="ml-1 h-3 w-3" />
-                        </span>
-                      </div>
-                    </Card>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  className="max-w-xs bg-card text-card-foreground border-border shadow-xl"
-                >
-                  <p>{tile.tooltipContent}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </TooltipProvider>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {tiles.map((tile) => (
+            <Link key={tile.title} href={tile.href} className="h-full">
+              <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200 ease-in-out group border-primary/30 hover:border-primary">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-lg font-semibold text-primary">
+                    {tile.title}
+                  </CardTitle>
+                  <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground">
+                    {tile.description}
+                  </p>
+                </CardContent>
+                <div className="p-6 pt-0">
+                  <span className="text-xs text-primary group-hover:underline flex items-center">
+                    Go to {tile.title}{' '}
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </span>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="py-6">
+        <CalendarGrid />
       </section>
     </div>
   );

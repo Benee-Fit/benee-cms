@@ -50,12 +50,15 @@ interface ChartProps {
 const Chart = ({ type, data, height = 200 }: ChartProps) => {
   return (
     <div className="border rounded-md p-2" style={{ height }}>
-      <div className="text-sm font-medium mb-2">{type.toUpperCase()} Chart (placeholder)</div>
+      <div className="text-sm font-medium mb-2">
+        {type.toUpperCase()} Chart (placeholder)
+      </div>
       <div className="text-xs text-muted-foreground">
         <div className="mb-1">Labels: {data.labels.join(', ')}</div>
         {data.datasets.map((dataset, index) => (
           <div key={index} className="mb-1">
-            <span className="font-semibold">{dataset.label}:</span> {dataset.data.join(', ')}
+            <span className="font-semibold">{dataset.label}:</span>{' '}
+            {dataset.data.join(', ')}
           </div>
         ))}
       </div>
@@ -72,24 +75,81 @@ interface IndustryInsightProps {
 export function IndustryInsight({ className }: IndustryInsightProps) {
   // Mock data
   const industryPerformance = [
-    { industry: 'Technology', clients: 12, revenue: 340000, growth: 14, avgPremium: 28300 },
-    { industry: 'Healthcare', clients: 8, revenue: 245000, growth: 9, avgPremium: 30600 },
-    { industry: 'Manufacturing', clients: 7, revenue: 182000, growth: 6, avgPremium: 26000 },
-    { industry: 'Professional Services', clients: 6, revenue: 156000, growth: 11, avgPremium: 26000 },
-    { industry: 'Education', clients: 5, revenue: 112000, growth: 4, avgPremium: 22400 },
-    { industry: 'Retail', clients: 3, revenue: 72000, growth: 2, avgPremium: 24000 },
-    { industry: 'Other', clients: 2, revenue: 47000, growth: 5, avgPremium: 23500 },
+    {
+      industry: 'Technology',
+      clients: 12,
+      revenue: 340000,
+      growth: 14,
+      avgPremium: 28300,
+    },
+    {
+      industry: 'Healthcare',
+      clients: 8,
+      revenue: 245000,
+      growth: 9,
+      avgPremium: 30600,
+    },
+    {
+      industry: 'Manufacturing',
+      clients: 7,
+      revenue: 182000,
+      growth: 6,
+      avgPremium: 26000,
+    },
+    {
+      industry: 'Professional Services',
+      clients: 6,
+      revenue: 156000,
+      growth: 11,
+      avgPremium: 26000,
+    },
+    {
+      industry: 'Education',
+      clients: 5,
+      revenue: 112000,
+      growth: 4,
+      avgPremium: 22400,
+    },
+    {
+      industry: 'Retail',
+      clients: 3,
+      revenue: 72000,
+      growth: 2,
+      avgPremium: 24000,
+    },
+    {
+      industry: 'Other',
+      clients: 2,
+      revenue: 47000,
+      growth: 5,
+      avgPremium: 23500,
+    },
   ];
 
   const companySize = [
-    { tier: 'Small (1-49)', clients: 18, avgPremium: 19200, totalRevenue: 345600 },
-    { tier: 'Medium (50-199)', clients: 16, avgPremium: 28400, totalRevenue: 454400 },
-    { tier: 'Large (200+)', clients: 9, avgPremium: 34500, totalRevenue: 310500 },
+    {
+      tier: 'Small (1-49)',
+      clients: 18,
+      avgPremium: 19200,
+      totalRevenue: 345600,
+    },
+    {
+      tier: 'Medium (50-199)',
+      clients: 16,
+      avgPremium: 28400,
+      totalRevenue: 454400,
+    },
+    {
+      tier: 'Large (200+)',
+      clients: 9,
+      avgPremium: 34500,
+      totalRevenue: 310500,
+    },
   ];
 
   // Chart data for quotes submitted per vertical
   const quoteChartData = {
-    labels: industryPerformance.map(item => item.industry),
+    labels: industryPerformance.map((item) => item.industry),
     datasets: [
       {
         label: 'Quotes Submitted',
@@ -97,13 +157,13 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
         backgroundColor: 'hsl(var(--primary) / 0.7)',
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
-      }
+      },
     ],
   };
 
   // Chart data for conversion rate per vertical
   const conversionChartData = {
-    labels: industryPerformance.map(item => item.industry),
+    labels: industryPerformance.map((item) => item.industry),
     datasets: [
       {
         label: 'Conversion Rate (%)',
@@ -111,7 +171,7 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
         backgroundColor: 'hsl(var(--primary) / 0.7)',
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
-      }
+      },
     ],
   };
 
@@ -131,7 +191,7 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
         ],
         borderWidth: 1,
         borderColor: 'hsl(var(--background))',
-      }
+      },
     ],
   };
 
@@ -152,20 +212,24 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
         backgroundColor: 'hsl(var(--muted-foreground) / 0.5)',
         borderColor: 'hsl(var(--muted-foreground))',
         borderWidth: 1,
-      }
+      },
     ],
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn('space-y-6 p-6', className)}>
       <div>
         <h2 className="text-2xl font-semibold mb-1">Industry Insight</h2>
-        <p className="text-muted-foreground">Visualize where your business thrives by industry and client segments.</p>
+        <p className="text-muted-foreground">
+          Visualize where your business thrives by industry and client segments.
+        </p>
       </div>
 
       {/* A. Industry Performance */}
       <section aria-labelledby="industry-perf-title">
-        <h3 id="industry-perf-title" className="text-xl font-medium mb-2">A. Industry Performance</h3>
+        <h3 id="industry-perf-title" className="text-xl font-medium mb-2">
+          A. Industry Performance
+        </h3>
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -181,11 +245,21 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
               <TableBody>
                 {industryPerformance.map((industry) => (
                   <TableRow key={industry.industry}>
-                    <TableCell className="font-medium">{industry.industry}</TableCell>
-                    <TableCell className="text-right">{industry.clients}</TableCell>
-                    <TableCell className="text-right">${industry.revenue.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{industry.growth}%</TableCell>
-                    <TableCell className="text-right">${industry.avgPremium.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium">
+                      {industry.industry}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {industry.clients}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${industry.revenue.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {industry.growth}%
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${industry.avgPremium.toLocaleString()}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -193,7 +267,7 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
           </CardContent>
         </Card>
         <p className="mt-2 text-sm text-muted-foreground">
-          Highlight top verticals and growth areas: 
+          Highlight top verticals and growth areas:
           <Badge className="ml-2 mr-1">Technology</Badge>
           <Badge>Healthcare</Badge>
         </p>
@@ -201,11 +275,15 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
 
       {/* B. Premium Benchmarks */}
       <section aria-labelledby="premium-bench-title">
-        <h3 id="premium-bench-title" className="text-xl font-medium mb-2">B. Premium Benchmarks</h3>
+        <h3 id="premium-bench-title" className="text-xl font-medium mb-2">
+          B. Premium Benchmarks
+        </h3>
         <div className="grid md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Largest Premiums/Industry</CardTitle>
+              <CardTitle className="text-base">
+                Largest Premiums/Industry
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="flex justify-between">
@@ -267,15 +345,21 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
 
       {/* C. Company Size Tiers */}
       <section aria-labelledby="company-size-title">
-        <h3 id="company-size-title" className="text-xl font-medium mb-2">C. Company Size Tiers</h3>
+        <h3 id="company-size-title" className="text-xl font-medium mb-2">
+          C. Company Size Tiers
+        </h3>
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Size Tier</TableHead>
-                  <TableHead className="text-right">Number of Clients</TableHead>
-                  <TableHead className="text-right">Avg. Premium/Client</TableHead>
+                  <TableHead className="text-right">
+                    Number of Clients
+                  </TableHead>
+                  <TableHead className="text-right">
+                    Avg. Premium/Client
+                  </TableHead>
                   <TableHead className="text-right">Total Revenue</TableHead>
                 </TableRow>
               </TableHeader>
@@ -284,8 +368,12 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
                   <TableRow key={size.tier}>
                     <TableCell className="font-medium">{size.tier}</TableCell>
                     <TableCell className="text-right">{size.clients}</TableCell>
-                    <TableCell className="text-right">${size.avgPremium.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">${size.totalRevenue.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      ${size.avgPremium.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ${size.totalRevenue.toLocaleString()}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -294,13 +382,20 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
         </Card>
       </section>
 
-      {/* D. Quote & Source Analytics */}
+      {/* Quote & Source Analytics */}
       <section aria-labelledby="quote-source-analytics-title">
-        <h3 id="quote-source-analytics-title" className="text-xl font-medium mb-2">D. Quote & Source Analytics</h3>
+        <h3
+          id="quote-source-analytics-title"
+          className="text-xl font-medium mb-2"
+        >
+          Quote & Source Analytics
+        </h3>
         <div className="grid md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Quotes Submitted per Vertical</CardTitle>
+              <CardTitle className="text-base">
+                Quotes Submitted per Vertical
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Chart
@@ -324,7 +419,9 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Conversion % per Vertical</CardTitle>
+              <CardTitle className="text-base">
+                Conversion % per Vertical
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Chart
@@ -349,7 +446,9 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Source Breakdown per Industry</CardTitle>
+              <CardTitle className="text-base">
+                Source Breakdown per Industry
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-[200px]">
@@ -371,7 +470,9 @@ export function IndustryInsight({ className }: IndustryInsightProps) {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Lead Source Efficiency</CardTitle>
+              <CardTitle className="text-base">
+                Lead Source Efficiency
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <Chart

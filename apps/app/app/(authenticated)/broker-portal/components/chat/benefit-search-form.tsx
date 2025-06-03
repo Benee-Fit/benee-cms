@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Search } from 'lucide-react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Search } from 'lucide-react';
 
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -35,8 +35,11 @@ export function BenefitSearchForm({ className }: BenefitSearchFormProps) {
   return (
     <div className={className}>
       <div className="w-full">
-        <Label htmlFor="search-query" className="text-lg font-medium tracking-tight mb-2 block">
-          Have a question about your benefits?
+        <Label
+          htmlFor="search-query"
+          className="text-2xl text-center font-medium tracking-tight mb-6 block"
+        >
+          Have a question?
         </Label>
         <form
           className="flex w-full items-center space-x-2"
@@ -44,7 +47,7 @@ export function BenefitSearchForm({ className }: BenefitSearchFormProps) {
             // Open the chat modal with the query
             setCurrentQuery(values.query);
             setChatOpen(true);
-            
+
             // Clear the input field after submitting
             form.reset({ query: '' });
           })}
@@ -64,7 +67,9 @@ export function BenefitSearchForm({ className }: BenefitSearchFormProps) {
           </Button>
         </form>
         {form.formState.errors.query && (
-          <p className="text-sm text-destructive mt-2">{form.formState.errors.query.message}</p>
+          <p className="text-sm text-destructive mt-2">
+            {form.formState.errors.query.message}
+          </p>
         )}
       </div>
 

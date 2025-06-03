@@ -1,9 +1,20 @@
 'use client';
 
 import {
-  Card,
-  CardContent,
-} from '@repo/design-system/components/ui/card';
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@repo/design-system/components/ui/alert';
+import { Badge } from '@repo/design-system/components/ui/badge';
+import { Button } from '@repo/design-system/components/ui/button';
+import { Card, CardContent } from '@repo/design-system/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@repo/design-system/components/ui/dropdown-menu';
+import { Input } from '@repo/design-system/components/ui/input';
 import {
   Table,
   TableBody,
@@ -12,23 +23,15 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/design-system/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@repo/design-system/components/ui/dropdown-menu';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@repo/design-system/components/ui/alert';
-import { Button } from '@repo/design-system/components/ui/button';
-import { Input } from '@repo/design-system/components/ui/input';
-import { Badge } from '@repo/design-system/components/ui/badge';
 import { cn } from '@repo/design-system/lib/utils';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  MoreHorizontal,
+  Search,
+} from 'lucide-react';
 import { useState } from 'react';
-import { AlertCircle, CheckCircle2, Clock, MoreHorizontal, Search } from 'lucide-react';
 
 interface OutstandingQuotesProps {
   className?: string;
@@ -36,7 +39,7 @@ interface OutstandingQuotesProps {
 
 export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
   const [filterText, setFilterText] = useState('');
-  
+
   // Mock data for quotes
   const quotes = [
     {
@@ -106,15 +109,18 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
       age: 1,
     },
   ];
-  
+
   // Filter quotes based on input
-  const filteredQuotes = quotes.filter(quote => 
-    quote.client.toLowerCase().includes(filterText.toLowerCase()) ||
-    quote.id.toLowerCase().includes(filterText.toLowerCase())
+  const filteredQuotes = quotes.filter(
+    (quote) =>
+      quote.client.toLowerCase().includes(filterText.toLowerCase()) ||
+      quote.id.toLowerCase().includes(filterText.toLowerCase())
   );
-  
+
   // Count quotes waiting 10+ days
-  const oldQuotes = quotes.filter(quote => quote.age >= 10 && quote.waiting !== 'Complete').length;
+  const oldQuotes = quotes.filter(
+    (quote) => quote.age >= 10 && quote.waiting !== 'Complete'
+  ).length;
 
   // Helper function to determine badge color based on age
   const getAgeBadgeVariant = (age: number) => {
@@ -128,15 +134,19 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn('space-y-6 p-6', className)}>
       <div>
         <h2 className="text-2xl font-semibold mb-1">Outstanding Quotes</h2>
-        <p className="text-muted-foreground">All your in-progress quotes in one place.</p>
+        <p className="text-muted-foreground">
+          All your in-progress quotes in one place.
+        </p>
       </div>
 
-      {/* A. Quote Tracker Table */}
+      {/* Quote Tracker Table */}
       <section aria-labelledby="quote-tracker-title">
-        <h3 id="quote-tracker-title" className="text-xl font-medium mb-2">A. Quote Tracker Table</h3>
+        <h3 id="quote-tracker-title" className="text-xl font-medium mb-2">
+          Quote Tracker Table
+        </h3>
         <div className="relative mb-4">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -146,7 +156,7 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
             onChange={(e) => setFilterText(e.target.value)}
           />
         </div>
-        
+
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -173,7 +183,7 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
                     <TableCell>
                       {quote.status.map((status, index) => (
                         <div key={index} className="flex items-center">
-                          {status.carrier} 
+                          {status.carrier}
                           {status.received ? (
                             <CheckCircle2 className="h-4 w-4 ml-1 text-green-500" />
                           ) : (
@@ -207,16 +217,21 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
                           <DropdownMenuItem>Resend to Carrier</DropdownMenuItem>
                           <DropdownMenuItem>Mark as Received</DropdownMenuItem>
                           <DropdownMenuItem>Archive</DropdownMenuItem>
-                          <DropdownMenuItem>Add Internal Notes</DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Add Internal Notes
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
-                
+
                 {filteredQuotes.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-4 text-muted-foreground">
+                    <TableCell
+                      colSpan={9}
+                      className="text-center py-4 text-muted-foreground"
+                    >
                       No quotes found matching your filter.
                     </TableCell>
                   </TableRow>
@@ -225,7 +240,7 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
             </Table>
           </CardContent>
         </Card>
-        
+
         {oldQuotes > 0 && (
           <Alert className="mt-4">
             <AlertCircle className="h-4 w-4" />
