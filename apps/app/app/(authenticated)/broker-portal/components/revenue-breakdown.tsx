@@ -141,11 +141,11 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
   ];
 
   const commissionSplits = [
-    { partner: 'Manulife', type: 'Internal Broker', percentSplit: 28, clients: 45, dollarAmount: 54800, carrier: 'Manulife' },
-    { partner: 'Sun Life', type: 'Referral', percentSplit: 22, clients: 38, dollarAmount: 42600, carrier: 'Sun Life' },
-    { partner: 'Great-West Life', type: 'Internal Broker', percentSplit: 20, clients: 30, dollarAmount: 39000, carrier: 'Great-West Life' },
-    { partner: 'Blue Cross', type: 'Internal Broker', percentSplit: 16, clients: 25, dollarAmount: 31200, carrier: 'Blue Cross' },
-    { partner: 'Other Carriers', type: 'Referral', percentSplit: 14, clients: 20, dollarAmount: 27300, carrier: 'Various' },
+    { partner: 'Manulife', type: 'Internal Broker', percentSplit: 28, clients: 45, totalCommission: 54800, carrier: 'Manulife' },
+    { partner: 'Sun Life', type: 'Referral', percentSplit: 22, clients: 38, totalCommission: 42600, carrier: 'Sun Life' },
+    { partner: 'Great-West Life', type: 'Internal Broker', percentSplit: 20, clients: 30, totalCommission: 39000, carrier: 'Great-West Life' },
+    { partner: 'Blue Cross', type: 'Internal Broker', percentSplit: 16, clients: 25, totalCommission: 31200, carrier: 'Blue Cross' },
+    { partner: 'Other Carriers', type: 'Referral', percentSplit: 14, clients: 20, totalCommission: 27300, carrier: 'Various' },
   ];
 
   const revenueSources = [
@@ -153,6 +153,17 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
     { source: 'Renewals', amount: 89700, percentage: 32 },
     { source: 'Plan Adjustments', amount: 41800, percentage: 15 },
     { source: 'Special Commissions', amount: 22400, percentage: 8 },
+  ];
+
+  // Revenue by source data
+  const revenueSourceData = [
+    { source: 'Cold outreach', value: 62500, percentage: 22 },
+    { source: 'Warm referral', value: 84300, percentage: 30 },
+    { source: 'Events', value: 42100, percentage: 15 },
+    { source: 'Inbound website', value: 36800, percentage: 13 },
+    { source: 'Partnerships', value: 25600, percentage: 9 },
+    { source: 'Existing clients', value: 19700, percentage: 7 },
+    { source: 'Other', value: 11200, percentage: 4 },
   ];
 
   // Chart data for growth trendline
@@ -173,21 +184,15 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
 
   // Pie chart data for commission by partner
   const commissionPieData = commissionSplits.map((item, index) => ({
-    name: item.carrier,
-    value: item.percentage,
-    fill: [
-      '#000000', // Black
-      '#333333', // Dark grey
-      '#555555', // Medium-dark grey
-      '#777777', // Medium grey
-      '#999999'  // Light grey
-    ][index] || '#aaaaaa',
+    name: item.partner,
+    value: item.percentSplit,
+    fill: ['#333333', '#555555', '#777777', '#999999', '#BBBBBB'][index % commissionSplits.length],
   }));
 
-  // Bar chart data for revenue by source
-  const revenueBarData = revenueSources.map((item) => ({
-    name: item.source,
-    value: item.amount,
+  // Bar chart data for commission by carrier
+  const carrierCommissionData = commissionSplits.map((item) => ({
+    name: item.carrier,
+    value: item.totalCommission,
   }));
 
   return (
@@ -656,7 +661,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                     <TableCell className="text-right">{commission.percentSplit}%</TableCell>
                     <TableCell className="text-right">{commission.clients}</TableCell>
                     <TableCell className="text-right">
-                      ${commission.dollarAmount.toLocaleString()}
+                      ${commission.totalCommission.toLocaleString()}
                     </TableCell>
                     <TableCell>{commission.carrier}</TableCell>
                   </TableRow>
@@ -744,7 +749,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Revenue by Source</CardTitle>
+              <CardTitle className="text-base">$ of Commission by Carrier</CardTitle>
             </CardHeader>
             <CardContent className="p-4">
               <ChartContainer
@@ -757,7 +762,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                 }}
               >
                 <BarChart
-                  data={revenueBarData}
+                  data={carrierCommissionData}
                   margin={{ top: 10, right: 20, bottom: 30, left: 50 }}
                 >
                   <CartesianGrid
@@ -791,9 +796,9 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                               </span>
                               <span className="text-xs text-muted-foreground">
                                 {
-                                  revenueSources.find(
-                                    (item) => item.source === payload[0].name
-                                  )?.percentage
+                                  commissionSplits.find(
+                                    (item) => item.carrier === payload[0].name
+                                  )?.percentSplit
                                 }
                                 % of total
                               </span>
@@ -811,7 +816,70 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
         </div>
       </section>
 
-      {/* Revenue by Source - Already covered in the charts above */}
+      {/* Revenue by Source */}
+      <section aria-labelledby="revenue-sources-title" className="pt-6">
+        <h3 id="revenue-sources-title" className="text-xl font-medium mb-2">
+          Revenue by Source
+        </h3>
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <ChartContainer
+              className="h-[280px] w-full"
+              config={{
+                value: {
+                  label: 'Revenue',
+                  color: 'hsl(var(--primary) / 0.7)',
+                },
+              }}
+            >
+              <BarChart
+                data={revenueSourceData}
+                margin={{ top: 10, right: 20, bottom: 30, left: 50 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-muted"
+                />
+                <XAxis
+                  dataKey="source"
+                  className="text-xs text-muted-foreground"
+                />
+                <YAxis
+                  className="text-xs text-muted-foreground"
+                  tickFormatter={(value) => `$${value.toLocaleString()}`}
+                />
+                <Bar
+                  dataKey="value"
+                  radius={[4, 4, 0, 0]}
+                  className="fill-primary/70"
+                />
+                <ChartTooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="rounded-lg border bg-background p-2 shadow-sm">
+                          <div className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                              {payload[0].payload.source}
+                            </span>
+                            <span className="font-bold text-muted-foreground">
+                              ${payload[0].value?.toLocaleString()}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {payload[0].payload.percentage}% of total
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+              </BarChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </section>
 
       {/* Forecasting */}
       <section aria-labelledby="forecasting-title" className="pt-6">
