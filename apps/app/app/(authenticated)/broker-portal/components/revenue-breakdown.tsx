@@ -163,7 +163,13 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
   const commissionPieData = commissionSplits.map((item, index) => ({
     name: item.carrier,
     value: item.percentage,
-    fill: `hsl(var(--primary) / ${0.9 - index * 0.2})`,
+    fill: [
+      '#000000', // Black
+      '#333333', // Dark grey
+      '#555555', // Medium-dark grey
+      '#777777', // Medium grey
+      '#999999'  // Light grey
+    ][index] || '#aaaaaa',
   }));
 
   // Bar chart data for revenue by source
