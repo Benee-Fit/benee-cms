@@ -5,17 +5,20 @@ import { Bot, User } from 'lucide-react';
 
 type ChatMessageProps = {
   message: Message;
+  isLastMessage?: boolean;
 };
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, isLastMessage }: ChatMessageProps) {
   const isUser = message.role === 'user';
 
   return (
     <div 
       className={cn(
         "flex gap-3 text-sm mb-4",
-        isUser ? "justify-end" : "justify-start"
+        isUser ? "justify-end" : "justify-start",
+        isLastMessage && "animate-fadeIn"
       )}
+      data-last-message={isLastMessage ? "true" : "false"}
     >
       {!isUser && (
         <Avatar className="h-8 w-8 bg-primary/10">
