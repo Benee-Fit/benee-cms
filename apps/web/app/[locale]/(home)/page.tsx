@@ -15,6 +15,17 @@ type HomeProps = {
   }>;
 };
 
+export async function generateStaticParams() {
+  // Define all the locales your application supports
+  // Update this array with your supported locales
+  const locales = ['en', 'fr']; // Example: English and French
+  
+  // Return only valid locale paths
+  return locales.map((locale) => ({
+    locale: locale,
+  }));
+}
+
 export const generateMetadata = async ({
   params,
 }: HomeProps): Promise<Metadata> => {
