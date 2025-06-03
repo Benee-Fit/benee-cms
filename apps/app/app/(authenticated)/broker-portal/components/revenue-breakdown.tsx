@@ -54,27 +54,47 @@ interface RevenueBreakdownProps {
 
 export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
   const [timeframe, setTimeframe] = useState('ytd');
-  
+
   // Mock revenue data for different timeframes
   const revenueData = {
     ytd: 1004200,
     mtd: 124500,
-    qtd: 386700
+    qtd: 386700,
   };
-  
+
   // Mock MRR data for different timeframes
   const mrrData = {
     ytd: 83700,
     mtd: 89200,
-    qtd: 85800
+    qtd: 85800,
   };
-  
+
   // Mock growth rates for different timeframes
   const growthRates = {
     ytd: 3.2,
     mtd: 5.8,
-    qtd: 2.1
+    qtd: 2.1,
   };
+
+  // Mock product type split data
+  const productTypeSplits = [
+    { name: 'Health', value: 62, fill: '#000000' }, // Black
+    { name: 'Dental', value: 24, fill: '#444444' }, // Dark grey
+    { name: 'Vision', value: 14, fill: '#888888' }, // Medium grey
+  ];
+
+  // Mock carrier split data
+  const carrierSplits = [
+    { name: 'Manulife', value: 28, fill: '#1a1a1a' }, // Very dark grey
+    { name: 'Sun Life', value: 22, fill: '#4d4d4d' }, // Dark grey
+    { name: 'Others', value: 50, fill: '#808080' }, // Medium grey
+  ];
+
+  // Mock business type split data
+  const businessTypeSplits = [
+    { name: 'New Business', value: 45, fill: '#333333' }, // Dark grey
+    { name: 'Renewals', value: 55, fill: '#666666' }, // Medium grey
+  ];
 
   // Mock data
   const teamMembers = [
@@ -192,7 +212,10 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                 </SelectContent>
               </Select>
               <p className="text-3xl font-bold">
-                ${revenueData[timeframe as keyof typeof revenueData].toLocaleString()}
+                $
+                {revenueData[
+                  timeframe as keyof typeof revenueData
+                ].toLocaleString()}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {timeframe === 'ytd' && 'Jan 1 - Dec 31, 2025'}
@@ -221,27 +244,209 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
               </p>
             </CardContent>
           </Card>
+        </div>
+      </section>
+
+      {/* Revenue Split Section */}
+      <section aria-labelledby="revenue-split-title" className="mt-6">
+        <h3 id="revenue-split-title" className="text-xl font-medium mb-2">
+          Revenue Split
+        </h3>
+        <div className="grid md:grid-cols-3 gap-4">
+          {/* Product Type Pie Chart */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Revenue Split</CardTitle>
+              <CardTitle className="text-base">By Product Type</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm">
-              <p className="flex justify-between mb-1">
-                <span>Product Type:</span>
-                <span>Health (62%), Dental (24%), Vision (14%)</span>
-              </p>
-              <p className="flex justify-between mb-1">
-                <span>Carrier:</span>
-                <span>Manulife (28%), Sun Life (22%), Others (50%)</span>
-              </p>
-              <p className="flex justify-between">
-                <span>Type:</span>
-                <span>New Business (45%), Renewals (55%)</span>
-              </p>
+            <CardContent>
+              <ChartContainer
+                id="product-type-pie"
+                className="h-60"
+                config={{
+                  value: {
+                    color: '#000000', // Black
+                  },
+                }}
+              >
+                <PieChart>
+                  <Pie
+                    data={productTypeSplits}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, value }) => `${name}: ${value}%`}
+                    labelLine={false}
+                  >
+                    {productTypeSplits.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm">
+                            <div className="flex flex-col">
+                              <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                {payload[0].name}
+                              </span>
+                              <span className="font-bold text-muted-foreground">
+                                {payload[0].value}%
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                $
+                                {Math.round(
+                                  (revenueData[
+                                    timeframe as keyof typeof revenueData
+                                  ] *
+                                    (payload[0].value as number)) /
+                                    100
+                                ).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Carrier Pie Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">By Carrier</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                id="carrier-pie"
+                className="h-60"
+                config={{
+                  value: {
+                    color: '#1a1a1a', // Very dark grey
+                  },
+                }}
+              >
+                <PieChart>
+                  <Pie
+                    data={carrierSplits}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, value }) => `${name}: ${value}%`}
+                    labelLine={false}
+                  >
+                    {carrierSplits.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm">
+                            <div className="flex flex-col">
+                              <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                {payload[0].name}
+                              </span>
+                              <span className="font-bold text-muted-foreground">
+                                {payload[0].value}%
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                $
+                                {Math.round(
+                                  (revenueData[
+                                    timeframe as keyof typeof revenueData
+                                  ] *
+                                    (payload[0].value as number)) /
+                                    100
+                                ).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Business Type Pie Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">By Business Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                id="business-type-pie"
+                className="h-60"
+                config={{
+                  value: {
+                    color: '#333333', // Dark grey
+                  },
+                }}
+              >
+                <PieChart>
+                  <Pie
+                    data={businessTypeSplits}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, value }) => `${name}: ${value}%`}
+                    labelLine={false}
+                  >
+                    {businessTypeSplits.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="rounded-lg border bg-background p-2 shadow-sm">
+                            <div className="flex flex-col">
+                              <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                {payload[0].name}
+                              </span>
+                              <span className="font-bold text-muted-foreground">
+                                {payload[0].value}%
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                $
+                                {Math.round(
+                                  (revenueData[
+                                    timeframe as keyof typeof revenueData
+                                  ] *
+                                    (payload[0].value as number)) /
+                                    100
+                                ).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ChartContainer>
             </CardContent>
           </Card>
         </div>
       </section>
+
       <section aria-labelledby="growth-trendline-title">
         <h3 id="growth-trendline-title" className="text-xl font-medium mb-2">
           Growth Trendline
