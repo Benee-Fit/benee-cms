@@ -4,9 +4,7 @@
   "bin": {
     "next-forge": "dist/index.js"
   },
-  "files": [
-    "dist/index.js"
-  ],
+  "files": ["dist/index.js"],
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
@@ -36,7 +34,7 @@
     "vitest": "^3.1.4"
   },
   "engines": {
-    "node": ">=18"
+    "node": "^22.15.21"
   },
   "packageManager": "pnpm@10.11.0",
   "dependencies": {
