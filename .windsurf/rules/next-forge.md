@@ -61,11 +61,6 @@ Making changes to files should be done in their respective app or package.
     ```bash
     pnpm install
     ```
-4.  **Environment Variables:**
-    * Copy the root `.env.example` to a new `.env` file: `cp .env.example .env`
-    * Update the `.env` file with your local development credentials, especially:
-        * `DATABASE_URL`: Point this to your local PostgreSQL instance (e.g., `postgresql://user:password@localhost:5432/your_dev_db_name?schema=public`).
-        * Other necessary API keys for local development (Clerk, Stripe test keys, etc.). Consult `env.ts` or similar files managed by `@t3-oss/env-nextjs` for required variables.
 5.  **Database Setup (Local):**
     * Ensure your local PostgreSQL server is running.
     * Apply migrations to set up the schema:
@@ -120,4 +115,4 @@ Making changes to files should be done in their respective app or package.
     } catch (error) {
       if (error instanceof SpecificPrismaError) { // Replace SpecificPrismaError with actual error type if known
         // handle Prisma error
-      } else if (error instanceof MyCustomError) { // Replace MyCustomError with your actual custom 
+      } else if (error instanceof MyCustomError) { // Replace MyCustomError with your actual custom

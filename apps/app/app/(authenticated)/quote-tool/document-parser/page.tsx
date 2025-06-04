@@ -79,7 +79,57 @@ export default function DocumentParserPage() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Process files
+  // Process a single document file and return the structured result
+  const processDocumentFile = async (file: FileWithPreview): Promise<Record<string, unknown>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('category', file.category || 'Current');
+    
+    // Create an AbortController to handle fetch timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout (Gemini API can take a while)
+    
+    try {
+      const response = await fetch('/api/process-document', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json'
+        },
+        cache: 'no-store'
+      });
+      
+      // Clear the timeout as the request completed
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to process document';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (_) {
+          // Handle case where response isn't valid JSON
+          errorMessage = `Error status ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      return {
+        ...result,
+        originalFileName: file.name,
+        category: file.category,
+      };
+    } catch (fetchError: unknown) {
+      if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+        throw new Error(`Processing timeout for file ${file.name}. The request took too long.`);
+      }
+      throw fetchError; // Re-throw to be handled in the outer catch
+    }
+  };
+  
+  // Main process handler for all files
   const handleProcessFiles = async () => {
     if (files.length === 0) {
       setError('Please upload at least one PDF document to process.');
@@ -90,30 +140,12 @@ export default function DocumentParserPage() {
     setError(null);
     
     try {
-      const results: Array<Record<string, unknown>> = [];
+      const results: Record<string, unknown>[] = [];
       
       // Process each file sequentially to avoid overloading the server
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('category', file.category || 'Current');
-        
-        const response = await fetch('/api/process-document', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to process document');
-        }
-        
-        const result = await response.json();
-        results.push({
-          ...result,
-          originalFileName: file.name,
-          category: file.category,
-        });
+        const processedResult = await processDocumentFile(file);
+        results.push(processedResult);
       }
       
       // Store results in localStorage for the results page
@@ -216,19 +248,24 @@ export default function DocumentParserPage() {
                 Upload PDF files for parsing ({activeCategory} category)
               </p>
             </div>
-            <label className="cursor-pointer">
-              <Button variant="outline">
+            <div>
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Select Files
               </Button>
               <input
+                id="file-upload"
                 type="file"
                 multiple
                 accept=".pdf"
                 onChange={handleFileChange}
                 className="hidden"
               />
-            </label>
+            </div>
           </div>
         </div>
       </div>
