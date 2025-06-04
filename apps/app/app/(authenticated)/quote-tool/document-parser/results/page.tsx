@@ -59,22 +59,6 @@ export default function DocumentParserResultsPage() {
       
       if (storedData) {
         const data = JSON.parse(storedData) as ParsedDocument[];
-        
-        // Add debugging info
-        if (Array.isArray(data) && data.length > 0) {
-          // Check if coverages exist and have the right structure
-          const hasCoverages = data.some(doc => 
-            doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0
-          );
-          
-          if (!hasCoverages) {
-            setError('Documents found, but no coverage data detected in parsed results.');
-          } else {
-            // Document looks good
-            setError(null);
-          }
-        }
-        
         setParsedDocuments(data);
       } else {
         setError('No parsed document data found in storage.');
@@ -206,9 +190,9 @@ export default function DocumentParserResultsPage() {
                   {parsedDocuments.map((doc, index) => (
                     <details key={index} className="bg-white rounded-lg shadow-sm open:shadow-md transition-all duration-200">
                       <summary className="text-lg font-medium p-4 cursor-pointer hover:bg-gray-50">
-                        {doc.metadata?.carrierName || 'Unknown Carrier'} - {doc.originalFileName || 'Unnamed Document'}
+                        {doc.metadata.carrierName} - {doc.originalFileName}
                         <span className="ml-2 text-sm px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                          {doc.category || 'Uncategorized'}
+                          {doc.category}
                         </span>
                       </summary>
                       <div className="p-4 pt-0 border-t">
