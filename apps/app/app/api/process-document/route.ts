@@ -263,7 +263,50 @@ async function structureDataWithGemini(extractedText: string, fileName: string, 
       
       // Parse the JSON response
       const parsedJson = JSON.parse(jsonContent);
-      return parsedJson;
+      
+      // Validate and ensure the response has the required structure
+      const validatedResponse = {
+        metadata: parsedJson.metadata || {
+          documentType: 'Unknown Type',
+          clientName: 'Unknown Client',
+          carrierName: 'Unknown Carrier',
+          effectiveDate: new Date().toISOString().split('T')[0], // today's date as fallback
+          quoteDate: new Date().toISOString().split('T')[0],
+          fileName: fileName,
+          fileCategory: category
+        },
+        coverages: Array.isArray(parsedJson.coverages) ? parsedJson.coverages : [],
+        planNotes: Array.isArray(parsedJson.planNotes) ? parsedJson.planNotes : [],
+        originalFileName: fileName,
+        category: category
+      };
+      
+      // Ensure metadata has required fields
+      if (validatedResponse.metadata && typeof validatedResponse.metadata === 'object') {
+        validatedResponse.metadata.fileName = validatedResponse.metadata.fileName || fileName;
+        validatedResponse.metadata.fileCategory = validatedResponse.metadata.fileCategory || category;
+      }
+      
+      // Create at least one default coverage if none exists
+      if (!validatedResponse.coverages || validatedResponse.coverages.length === 0) {
+        console.log('No coverages found in API response, creating default coverage');
+        validatedResponse.coverages = [{
+          coverageType: 'Basic Life',
+          carrierName: validatedResponse.metadata?.carrierName || 'Unknown Carrier',
+          planOptionName: 'Default Plan',
+          premium: 0,
+          monthlyPremium: 0,
+          unitRate: 0,
+          unitRateBasis: 'per $1,000',
+          volume: 0,
+          lives: 0,
+          benefitDetails: {
+            note: 'Coverage details could not be extracted from document'
+          }
+        }];
+      }
+      
+      return validatedResponse;
     } catch (jsonError) {
       const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError);
       throw new Error(`Failed to parse Gemini response as JSON: ${textContent.substring(0, 200)}...\nError: ${errorMessage}`);

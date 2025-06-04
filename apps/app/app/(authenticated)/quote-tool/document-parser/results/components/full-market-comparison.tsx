@@ -69,22 +69,41 @@ interface FullMarketComparisonProps {
 }
 
 export default function FullMarketComparison({ documents, selectedCoverageType }: FullMarketComparisonProps) {
-  // Group coverages by type
+  // Debug information
+  const hasDocuments = documents && documents.length > 0;
+  const hasCoverages = hasDocuments && documents.some(doc => 
+    doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0
+  );
+  const coverageCount = hasDocuments ? 
+    documents.reduce((count, doc) => count + (doc.coverages?.length || 0), 0) : 0;
+
+  // Group coverages by type, with improved defensive coding
   const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document) => {
-    if (document.coverages && Array.isArray(document.coverages)) {
-      document.coverages.forEach(coverage => {
-        if (coverage && coverage.coverageType && (!selectedCoverageType || coverage.coverageType === selectedCoverageType)) {
-          if (!acc[coverage.coverageType]) {
-            acc[coverage.coverageType] = [];
+    // Skip if document is null/undefined or doesn't have coverages
+    if (!document || !document.coverages || !Array.isArray(document.coverages)) {
+      return acc;
+    }
+
+    document.coverages.forEach(coverage => {
+      // Make sure coverage is an object with required fields
+      if (coverage && typeof coverage === 'object' && 'coverageType' in coverage) {
+        const coverageType = coverage.coverageType;
+        
+        // Apply filter if selected
+        if (coverageType && (!selectedCoverageType || coverageType === selectedCoverageType)) {
+          if (!acc[coverageType]) {
+            acc[coverageType] = [];
           }
-          acc[coverage.coverageType].push({
+          
+          // Add normalized coverage object
+          acc[coverageType].push({
             ...coverage,
-            // Add metadata for reference
+            // Ensure carrierName has a value
             carrierName: coverage.carrierName || (document.metadata?.carrierName || 'Unknown Carrier')
           });
         }
-      });
-    }
+      }
+    });
     return acc;
   }, {});
 
@@ -99,7 +118,22 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
   if (Object.keys(coveragesByType).length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">No coverage data available for the selected filter.</p>
+        <div className="space-y-4">
+          <p className="text-gray-500">No coverage data available for the selected filter.</p>
+          
+          {/* Debugging information */}
+          <div className="text-left bg-muted/30 p-4 rounded-md max-w-lg mx-auto text-sm">
+            <h4 className="font-medium mb-2">Troubleshooting Information:</h4>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Documents found: {documents.length}</li>
+              <li>Has coverages: {hasCoverages ? 'Yes' : 'No'}</li>
+              <li>Total coverage items: {coverageCount}</li>
+              {selectedCoverageType && (
+                <li>Current filter: {selectedCoverageType}</li>
+              )}
+            </ul>
+          </div>
+        </div>
       </div>
     );
   }
