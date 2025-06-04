@@ -104,10 +104,6 @@ const data = {
       url: '/hr-portal',
       icon: FolderIcon,
       isActive: false,
-      title: 'Quote Tool',
-      url: '/quote-tool',
-      icon: PieChartIcon,
-      isActive: true,
       items: [
         {
           title: 'Document Parser',
