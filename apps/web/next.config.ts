@@ -1,5 +1,4 @@
 import { env } from '@/env';
-import { withCMS } from '@repo/cms/next-config';
 import { config, withAnalyzer } from '@repo/next-config';
 import { withLogging, withSentry } from '@repo/observability/next-config';
 import type { NextConfig } from 'next';
@@ -10,11 +9,6 @@ let nextConfig: NextConfig = withLogging({
   output: 'standalone',
   // Optimizes for containerized environments
   distDir: '.next',
-});
-
-nextConfig.images?.remotePatterns?.push({
-  protocol: 'https',
-  hostname: 'assets.basehub.com',
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -37,4 +31,4 @@ if (env.ANALYZE === 'true') {
   nextConfig = withAnalyzer(nextConfig);
 }
 
-export default withCMS(nextConfig);
+export default nextConfig;

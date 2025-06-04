@@ -41,11 +41,6 @@ export const Header = ({ dictionary }: HeaderProps) => {
         },
       ],
     },
-    {
-      title: dictionary.web.header.blog,
-      href: '/blog',
-      description: '',
-    },
   ];
 
   if (env.NEXT_PUBLIC_DOCS_URL) {
