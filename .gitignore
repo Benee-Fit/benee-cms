@@ -259,9 +259,7 @@ $RECYCLE.BIN/
 
 # Sentry Config File
 .env.sentry-build-plugin
-
-# BaseHub
-.basehub
+ 
 
 # AI Rules
 .cursorrules
@@ -275,3 +273,6 @@ packages/database/generated
 
 # Sentry
 .sentryclirc
+
+# BaseHub
+.basehub
