@@ -1,6 +1,5 @@
 'use client';
 
-import { ClientOrganizationSwitcher, ClientUserButton } from './client-components';
 import { ModeToggle } from '@repo/design-system/components/mode-toggle';
 import { Button } from '@repo/design-system/components/ui/button';
 import {
@@ -55,6 +54,10 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import {
+  ClientOrganizationSwitcher,
+  ClientUserButton,
+} from './client-components';
 import { Search } from './search';
 
 type GlobalSidebarProperties = {
@@ -101,22 +104,18 @@ const data = {
       url: '/hr-portal',
       icon: FolderIcon,
       isActive: false,
+      title: 'Quote Tool',
+      url: '/quote-tool',
+      icon: PieChartIcon,
+      isActive: true,
       items: [
         {
-          title: 'Claims History',
-          url: '/hr-portal/claims-history',
+          title: 'Document Parser',
+          url: '/quote-tool/document-parser',
         },
         {
-          title: 'Employee Trends',
-          url: '/hr-portal/employee-trends',
-        },
-        {
-          title: 'Enrolment',
-          url: '/hr-portal/enrolment',
-        },
-        {
-          title: 'Document Library',
-          url: '/hr-portal/document-library',
+          title: 'Results',
+          url: '/quote-tool/document-parser/results',
         },
       ],
     },
@@ -124,7 +123,6 @@ const data = {
       title: 'Playground',
       url: '#',
       icon: SquareTerminalIcon,
-      isActive: false,
       items: [
         {
           title: 'History',
