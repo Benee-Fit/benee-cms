@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@repo/design-system/components/ui/button';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
 import { 
   Select, 
@@ -11,7 +10,7 @@ import {
   SelectValue 
 } from '@repo/design-system/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
-import { Info, AlertCircle, ArrowUpDown } from 'lucide-react';
+import { Info, AlertCircle } from 'lucide-react';
 import MarketComparisonView from './market-comparison/MarketComparisonView';
 import SingleCarrierView from './single-carrier-view';
 import RenegotiatedComparison from './renegotiated-comparison';
@@ -48,7 +47,7 @@ interface ParsedDocument {
     unitRateBasis: string;
     volume: number;
     lives: number;
-    benefitDetails: Record<string, any>;
+    benefitDetails: Record<string, unknown>;
   }>;
   planNotes: Array<{ note: string }>;
 }
@@ -59,8 +58,8 @@ export default function ComparisonContainer() {
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState('market');
   const [selectedCarrier, setSelectedCarrier] = useState<string | null>(null);
-  const [selectedCoverageType, setSelectedCoverageType] = useState<string | null>(null);
-  const [availableCoverageTypes, setAvailableCoverageTypes] = useState<string[]>([]);
+  // Removed selectedCoverageType state
+  // Removed availableCoverageTypes state
   const [availableCarriers, setAvailableCarriers] = useState<string[]>([]);
   
   // Document categories
@@ -76,8 +75,7 @@ export default function ComparisonContainer() {
         const data = JSON.parse(storedData) as ParsedDocument[];
         setParsedDocuments(data);
 
-        // Extract and set unique coverage types and carriers
-        const coverageTypes = new Set<string>();
+        // Extract and set unique carriers
         const carriers = new Set<string>();
         
         // Categorize documents
@@ -85,7 +83,7 @@ export default function ComparisonContainer() {
         const renegotiated: ParsedDocument[] = [];
         const alternative: ParsedDocument[] = [];
         
-        data.forEach(doc => {
+        for (const doc of data) {
           // Categorize documents
           if (doc.category === 'Current') {
             current.push(doc);
@@ -95,23 +93,19 @@ export default function ComparisonContainer() {
             alternative.push(doc);
           }
           
-          // Collect unique coverage types and carriers
+          // Collect unique carriers
           if (doc.coverages && Array.isArray(doc.coverages)) {
-            doc.coverages.forEach(coverage => {
-              if (coverage && coverage.coverageType) {
-                coverageTypes.add(coverage.coverageType);
-              }
-              if (coverage && coverage.carrierName) {
+            for (const coverage of doc.coverages) {
+              if (coverage?.carrierName) {
                 carriers.add(coverage.carrierName);
               }
-            });
+            }
           }
-        });
+        }
         
         setCurrentDocuments(current);
         setRenegotiatedDocuments(renegotiated);
         setAlternativeDocuments(alternative);
-        setAvailableCoverageTypes(Array.from(coverageTypes));
         setAvailableCarriers(Array.from(carriers));
         
         // Set default selected carrier if available
@@ -120,8 +114,8 @@ export default function ComparisonContainer() {
         }
       }
     } catch (e) {
-      console.error('Failed to load or parse documents:', e);
-      setError('Failed to load parsed data. It might be corrupted.');
+      // Error is captured in state variable instead of console
+      setError(`Failed to load or parse documents: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setIsLoading(false);
     }
@@ -171,21 +165,6 @@ export default function ComparisonContainer() {
           </TabsList>
           
           <div className="flex flex-col sm:flex-row gap-2 mt-4 mb-2">
-            <Select 
-              value={selectedCoverageType || 'all'} 
-              onValueChange={(value) => setSelectedCoverageType(value === 'all' ? null : value)}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filter by coverage type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Coverage Types</SelectItem>
-                {availableCoverageTypes.map((type) => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             {currentView === 'carrier' && (
               <Select 
                 value={selectedCarrier || 'all'} 
@@ -202,17 +181,11 @@ export default function ComparisonContainer() {
                 </SelectContent>
               </Select>
             )}
-            
-            <Button variant="outline" size="sm" className="ml-auto">
-              <ArrowUpDown className="mr-2 h-4 w-4" />
-              Sort by Premium
-            </Button>
           </div>
           
           <TabsContent value="market" className="mt-0">
             <MarketComparisonView 
               parsedDocuments={parsedDocuments}
-              coverageTypesList={availableCoverageTypes}
               carriersMap={Object.fromEntries(availableCarriers.map(carrier => [
                 carrier, 
                 parsedDocuments
@@ -225,9 +198,9 @@ export default function ComparisonContainer() {
           <TabsContent value="carrier" className="mt-4">
             <SingleCarrierView 
               documents={parsedDocuments.filter(
-                doc => doc.metadata && doc.metadata.carrierName && doc.metadata.carrierName === selectedCarrier
+                doc => doc.metadata?.carrierName === selectedCarrier
               )}
-              selectedCoverageType={selectedCoverageType}
+              selectedCoverageType={null}
               carrierName={selectedCarrier || 'Unknown Carrier'}
             />
           </TabsContent>
@@ -236,7 +209,7 @@ export default function ComparisonContainer() {
             <RenegotiatedComparison 
               currentDocuments={currentDocuments}
               renegotiatedDocuments={renegotiatedDocuments}
-              selectedCoverageType={selectedCoverageType}
+              selectedCoverageType={null}
             />
           </TabsContent>
           
@@ -244,7 +217,7 @@ export default function ComparisonContainer() {
             <AlternativeComparison 
               currentDocuments={currentDocuments}
               alternativeDocuments={alternativeDocuments}
-              selectedCoverageType={selectedCoverageType}
+              selectedCoverageType={null}
             />
           </TabsContent>
         </Tabs>

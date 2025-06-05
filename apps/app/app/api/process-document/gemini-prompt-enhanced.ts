@@ -139,10 +139,4 @@ IMPORTANT FORMAT NOTES:
 * Dates should be in YYYY-MM-DD format
 * Use null for missing or N/A fields, not empty strings
 * Use consistent field names exactly as specified
-
-Here is the extracted text to parse:
-{{TEXT_CONTENT}}
-
-Document filename: {{FILE_NAME}}
-Document category: {{DOCUMENT_CATEGORY}}
 `;
