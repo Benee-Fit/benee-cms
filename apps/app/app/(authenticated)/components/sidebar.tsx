@@ -53,6 +53,7 @@ import {
   Trash2Icon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Search } from './search';
 
@@ -243,7 +244,16 @@ const data = {
 
 export const GlobalSidebar = ({ children }: GlobalSidebarProperties) => {
   const sidebar = useSidebar();
-
+  const pathname = usePathname();
+  
+  // Hide sidebar on broker portal homepage
+  const isBrokerPortalHomePage = pathname === '/broker-portal' || pathname === '/broker-portal/';
+  
+  // Don't render the sidebar on the broker portal homepage
+  if (isBrokerPortalHomePage) {
+    return <div className="w-full">{children}</div>;
+  }
+  
   return (
     <>
       <Sidebar variant="inset">
