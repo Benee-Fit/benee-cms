@@ -303,29 +303,30 @@ export function PremiumComparisonTable({
 
         // Find carrier index by name comparison (case insensitive)
         const carrierIndex = carriers.findIndex(
-          carrier => carrier.name.toUpperCase() === coverage.carrierName.toUpperCase()
+          carrier => carrier.name?.toUpperCase() === coverage.carrierName?.toUpperCase()
         );
         
         // Update the benefit data with formatted values if carrier found
         if (carrierIndex !== -1) {
           benefitDataMap[normalizedType].values[carrierIndex] = {
-          volume: formattedVolume,
-          unitRate: formattedUnitRate,
-          monthlyPremium: formattedPremium,
-        };
+            volume: formattedVolume,
+            unitRate: formattedUnitRate,
+            monthlyPremium: formattedPremium,
+          };
 
-        // Add to subtotal and grand total
-        const premium = Number.parseFloat(String(coverage.monthlyPremium || 0));
-        if (!Number.isNaN(premium) && carrierIndex !== -1) {
-          // Determine which subtotal category this goes to
-          if (pooledCoverageTypes.includes(normalizedType)) {
-            pooledTotal[carrierIndex] += premium;
-          } else if (experienceCoverageTypes.includes(normalizedType)) {
-            experienceTotal[carrierIndex] += premium;
+          // Add to subtotal and grand total
+          const premium = Number.parseFloat(String(coverage.monthlyPremium || 0));
+          if (!Number.isNaN(premium)) {
+            // Determine which subtotal category this goes to
+            if (pooledCoverageTypes.includes(normalizedType)) {
+              pooledTotal[carrierIndex] += premium;
+            } else if (experienceCoverageTypes.includes(normalizedType)) {
+              experienceTotal[carrierIndex] += premium;
+            }
+
+            // Add to grand total regardless
+            grandTotal[carrierIndex] += premium;
           }
-
-          // Add to grand total regardless
-          grandTotal[carrierIndex] += premium;
         }
       }
     }
@@ -396,6 +397,7 @@ export function PremiumComparisonTable({
 
     return benefitDataMap;
   }, [results, carriers, selectedPlanOption]);
+
 
   // Order benefits for display
   const orderedBenefits = useMemo(() => {
@@ -496,10 +498,10 @@ export function PremiumComparisonTable({
           </TableHeader>
           <TableBody>
             {(orderedBenefits || []).map((benefitName, index) => {
-              const benefit = benefitData[benefitName];
-              const isSubtotal = benefit.isSubtotal;
-              const isTotal = benefit.isTotal;
-              const isRateGuarantee = benefit.isRateGuarantee;
+              const benefit = benefitData[benefitName] || { values: [], isSubtotal: false, isTotal: false, isRateGuarantee: false };
+              const isSubtotal = benefit.isSubtotal || false;
+              const isTotal = benefit.isTotal || false;
+              const isRateGuarantee = benefit.isRateGuarantee || false;
 
               // Apply special styling based on row type
               let rowClassName = '';
