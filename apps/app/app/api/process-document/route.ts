@@ -488,12 +488,13 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       }
     };
     
+    // Use async mode to handle larger documents without timeouts
     const extractionResponse = await makeHttpsRequest(
       extractTextOptions,
       JSON.stringify({
         url: uploadResult.url,
         name: filename,
-        async: false
+        async: true // Enable async processing for larger documents
       })
     );
 
@@ -534,7 +535,73 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       throw new Error(`PDF.co error: ${responseData.error}`);
     }
     
-    // Handle the response which might contain text directly or provide a URL to fetch the result
+    // Handle the asynchronous job response
+    if (responseData.jobId) {
+      console.log(`[DEBUG] PDF.co started async job with ID: ${responseData.jobId}`);
+      
+      // Poll the job status until it completes or fails
+      const jobCheckOptions: HttpsRequestOptions = {
+        hostname: PDF_CO_HOSTNAME,
+        path: `/v1/job/check?jobId=${responseData.jobId}`,
+        method: 'GET',
+        headers: {
+          'x-api-key': PDFCO_API_KEY,
+          'Accept': 'application/json'
+        }
+      };
+      
+      // Maximum number of status check attempts
+      const MAX_ATTEMPTS = 30;
+      // Delay between status checks in milliseconds (start with 2 seconds)
+      let pollInterval = 2000;
+      
+      // Poll the job status
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        console.log(`[DEBUG] Checking job status (attempt ${attempt}/${MAX_ATTEMPTS})...`);
+        
+        // Wait before checking status
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        
+        // Check job status
+        const jobStatusResponse = await makeHttpsRequest(jobCheckOptions);
+        
+        if (jobStatusResponse.error || !jobStatusResponse.data) {
+          console.error('[ERROR] Failed to check job status:', jobStatusResponse.error);
+          // Continue polling despite error, as the job might still complete
+          continue;
+        }
+        
+        let jobStatus;
+        try {
+          jobStatus = JSON.parse(jobStatusResponse.data);
+          console.log(`[DEBUG] Job status: ${jobStatus.status}`);
+        } catch (parseError) {
+          console.error('[ERROR] Failed to parse job status:', parseError);
+          continue;
+        }
+        
+        // Check if job is still running
+        if (jobStatus.status === 'working') {
+          // Increase polling interval slightly for each attempt (up to 10 seconds)
+          pollInterval = Math.min(pollInterval * 1.5, 10000);
+          continue;
+        }
+        
+        // Check if job failed
+        if (jobStatus.status === 'failed') {
+          throw new Error(`PDF.co job failed: ${jobStatus.errorMessage || 'Unknown error'}`);
+        }
+        
+        // Check if job completed successfully
+        if (jobStatus.status === 'success' && jobStatus.url) {
+          console.log('[DEBUG] PDF.co job completed successfully, fetching result...');
+          responseData.url = jobStatus.url;
+          break;
+        }
+      }
+    }
+    
+    // Handle the response which might contain a URL to fetch the result
     if (responseData.url) {
       console.log('[DEBUG] PDF.co returned a result URL, fetching text content:', responseData.url);
       
@@ -581,7 +648,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
     }
     
     // If we got here, we didn't get what we expected
-    throw new Error('No text content or result URL found in PDF.co response');
+    throw new Error('No text content, result URL, or job ID found in PDF.co response');
     
   } catch (error) {
     console.error('[ERROR] PDF extraction failed:', {
