@@ -78,17 +78,16 @@ const MarketComparisonView = ({
 
         <TabsContent value="plan" className="mt-0">
           <PlanComparisonTab results={parsedDocuments.filter(doc => 
-            doc.coverages.every(coverage => 
+            doc.coverages.length > 0 && doc.coverages.some(coverage => 
               coverage.coverageType && 
               coverage.carrierName && 
-              coverage.planOptionName && 
-              typeof coverage.premium === 'number' && 
-              typeof coverage.monthlyPremium === 'number' && 
-              typeof coverage.unitRate === 'number' && 
-              coverage.unitRateBasis && 
-              typeof coverage.volume === 'number' && 
-              typeof coverage.lives === 'number' && 
-              coverage.benefitDetails
+              coverage.benefitDetails && 
+              // Allow null unitRate for certain coverage types
+              ((coverage.coverageType === 'Extended Healthcare' || 
+                coverage.coverageType === 'Dental Care') || 
+               coverage.unitRate !== undefined) && 
+              // Ensure at least monthly premium is available
+              typeof coverage.monthlyPremium === 'number'
             )
           )} />
         </TabsContent>
