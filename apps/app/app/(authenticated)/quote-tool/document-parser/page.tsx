@@ -158,6 +158,7 @@ export default function DocumentParserPage() {
       
       // Process each file sequentially to avoid overloading the server
       for (const file of files) {
+        console.log(`[DEBUG] Processing file: ${file.name}`);
         const processedResult = await processDocumentFile(file);
         
         // Explicitly normalize the document structure if needed

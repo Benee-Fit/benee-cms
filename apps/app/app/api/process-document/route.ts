@@ -1153,6 +1153,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       });
     }
+    
+    // If we got here, we didn't get what we expected
+    throw new Error('No text content or result URL found in PDF.co response');
+    
   } catch (error) {
 
     const errorDetails = getErrorMessage(error);
@@ -1168,6 +1172,43 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         stages: Object.values(stages)
       },
       { status: statusCode }
+    );
+
+    if (geminiResponse.error || !geminiResponse.data) {
+      throw new Error(
+        `Failed to get response from Gemini API: ${geminiResponse.error || 'Empty response'}`
+      );
+    }
+
+    let responseData: GeminiSuccessResponse | GeminiErrorResponse;
+    try {
+      responseData = JSON.parse(geminiResponse.data);
+    } catch (parseError) {
+      throw new Error(
+        `Failed to parse Gemini API response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+      );
+    }
+
+    // Check for error in response
+    if ('error' in responseData) {
+      throw new Error(
+        `Gemini API error: ${responseData.error.message || 'Unknown error'}`
+      );
+    }
+
+    // Extract the response text from the Gemini API response
+    const responseText =
+      responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!responseText) {
+      throw new Error('Empty response text from Gemini API');
+    }
+
+    // Process the response
+    return processGeminiResponse(responseText);
+  } catch (error) {
+    throw new Error(
+      `Error structuring data with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -1297,4 +1338,30 @@ function getErrorMessage(error: unknown): {
     technicalDetails: errorMessage,
     suggestedAction: 'Please try again with a different document or contact support if the issue persists.',
   };
+}
+
+/**
+ * Get a specific error message based on the error content
+ */
+function getErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Failed to process document';
+  }
+
+  const message = error.message.toLowerCase();
+
+  if (message.includes('auth')) {
+    return 'Authentication error';
+  }
+  if (message.includes('pdf-parse') || message.includes('pdf')) {
+    return 'PDF extraction error';
+  }
+  if (message.includes('gemini') || message.includes('generate')) {
+    return 'AI processing error';
+  }
+  if (message.includes('storage') || message.includes('upload')) {
+    return 'File storage error';
+  }
+
+  return 'Failed to process document';
 }

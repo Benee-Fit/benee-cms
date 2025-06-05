@@ -90,6 +90,9 @@ export default function DocumentParserResultsPage() {
   const [companyName, setCompanyName] = useState<string>('');
 
   useEffect(() => {
+    console.log('[DEBUG] ===== Document Parser Results Page =====');
+    console.log('[DEBUG] Checking localStorage for parsed documents');
+    
     try {
       const storedData = localStorage.getItem('parsedBenefitsDocuments');
       const questionnaireData = localStorage.getItem('quoteQuestionnaireResults');
@@ -249,12 +252,14 @@ export default function DocumentParserResultsPage() {
           setError('Documents found, but no coverage data detected in parsed results.');
         }
       } else {
+        console.log('[DEBUG] No stored parsed documents found in localStorage');
         setError('No parsed document data found in storage.');
       }
     } catch (e) {
       setError('Failed to load parsed data. It might be corrupted.');
     } finally {
       setIsLoading(false);
+      console.log('[DEBUG] ===== End Document Parser Results Page Initialization =====');
     }
   }, []);
 

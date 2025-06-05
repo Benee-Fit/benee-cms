@@ -77,11 +77,29 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
   );
   const coverageCount = hasDocuments ? 
     documents.reduce((count, doc) => count + (doc.coverages?.length || 0), 0) : 0;
+    
+  console.log(`[DEBUG] Document and coverage check: hasDocuments=${hasDocuments}, hasCoverages=${hasCoverages}, total coverages=${coverageCount}`);
+  
+  // More detailed document and coverage inspection
+  if (hasDocuments) {
+    documents.forEach((doc, idx) => {
+      const coveragesStatus = doc.coverages && Array.isArray(doc.coverages) ? 
+        `${doc.coverages.length} coverages` : 
+        'No valid coverages array';
+      console.log(`[DEBUG] Document ${idx+1}: ${doc.metadata?.carrierName || 'Unknown'} - ${coveragesStatus}`);
+      
+      // If document has coverages, inspect first coverage
+      if (doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0) {
+        console.log(`[DEBUG] Sample coverage from doc ${idx+1}: ${JSON.stringify(doc.coverages[0]).substring(0, 200)}...`);
+      }
+    });
+  }
 
   // Group coverages by type
   const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document) => {
     // Skip if document is null/undefined or doesn't have coverages
     if (!document || !document.coverages || !Array.isArray(document.coverages)) {
+      console.log(`[DEBUG] Skipping document ${docIndex}: No valid coverages array`);
       return acc;
     }
     
