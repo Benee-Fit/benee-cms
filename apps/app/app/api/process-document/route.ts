@@ -933,40 +933,163 @@ class ProcessingError extends Error {
   }
 }
 
+/**
+ * Process stage information for tracking and reporting
+ */
+interface ProcessStage {
+  id: string;
+  name: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  startTime?: string;
+  endTime?: string;
+  progress?: number; // 0-100
+  details?: string;
+}
+
+/**
+ * Main handler for processing document uploads and extraction
+ */
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // Define processing stages for tracking
+  const stages: Record<string, ProcessStage> = {
+    authentication: {
+      id: 'authentication',
+      name: 'Authentication',
+      description: 'Verifying user credentials',
+      status: 'pending'
+    },
+    form_validation: {
+      id: 'form_validation',
+      name: 'Form Validation', 
+      description: 'Validating uploaded document',
+      status: 'pending'
+    },
+    file_upload: {
+      id: 'file_upload',
+      name: 'File Upload',
+      description: 'Uploading document to secure storage',
+      status: 'pending'
+    },
+    pdf_extraction: {
+      id: 'pdf_extraction',
+      name: 'PDF Extraction',
+      description: 'Extracting text content from PDF',
+      status: 'pending'
+    },
+    ai_processing: {
+      id: 'ai_processing',
+      name: 'AI Processing',
+      description: 'Processing data with Gemini AI',
+      status: 'pending'
+    },
+    save_results: {
+      id: 'save_results',
+      name: 'Saving Results',
+      description: 'Saving processed data',
+      status: 'pending'
+    }
+  };
+
+  /**
+   * Structured logging utility for process tracking
+   * This avoids direct console.log calls while still providing useful logs in development
+   */
+  const logger = {
+    info: (message: string, data?: Record<string, unknown>) => {
+      // In production, this could be replaced with proper logging infrastructure
+      if (process.env.NODE_ENV !== 'production') {
+        // Only log in development and test environments
+        // eslint-disable-next-line no-console
+        console.log(`[INFO] ${message}`, data ? data : '');
+      }
+      return message; // Return the message for potential further use
+    },
+    error: (message: string, data?: Record<string, unknown>) => {
+      // Always log errors regardless of environment
+      // eslint-disable-next-line no-console
+      console.error(`[ERROR] ${message}`, data ? data : '');
+      return message;
+    },
+  };
+
+  // Helper function to update stage status
+  const updateStage = (stageId: string, status: ProcessStage['status'], details?: string, progress?: number) => {
+    if (stages[stageId]) {
+      stages[stageId].status = status;
+      if (status === 'in_progress' && !stages[stageId].startTime) {
+        stages[stageId].startTime = new Date().toISOString();
+      } else if (status === 'completed' || status === 'failed') {
+        stages[stageId].endTime = new Date().toISOString();
+      }
+      if (details) {
+        stages[stageId].details = details;
+      }
+      if (progress !== undefined) {
+        stages[stageId].progress = progress;
+      }
+    }
+    
+    // Log stage updates with the structured logger
+    logger.info(`Process stage updated: ${stageId}`, { 
+      status, 
+      details: details || undefined,
+      progress: progress !== undefined ? `${progress}%` : undefined 
+    });
+  };
+
   try {
-    // Get the authenticated user
+    // Authentication stage
+    updateStage('authentication', 'in_progress');
     const user = await currentUser();
 
     if (!user || !user.id) {
+      updateStage('authentication', 'failed', 'User not authenticated');
       return NextResponse.json(
-        { error: 'Unauthorized - Please sign in to upload files' },
+        { 
+          error: 'Authentication error', 
+          detail: 'Please sign in to upload files',
+          suggestedAction: 'Sign in again or refresh your session',
+          stages: Object.values(stages)
+        },
         { status: 401 }
       );
     }
-
+    updateStage('authentication', 'completed');
     const userId = user.id;
 
+    // Form validation stage
+    updateStage('form_validation', 'in_progress');
     // Get form data
     const formData = await request.formData().catch((error) => {
+      updateStage('form_validation', 'failed', `Form data parsing error: ${error.message}`);
       throw new ProcessingError(
         `Failed to parse form data: ${error.message}`,
-        'form_data'
+        'form_validation'
       );
     });
 
     const file = formData.get('file');
 
     if (!file || !(file instanceof File)) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      updateStage('form_validation', 'failed', 'No file uploaded');
+      return NextResponse.json({ 
+        error: 'Missing document', 
+        detail: 'No file was uploaded',
+        suggestedAction: 'Please select a PDF file to upload',
+        stages: Object.values(stages)
+      }, { status: 400 });
     }
 
     // Add additional file validation
     if (!file.name.toLowerCase().endsWith('.pdf')) {
+      updateStage('form_validation', 'failed', 'Not a PDF file');
       return NextResponse.json(
         {
           error: 'Invalid file format',
-          details: 'Only PDF files are supported',
+          detail: 'Only PDF files are supported',
+          suggestedAction: 'Please convert your document to PDF format before uploading',
+          stages: Object.values(stages)
         },
         { status: 400 }
       );
@@ -975,15 +1098,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Check file size (10MB limit)
     const TEN_MB = 10 * 1024 * 1024;
     if (file.size > TEN_MB) {
+      updateStage('form_validation', 'failed', 'File too large');
       return NextResponse.json(
-        { error: 'File too large', details: 'Maximum file size is 10MB' },
+        { 
+          error: 'File too large', 
+          detail: 'Maximum file size is 10MB',
+          suggestedAction: 'Please compress your PDF or split it into smaller files',
+          stages: Object.values(stages)
+        },
         { status: 400 }
       );
     }
+    updateStage('form_validation', 'completed');
 
     // Convert the file to a buffer
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
+    // File upload stage
+    updateStage('file_upload', 'in_progress');
     // Upload the file to S3 storage first
     const uploadResult = await uploadFile({
       userId,
@@ -992,20 +1124,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       contentType: file.type || 'application/pdf',
       type: 'upload',
     }).catch((error) => {
+      updateStage('file_upload', 'failed', `Upload error: ${error.message}`);
       throw new ProcessingError(
         `Failed to upload file: ${error.message}`,
         'file_upload'
       );
     });
+    updateStage('file_upload', 'completed');
 
+    // PDF extraction stage
+    updateStage('pdf_extraction', 'in_progress');
     // Extract text from the PDF using PDF.co API
-    console.log('[INFO] Starting PDF text extraction...');
-    let extractedText;
+    logger.info('Starting PDF text extraction...');
+    let extractedText: string;
     try {
       extractedText = await extractTextFromPdf(fileBuffer);
-      console.log('[INFO] PDF text extraction completed successfully');
+      updateStage('pdf_extraction', 'completed', `Extracted ${extractedText.length} characters`);
+      logger.info('PDF text extraction completed successfully');
     } catch (error) {
-      console.error('[ERROR] PDF extraction error in main handler:', {
+      updateStage('pdf_extraction', 'failed', `Extraction error: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error('PDF extraction error in main handler:', {
         error: error instanceof Error ? error.message : String(error),
       });
       throw new ProcessingError(
@@ -1014,21 +1152,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // AI processing stage
+    updateStage('ai_processing', 'in_progress', 'Analyzing document with Gemini AI');
     // Process extracted text with Gemini API
     const structuredData = await structureDataWithGemini(extractedText).catch(
       (error) => {
+        updateStage('ai_processing', 'failed', `AI processing error: ${error.message}`);
         throw new ProcessingError(
           `Failed to process with Gemini API: ${error.message}`,
           'ai_processing'
         );
       }
     );
+    updateStage('ai_processing', 'completed');
 
+    // Save results stage
+    updateStage('save_results', 'in_progress');
     // Save the processed data as a JSON file
     const processedData = {
       ...structuredData,
       originalFileUrl: uploadResult.url,
       processedAt: new Date().toISOString(),
+      processingStages: Object.values(stages)
     };
 
     // Save processed data as JSON
@@ -1040,11 +1185,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       contentType: 'application/json',
       type: 'processed',
     }).catch((error) => {
+      updateStage('save_results', 'failed', `Save error: ${error.message}`);
       throw new ProcessingError(
         `Failed to save processed data: ${error.message}`,
         'save_results'
       );
     });
+    updateStage('save_results', 'completed');
 
     // We already have the download URL from the upload result
     const downloadUrl = processedResult.url;
@@ -1054,6 +1201,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       metadata: extractedMetadata = {},
       allCoverages: extractedCoverages = [],
     } = structuredData;
+    
+    // Count the different coverage types for better feedback
+    const coverageTypes = (extractedCoverages as Array<{coverageType?: string}>).reduce((counts: Record<string, number>, coverage) => {
+      const type = coverage.coverageType || 'unknown';
+      counts[type] = (counts[type] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    
+    const coverageCount = extractedCoverages.length;
+    const coverageSummary = Object.entries(coverageTypes)
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ');
 
     // Ensure we use the validated coverages at the top level too
     return NextResponse.json({
@@ -1064,27 +1223,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       originalFileName: file.name,
       category: (formData.get('category') as string) || 'Current',
       metadata: extractedMetadata,
-      coverages: extractedCoverages, // Use the same coverages from the processed data
+      coverages: extractedCoverages,
+      processingStats: {
+        processingTime: calculateProcessingTime(stages),
+        coverageCount,
+        coverageSummary,
+        processingStages: Object.values(stages)
+      }
     });
   } catch (error) {
-    console.error('[ERROR] Document processing failed:', {
+    logger.error('Document processing failed', {
       error: error instanceof Error ? error.message : String(error),
       stage: error instanceof ProcessingError ? error.stage : 'unknown',
     });
 
-    const errorMessage = getErrorMessage(error);
-    const errorStage =
-      error instanceof ProcessingError ? error.stage : 'unknown';
-    const statusCode =
-      error instanceof ProcessingError && error.stage === 'authentication'
-        ? 401
-        : 500;
+    const errorDetails = getErrorMessage(error);
+    const errorStage = error instanceof ProcessingError ? error.stage : 'unknown';
+    const statusCode = error instanceof ProcessingError && error.stage === 'authentication' ? 401 : 500;
 
     return NextResponse.json(
       {
-        error: errorMessage,
+        error: errorDetails.message,
+        technicalDetails: errorDetails.technicalDetails,
+        suggestedAction: errorDetails.suggestedAction,
         stage: errorStage,
-        details: error instanceof Error ? error.message : String(error),
+        stages: Object.values(stages)
       },
       { status: statusCode }
     );
@@ -1092,27 +1255,128 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 /**
- * Get a specific error message based on the error content
+ * Calculate total processing time from stages
  */
-function getErrorMessage(error: unknown): string {
+function calculateProcessingTime(stages: Record<string, ProcessStage>): string {
+  const allStages = Object.values(stages);
+  const startTimes = allStages
+    .map(stage => stage.startTime ? new Date(stage.startTime).getTime() : null)
+    .filter(time => time !== null) as number[];
+  
+  const endTimes = allStages
+    .map(stage => stage.endTime ? new Date(stage.endTime).getTime() : null)
+    .filter(time => time !== null) as number[];
+  
+  if (startTimes.length === 0 || endTimes.length === 0) {
+    return 'Unknown';
+  }
+  
+  const firstStart = Math.min(...startTimes);
+  const lastEnd = Math.max(...endTimes);
+  
+  const totalTimeMs = lastEnd - firstStart;
+  if (totalTimeMs < 1000) {
+    return `${totalTimeMs}ms`;
+  } 
+  
+  if (totalTimeMs < 60000) {
+    return `${(totalTimeMs / 1000).toFixed(2)}s`;
+  } 
+  
+  return `${(totalTimeMs / 60000).toFixed(2)}min`;
+}
+
+/**
+ * Get a specific error message and details based on the error content
+ * @param error The error object
+ * @returns An object with user-friendly error message, technical details, and suggested actions
+ */
+function getErrorMessage(error: unknown): {
+  message: string;
+  technicalDetails: string;
+  suggestedAction?: string;
+} {
   if (!(error instanceof Error)) {
-    return 'Failed to process document';
+    return {
+      message: 'Failed to process document',
+      technicalDetails: String(error) || 'Unknown error occurred',
+    };
   }
 
-  const message = error.message.toLowerCase();
+  const errorMessage = error.message;
+  const lowerMessage = errorMessage.toLowerCase();
 
-  if (message.includes('auth')) {
-    return 'Authentication error';
-  }
-  if (message.includes('pdf-parse') || message.includes('pdf')) {
-    return 'PDF extraction error';
-  }
-  if (message.includes('gemini') || message.includes('generate')) {
-    return 'AI processing error';
-  }
-  if (message.includes('storage') || message.includes('upload')) {
-    return 'File storage error';
+  // Authentication errors
+  if (lowerMessage.includes('auth') || lowerMessage.includes('unauthorized')) {
+    return {
+      message: 'Authentication error',
+      technicalDetails: errorMessage,
+      suggestedAction: 'Please sign in again or contact support if the issue persists.',
+    };
   }
 
-  return 'Failed to process document';
+  // PDF extraction errors
+  if (lowerMessage.includes('pdf-parse') || lowerMessage.includes('pdf')) {
+    let suggestedAction = 'Try a different PDF file or ensure your PDF is not password-protected.';
+    
+    // More specific PDF extraction error suggestions
+    if (lowerMessage.includes('password') || lowerMessage.includes('encrypt')) {
+      suggestedAction = 'The PDF appears to be password-protected. Please upload an unprotected version.';
+    } else if (lowerMessage.includes('corrupt') || lowerMessage.includes('invalid format')) {
+      suggestedAction = 'The PDF file appears to be corrupted. Please try recreating or re-exporting the PDF.';
+    } else if (lowerMessage.includes('timeout')) {
+      suggestedAction = 'The PDF processing timed out. Try with a smaller or simpler document.';
+    }
+    
+    return {
+      message: 'PDF extraction error',
+      technicalDetails: errorMessage,
+      suggestedAction,
+    };
+  }
+
+  // AI processing errors
+  if (lowerMessage.includes('gemini') || lowerMessage.includes('generate') || lowerMessage.includes('ai processing')) {
+    let suggestedAction = 'Please try again or try with a different document.';
+    
+    // More specific AI errors
+    if (lowerMessage.includes('quota') || lowerMessage.includes('rate limit')) {
+      suggestedAction = 'Our AI service is experiencing high demand. Please try again in a few minutes.';
+    } else if (lowerMessage.includes('content policy') || lowerMessage.includes('content filter')) {
+      suggestedAction = 'The document contains content that could not be processed. Please ensure the document contains only insurance information.';
+    } else if (lowerMessage.includes('parse') || lowerMessage.includes('json') || lowerMessage.includes('format')) {
+      suggestedAction = 'The document structure could not be properly interpreted. Try with a clearer document layout.';
+    }
+    
+    return {
+      message: 'AI processing error',
+      technicalDetails: errorMessage,
+      suggestedAction,
+    };
+  }
+
+  // Storage errors
+  if (lowerMessage.includes('storage') || lowerMessage.includes('upload') || lowerMessage.includes('s3')) {
+    return {
+      message: 'File storage error',
+      technicalDetails: errorMessage,
+      suggestedAction: 'Please try uploading again. If the problem persists, contact support.',
+    };
+  }
+
+  // Form data errors
+  if (lowerMessage.includes('form') || lowerMessage.includes('data')) {
+    return {
+      message: 'Invalid form submission',
+      technicalDetails: errorMessage,
+      suggestedAction: 'Please refresh the page and try again.',
+    };
+  }
+
+  // Default error handling
+  return {
+    message: 'Failed to process document',
+    technicalDetails: errorMessage,
+    suggestedAction: 'Please try again with a different document or contact support if the issue persists.',
+  };
 }

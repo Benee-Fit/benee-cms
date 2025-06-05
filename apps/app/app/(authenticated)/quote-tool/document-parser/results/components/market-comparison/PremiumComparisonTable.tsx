@@ -24,22 +24,13 @@ import React, { useState, useMemo } from 'react';
 // Import ParsedDocumentResult type
 import type { Coverage, ParsedDocumentResult } from '../../../types';
 
-// Debug output to console during development
-// Only log in development environment
-const debug = (...args: unknown[]): void => {
-  if (process.env.NODE_ENV === 'development') {
-    // eslint-disable-next-line no-console
-    console.log('[PremiumComparisonTable]', ...args);
-  }
-};
-
 // Format number as currency
 const formatCurrency = (value: number | string | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '$0.00';
   }
 
-  const numValue = typeof value === 'string' ? Number.parseFloat(value) : value;
+  const numValue = typeof value === 'string' ? Number.parseFloat(value.replace(/,/g, '')) : value;
 
   if (Number.isNaN(numValue)) {
     return '$0.00';
@@ -54,19 +45,27 @@ const formatCurrency = (value: number | string | null | undefined): string => {
 };
 
 // Format coverage volume with appropriate units
-const formatVolume = (value: number | string | null | undefined): string => {
-  if (value === null || value === undefined || value === '') {
+const formatVolume = (volume: string | number | null | undefined): string => {
+  if (!volume) {
     return '-';
   }
-
-  const numValue = typeof value === 'string' ? Number.parseFloat(value) : value;
-
-  if (Number.isNaN(numValue)) {
+  if (volume === '{}' || typeof volume === 'object') {
     return '-';
   }
-
-  // Format large numbers with commas
-  return new Intl.NumberFormat('en-US').format(numValue);
+  
+  // If volume is already a number, convert to string first
+  const volumeStr = typeof volume === 'number' ? volume.toString() : volume;
+  
+  // Try to parse as number
+  const numericVolume = Number.parseFloat(volumeStr.replace(/,/g, ''));
+  
+  // Return original string if could not parse
+  if (Number.isNaN(numericVolume)) {
+    return volumeStr;
+  }
+  
+  // Format with commas for thousands
+  return Number(numericVolume).toLocaleString();
 };
 
 // Map for normalizing coverage types
@@ -113,41 +112,87 @@ const experienceCoverageTypes = [
   'Health Spending Account',
 ];
 
-// Interfaces for component props and data structure
-interface CarrierProposal {
-  carrierName: string;
-  rateGuaranteeText?: string;
-}
+// Keys for mapping benefit details for coverage types with single/family breakdowns
+type DetailField = {
+  premium: string;
+  rate: string | null;
+  volume: string | null;
+};
 
-// Define interfaces for the component
-interface PlanOption {
-  planOptionName: string;
-  carrierProposals: CarrierProposal[];
-  rateGuarantees?: string[];
-}
+type CoverageDetailKeys = {
+  [coverage: string]: {
+    [variant: string]: DetailField;
+  };
+};
 
-interface Metadata {
+const coverageDetailKeys: CoverageDetailKeys = {
+  'Extended Healthcare': {
+    'Single': {
+      premium: 'totalPremiumSingle',
+      rate: 'premiumPerSingle',
+      volume: 'livesSingle'
+    },
+    'Family': {
+      premium: 'totalPremiumFamily',
+      rate: 'premiumPerFamily',
+      volume: 'livesFamily'
+    }
+  },
+  'Dental Care': {
+    'Single': {
+      premium: 'totalPremiumSingle',
+      rate: 'premiumPerSingle',
+      volume: 'livesSingle'
+    },
+    'Family': {
+      premium: 'totalPremiumFamily',
+      rate: 'premiumPerFamily',
+      volume: 'livesFamily'
+    }
+  },
+  'Health Spending Account': {
+    'Single': {
+      premium: 'totalContributionSingleMonthly',
+      rate: 'contributionPerSingleMonthly',
+      volume: 'livesSingle'
+    },
+    'Family': {
+      premium: 'totalContributionFamilyMonthly',
+      rate: 'contributionPerFamilyMonthly',
+      volume: 'livesFamily'
+    },
+    'Admin Fee': {
+      premium: 'adminFeeMonthly',
+      rate: null,
+      volume: null
+    }
+  }
+};
+
+// Component type definitions - removed unused types
+
+type Metadata = {
   carrierName?: string;
   primaryCarrierName?: string | null;
   rateGuarantees?: string | string[] | null;
-}
+};
 
-interface BenefitDataValue {
+type BenefitDataValue = {
   volume: string;
   unitRate: string;
   monthlyPremium: string;
-}
+};
 
-interface BenefitDataItem {
+type BenefitDataItem = {
   isSubtotal?: boolean;
   isTotal?: boolean;
   isRateGuarantee?: boolean;
   values: BenefitDataValue[];
-}
+};
 
-interface BenefitDataMap {
+type BenefitDataMap = {
   [key: string]: BenefitDataItem;
-}
+};
 
 interface PremiumComparisonTableProps {
   results: ParsedDocumentResult[];
@@ -220,7 +265,9 @@ export function PremiumComparisonTable({
             po.planOptionName === selectedPlanOption
         );
 
-        if (planOption?.rateGuarantees?.length > 0) {
+        // Add rateGuarantees from planOption if available
+        if (selectedPlanOption && planOption && planOption.rateGuarantees && planOption.rateGuarantees.length > 0) {
+          // Extract the first rate guarantee from planOption (we'll use just the first one for display)
           rateGuaranteeText = planOption.rateGuarantees[0];
         }
       } else if (metadata?.rateGuarantees) {
@@ -269,45 +316,111 @@ export function PremiumComparisonTable({
       // Process each coverage
       for (const coverage of filteredCoverages) {
         // Skip coverages without necessary data
-        if (!coverage.coverageType || !coverage.monthlyPremium) {
+        if (!coverage.coverageType) {
           continue; // Skip this coverage
         }
 
         // Normalize the coverage type for consistent grouping
         const normalizedType =
           coverageTypeMap[coverage.coverageType] || coverage.coverageType;
-
-        // Initialize benefit data item if it doesn't exist
-        if (!benefitDataMap[normalizedType]) {
-          benefitDataMap[normalizedType] = {
-            values: new Array(carriers.length).fill(null).map(() => ({
-              volume: '-',
-              unitRate: '-',
-              monthlyPremium: '-',
-            })),
-          };
-        }
-
-        // Format coverage values
-        const formattedVolume = formatVolume(coverage.volume);
-        const formattedUnitRate = coverage.unitRate
-          ? `${coverage.unitRate}${coverage.unitRateBasis ? `/${coverage.unitRateBasis}` : ''}`
-          : '-';
-        const formattedPremium = formatCurrency(
-          coverage.monthlyPremium
-            ? Number.parseFloat(
-                coverage.monthlyPremium.toString().replace(/,/g, '')
-              )
-            : 0
-        );
-
+          
         // Find carrier index by name comparison (case insensitive)
         const carrierIndex = carriers.findIndex(
           carrier => carrier.name?.toUpperCase() === coverage.carrierName?.toUpperCase()
         );
         
-        // Update the benefit data with formatted values if carrier found
-        if (carrierIndex !== -1) {
+        // Skip if carrier not found
+        if (carrierIndex === -1) {
+          continue;
+        }
+
+        // Handle special coverage types with single/family breakdowns
+        if (coverageDetailKeys[normalizedType]) {
+          // For coverages like Extended Healthcare, Dental Care, and HSA that have single/family breakdowns
+          const details = coverage.benefitDetails || {};
+          
+          // Process each variant (Single, Family, Admin Fee, etc.)
+          for (const [variant, fields] of Object.entries(coverageDetailKeys[normalizedType])) {
+            // Create benefit data key with variant
+            const benefitKey = `${normalizedType} - ${variant}`;
+            
+            // Initialize benefit data item if it doesn't exist
+            if (!benefitDataMap[benefitKey]) {
+              benefitDataMap[benefitKey] = {
+                values: new Array(carriers.length).fill(null).map(() => ({
+                  volume: '-',
+                  unitRate: '-',
+                  monthlyPremium: '-',
+                })),
+              };
+            }
+            
+            // Helper function to extract value with proper type checking
+            const extractValue = (key: string | null): string | number | null => {
+              if (!key) {
+                return null;
+              }
+              
+              const value = details[key];
+              // Check if value is undefined, null, or an object (including empty objects)
+              if (value === undefined || value === null || typeof value === 'object') {
+                return null;
+              }
+              
+              // Ensure we're returning either a string or number
+              if (typeof value === 'string' || typeof value === 'number') {
+                return value;
+              }
+              
+              return null;
+            };
+            
+            // Get values from coverage details with proper type checking
+            const premium = extractValue(fields.premium);
+            const rate = fields.rate ? extractValue(fields.rate) : null;
+            const volume = fields.volume ? extractValue(fields.volume) : null;
+            
+            // Format values with additional type safety
+            const formattedVolume = volume !== null && volume !== undefined ? formatVolume(volume) : '-';
+            const formattedRate = rate !== null && rate !== undefined ? `${rate}` : '-';
+            const formattedPremium = premium !== null && premium !== undefined ? formatCurrency(Number(premium)) : '-';
+            
+            // Update benefit data
+            benefitDataMap[benefitKey].values[carrierIndex] = {
+              volume: formattedVolume,
+              unitRate: formattedRate,
+              monthlyPremium: formattedPremium,
+            };
+            
+            // Add to experience total
+            if (premium && !Number.isNaN(Number(premium))) {
+              experienceTotal[carrierIndex] += Number(premium);
+              grandTotal[carrierIndex] += Number(premium);
+            }
+          }
+        } else {
+          // Standard coverage types
+          // Initialize benefit data item if it doesn't exist
+          if (!benefitDataMap[normalizedType]) {
+            benefitDataMap[normalizedType] = {
+              values: new Array(carriers.length).fill(null).map(() => ({
+                volume: '-',
+                unitRate: '-',
+                monthlyPremium: '-',
+              })),
+            };
+          }
+
+          // Format coverage values
+          const formattedVolume = formatVolume(coverage.volume);
+          const formattedUnitRate = coverage.unitRate
+            ? `${coverage.unitRate}${coverage.unitRateBasis ? `/${coverage.unitRateBasis}` : ''}`
+            : '-';
+          const formattedPremium = coverage.monthlyPremium 
+            ? formatCurrency(coverage.monthlyPremium)
+            : '-';
+            
+          // Update the benefit data with formatted values
           benefitDataMap[normalizedType].values[carrierIndex] = {
             volume: formattedVolume,
             unitRate: formattedUnitRate,
@@ -315,7 +428,10 @@ export function PremiumComparisonTable({
           };
 
           // Add to subtotal and grand total
-          const premium = Number.parseFloat(String(coverage.monthlyPremium || 0));
+          const premium = coverage.monthlyPremium
+            ? Number.parseFloat(String(coverage.monthlyPremium).replace(/,/g, ''))
+            : 0;
+            
           if (!Number.isNaN(premium)) {
             // Determine which subtotal category this goes to
             if (pooledCoverageTypes.includes(normalizedType)) {
@@ -401,51 +517,65 @@ export function PremiumComparisonTable({
 
   // Order benefits for display
   const orderedBenefits = useMemo(() => {
+    if (!benefitData) {
+      return [];
+    }
+    
     const orderedKeys: string[] = [];
-
-    // Add standard coverage types in a specific order
-    for (const coverageType of [
-      ...pooledCoverageTypes,
-      ...experienceCoverageTypes,
-    ]) {
+    const specialCoverages: string[] = [];
+    
+    // First add all standard coverage types in a specific order
+    for (const coverageType of pooledCoverageTypes) {
       if (benefitData[coverageType]) {
         orderedKeys.push(coverageType);
       }
     }
-
-    // Add any remaining coverage types that aren't in the standard lists
-    for (const key of Object.keys(benefitData)) {
-      if (
-        !pooledCoverageTypes.includes(key) &&
-        !experienceCoverageTypes.includes(key) &&
-        key !== 'Pooled Subtotal' &&
-        key !== 'Experience Subtotal' &&
-        key !== 'Grand Total' &&
-        key !== 'Rate Guarantees'
-      ) {
-        orderedKeys.push(key);
-      }
-    }
-
-    // Add subtotals and totals at the end in a specific order
+    
+    // Add Pooled Subtotal after pooled coverages
     if (benefitData['Pooled Subtotal']) {
       orderedKeys.push('Pooled Subtotal');
     }
-
+    
+    // Next add experience-rated coverages
+    for (const coverageType of experienceCoverageTypes) {
+      // Handle standard coverage types
+      if (benefitData[coverageType]) {
+        orderedKeys.push(coverageType);
+      }
+      
+      // Handle special variants like Extended Healthcare - Single, Dental Care - Family
+      for (const key of Object.keys(benefitData)) {
+        // Check if this is a variant of the current coverage type
+        if (key.startsWith(`${coverageType} - `)) {
+          specialCoverages.push(key);
+        }
+      }
+    }
+    
+    // Add special coverage variants in a predictable order
+    specialCoverages.sort();
+    for (const key of specialCoverages) {
+      orderedKeys.push(key);
+    }
+    
+    // Add Experience Subtotal after experience coverages
     if (benefitData['Experience Subtotal']) {
       orderedKeys.push('Experience Subtotal');
     }
-
+    
+    // Add Grand Total
     if (benefitData['Grand Total']) {
       orderedKeys.push('Grand Total');
     }
-
+    
+    // Add Rate Guarantees at the very end
     if (benefitData['Rate Guarantees']) {
       orderedKeys.push('Rate Guarantees');
     }
-
+    
     return orderedKeys;
   }, [benefitData]);
+
 
   return (
     <Card>
