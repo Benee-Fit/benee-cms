@@ -155,6 +155,40 @@ Each "allCoverages" object MUST include:
     (The "monthlyPremium" for HSA should represent the monthly cost, including contributions and fees, if calculable).
 - "benefitDetails": (Object, CRITICAL) Coverage-specific details. Structure varies by "coverageType" (see definitions below).
 
+// ####################################################################
+// ## CRITICAL EXAMPLE FOR EHC / DENTAL COVERAGE                     ##
+// ## You MUST follow this structure for Extended Healthcare & Dental  ##
+// ####################################################################
+// "allCoverages": [
+//   // ... other coverages
+//   {
+//     "planOptionName": "Class A - All Eligible Employees",
+//     "carrierName": "Empire Life",
+//     "coverageType": "Extended Healthcare",
+//     "monthlyPremium": 491.17, // This MUST be the sum of totalPremiumSingle and totalPremiumFamily
+//     "premium": 491.17,         // Identical to monthlyPremium
+//     "unitRate": null,
+//     "unitRateBasis": "per employee",
+//     "volume": null,
+//     "lives": 3,
+//     "livesSingle": 1,
+//     "premiumPerSingle": 84.69,
+//     "totalPremiumSingle": 84.69,
+//     "livesFamily": 2,
+//     "premiumPerFamily": 203.24,
+//     "totalPremiumFamily": 406.48,
+//     "benefitDetails": {
+//       "deductible": "Nil",
+//       "coinsurance": "80%",
+//       "hospitalCoverage": "Semi-Private",
+//       "paramedicalCoverage": "$500 per practitioner per benefit year",
+//       "visionCareMaximum": "$200 every 24 months",
+//       "prescriptionDrugCoverage": "Pay Direct Drug Card, Generic Mandatory"
+//     }
+//   },
+//   // ... other coverages
+// ]
+
 # DOCUMENT NOTES - "documentNotes" ARRAY
 - Array of strings. Include any important document-wide notes, general exclusions, overall conditions, or special provisions not tied to a specific plan option or carrier proposal (e.g., "*Applicable taxes not included", "Rates assume current census data").
 
@@ -289,4 +323,10 @@ Each "allCoverages" object MUST include:
 * Pay close attention to extracting all distinct "planOptionName" values.
 * Ensure all "carrierName" values are consistently extracted.
 * If financial tables show "Proposed Rate/Premium" and "Gross Rate/Premium", prioritize extracting the "Proposed/Net" values for the main premium fields. Gross values can be captured in notes or dedicated gross fields if available in the detailed structure.
+
+# FINAL REVIEW - CRITICAL SELF-CORRECTION STEP
+Before finalizing your response, you MUST perform this check:
+1. Review the carrierProposals. If a subtotal for experienceRatedBenefits is greater than zero, it means you have processed EHC and/or Dental premiums.
+2. Immediately verify that a corresponding, fully-detailed JSON object for "Extended Healthcare" and/or "Dental Care" exists in the allCoverages array for that carrier and plan option.
+3. If these objects are missing from allCoverages, you MUST add them before concluding your task. The allCoverages array must be complete.
 `;

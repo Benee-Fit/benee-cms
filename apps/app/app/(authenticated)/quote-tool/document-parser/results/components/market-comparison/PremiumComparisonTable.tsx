@@ -112,6 +112,13 @@ const experienceCoverageTypes = [
   'Health Spending Account',
 ];
 
+// Define order of coverage variants (Single, Family) for consistent display
+const coverageVariantOrder = {
+  'Extended Healthcare': ['Single', 'Family'],
+  'Dental Care': ['Single', 'Family'],
+  'Health Spending Account': ['Single', 'Family', 'Admin Fee']
+};
+
 // Keys for mapping benefit details for coverage types with single/family breakdowns
 type DetailField = {
   premium: string;
@@ -522,7 +529,6 @@ export function PremiumComparisonTable({
     }
     
     const orderedKeys: string[] = [];
-    const specialCoverages: string[] = [];
     
     // First add all standard coverage types in a specific order
     for (const coverageType of pooledCoverageTypes) {
@@ -538,43 +544,82 @@ export function PremiumComparisonTable({
     
     // Next add experience-rated coverages
     for (const coverageType of experienceCoverageTypes) {
-      // Handle standard coverage types
-      if (benefitData[coverageType]) {
+      if (coverageVariantOrder[coverageType]) {
+        // Handle special coverages with variants (Single/Family)
+        // First add the base coverage if it exists
+        if (benefitData[coverageType]) {
+          orderedKeys.push(coverageType);
+        }
+        
+        // Then add each variant in the defined order
+        for (const variant of coverageVariantOrder[coverageType]) {
+          const variantKey = `${coverageType} - ${variant}`;
+          if (benefitData[variantKey]) {
+            orderedKeys.push(variantKey);
+          }
+          // Ensure we add each variant even if not in benefitData yet
+          // This ensures all requested rows appear in the table
+          else {
+            // Create empty variant entries if they don't exist yet
+            benefitData[variantKey] = {
+              values: new Array(carriers.length).fill(null).map(() => ({
+                volume: '-',
+                unitRate: '-',
+                monthlyPremium: '-',
+              })),
+            };
+            orderedKeys.push(variantKey);
+          }
+        }
+      } else if (benefitData[coverageType]) {
+        // Handle regular coverage types without variants
         orderedKeys.push(coverageType);
       }
-      
-      // Handle special variants like Extended Healthcare - Single, Dental Care - Family
-      for (const key of Object.keys(benefitData)) {
-        // Check if this is a variant of the current coverage type
-        if (key.startsWith(`${coverageType} - `)) {
-          specialCoverages.push(key);
-        }
-      }
-    }
-    
-    // Add special coverage variants in a predictable order
-    specialCoverages.sort();
-    for (const key of specialCoverages) {
-      orderedKeys.push(key);
     }
     
     // Add Experience Subtotal after experience coverages
     if (benefitData['Experience Subtotal']) {
       orderedKeys.push('Experience Subtotal');
+    } else {
+      // Create Experience Subtotal if missing
+      benefitData['Sub-total-Experience Rated Benefits'] = {
+        isSubtotal: true,
+        values: new Array(carriers.length).fill(null).map((_, idx) => ({
+          volume: '-',
+          unitRate: '-',
+          monthlyPremium: benefitData['Experience Subtotal']?.values[idx]?.monthlyPremium || '-',
+        })),
+      };
+      orderedKeys.push('Sub-total-Experience Rated Benefits');
     }
     
     // Add Grand Total
     if (benefitData['Grand Total']) {
-      orderedKeys.push('Grand Total');
+      // Rename to TOTAL MONTHLY PREMIUM as requested
+      benefitData['TOTAL MONTHLY PREMIUM'] = benefitData['Grand Total'];
+      orderedKeys.push('TOTAL MONTHLY PREMIUM');
     }
     
     // Add Rate Guarantees at the very end
     if (benefitData['Rate Guarantees']) {
-      orderedKeys.push('Rate Guarantees');
+      // Rename to the requested format
+      benefitData['Rate Guarantee'] = benefitData['Rate Guarantees'];
+      orderedKeys.push('Rate Guarantee');
+    } else {
+      // Create empty Rate Guarantee row if missing
+      benefitData['Rate Guarantee'] = {
+        isRateGuarantee: true,
+        values: new Array(carriers.length).fill(null).map(() => ({
+          volume: '-',
+          unitRate: '-',
+          monthlyPremium: '-',
+        })),
+      };
+      orderedKeys.push('Rate Guarantee');
     }
     
     return orderedKeys;
-  }, [benefitData]);
+  }, [benefitData, carriers]);
 
 
   return (
