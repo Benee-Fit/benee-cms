@@ -45,7 +45,10 @@
     "vitest": "^3.1.4"
   },
   "engines": {
-    "node": "20.x"
+    "node": ">=20.x"
   },
-  "packageManager": "pnpm@10.11.0"
+  "packageManager": "pnpm@10.11.0",
+  "prisma": {
+    "schema": "../../packages/database/prisma/schema.prisma"
+  }
 }
