@@ -363,12 +363,14 @@ export function PremiumComparisonTable({
             }
             
             // Helper function to extract value with proper type checking
-            const extractValue = (key: string | null): string | number | null => {
+            const extractValue = (key: string | null, source: Record<string, unknown>): string | number | null => {
               if (!key) {
                 return null;
               }
               
-              const value = details[key];
+              // Look for the value in the coverage object first, then in details
+              const value = key in source ? source[key] : key in details ? details[key] : undefined;
+              
               // Check if value is undefined, null, or an object (including empty objects)
               if (value === undefined || value === null || typeof value === 'object') {
                 return null;
@@ -382,10 +384,35 @@ export function PremiumComparisonTable({
               return null;
             };
             
+            // Type assertion for coverage to allow string indexing - only for EHC and Dental Care
+            // These coverage types have special fields in the allCoverages array from the API 
+            // but aren't reflected in the TypeScript interface
+            const coverageAsRecord = coverage as unknown as Record<string, unknown>;
+            
             // Get values from coverage details with proper type checking
-            const premium = extractValue(fields.premium);
-            const rate = fields.rate ? extractValue(fields.rate) : null;
-            const volume = fields.volume ? extractValue(fields.volume) : null;
+            // For EHC and Dental variants, check both in the coverage object and details
+            const premium = extractValue(fields.premium, coverageAsRecord);
+            const rate = fields.rate ? extractValue(fields.rate, coverageAsRecord) : null;
+            const volume = fields.volume ? extractValue(fields.volume, coverageAsRecord) : null;
+            
+            // Debug logging for development only
+            if (process.env.NODE_ENV !== 'production' && (normalizedType === 'Extended Healthcare' || normalizedType === 'Dental Care')) {
+              // Check if the values are coming from the coverage object or the details object
+              const sourceOfPremium = fields.premium && fields.premium in coverageAsRecord ? 'coverage object' : 'details object';
+              const debugInfo = {
+                fieldKey: fields.premium,
+                fieldValue: premium,
+                sourceOfData: sourceOfPremium,
+                // Show specific fields we're looking for from the coverage object
+                coverageFields: {
+                  totalPremiumSingle: coverageAsRecord.totalPremiumSingle,
+                  totalPremiumFamily: coverageAsRecord.totalPremiumFamily
+                }
+              };
+              
+              // eslint-disable-next-line no-console
+              console.log(`${benefitKey} variant extraction:`, debugInfo);
+            }
             
             // Format values with additional type safety
             const formattedVolume = volume !== null && volume !== undefined ? formatVolume(volume) : '-';
@@ -398,6 +425,14 @@ export function PremiumComparisonTable({
               unitRate: formattedRate,
               monthlyPremium: formattedPremium,
             };
+            
+            // Log successful extraction for development only
+            if (process.env.NODE_ENV !== 'production' && 
+                (normalizedType === 'Extended Healthcare' || normalizedType === 'Dental Care') && 
+                premium !== null) {
+              // eslint-disable-next-line no-console
+              console.log(`Successfully extracted ${benefitKey} premium: ${formattedPremium}`);
+            }
             
             // Add to experience total
             if (premium && !Number.isNaN(Number(premium))) {
@@ -544,7 +579,13 @@ export function PremiumComparisonTable({
     
     // Next add experience-rated coverages
     for (const coverageType of experienceCoverageTypes) {
-      if (coverageVariantOrder[coverageType]) {
+      // Check if this is a coverage type with variants (Single/Family)
+      const hasVariants = Object.prototype.hasOwnProperty.call(
+        coverageVariantOrder,
+        coverageType
+      );
+
+      if (hasVariants) {
         // Handle special coverages with variants (Single/Family)
         // First add the base coverage if it exists
         if (benefitData[coverageType]) {
@@ -552,23 +593,24 @@ export function PremiumComparisonTable({
         }
         
         // Then add each variant in the defined order
-        for (const variant of coverageVariantOrder[coverageType]) {
-          const variantKey = `${coverageType} - ${variant}`;
-          if (benefitData[variantKey]) {
-            orderedKeys.push(variantKey);
-          }
-          // Ensure we add each variant even if not in benefitData yet
-          // This ensures all requested rows appear in the table
-          else {
+        // Type assertion to help TypeScript understand we're accessing a valid key
+        const variantKey = coverageType as keyof typeof coverageVariantOrder;
+        for (const variant of coverageVariantOrder[variantKey]) {
+          const fullVariantKey = `${coverageType} - ${variant}`;
+          
+          if (benefitData[fullVariantKey]) {
+            orderedKeys.push(fullVariantKey);
+          } else {
             // Create empty variant entries if they don't exist yet
-            benefitData[variantKey] = {
+            // This ensures all requested rows appear in the table
+            benefitData[fullVariantKey] = {
               values: new Array(carriers.length).fill(null).map(() => ({
                 volume: '-',
                 unitRate: '-',
                 monthlyPremium: '-',
               })),
             };
-            orderedKeys.push(variantKey);
+            orderedKeys.push(fullVariantKey);
           }
         }
       } else if (benefitData[coverageType]) {
