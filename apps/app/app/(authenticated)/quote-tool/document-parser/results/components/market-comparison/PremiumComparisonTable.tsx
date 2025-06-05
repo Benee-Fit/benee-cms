@@ -301,10 +301,14 @@ export function PremiumComparisonTable({
             : 0
         );
 
-        // Update the benefit data with formatted values
-        benefitDataMap[normalizedType].values[
-          carriers.indexOf(coverage.carrierName)
-        ] = {
+        // Find carrier index by name comparison (case insensitive)
+        const carrierIndex = carriers.findIndex(
+          carrier => carrier.name.toUpperCase() === coverage.carrierName.toUpperCase()
+        );
+        
+        // Update the benefit data with formatted values if carrier found
+        if (carrierIndex !== -1) {
+          benefitDataMap[normalizedType].values[carrierIndex] = {
           volume: formattedVolume,
           unitRate: formattedUnitRate,
           monthlyPremium: formattedPremium,
@@ -312,16 +316,16 @@ export function PremiumComparisonTable({
 
         // Add to subtotal and grand total
         const premium = Number.parseFloat(String(coverage.monthlyPremium || 0));
-        if (!Number.isNaN(premium)) {
+        if (!Number.isNaN(premium) && carrierIndex !== -1) {
           // Determine which subtotal category this goes to
           if (pooledCoverageTypes.includes(normalizedType)) {
-            pooledTotal[carriers.indexOf(coverage.carrierName)] += premium;
+            pooledTotal[carrierIndex] += premium;
           } else if (experienceCoverageTypes.includes(normalizedType)) {
-            experienceTotal[carriers.indexOf(coverage.carrierName)] += premium;
+            experienceTotal[carrierIndex] += premium;
           }
 
           // Add to grand total regardless
-          grandTotal[carriers.indexOf(coverage.carrierName)] += premium;
+          grandTotal[carrierIndex] += premium;
         }
       }
     }
