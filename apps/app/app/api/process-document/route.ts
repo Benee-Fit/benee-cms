@@ -205,13 +205,18 @@ function extractJsonFromGeminiResponse(
 ): GeminiParsedResponse | null {
   try {
     // First, try to extract JSON from code blocks using regex
+    console.log('[DEBUG] Attempting to extract JSON from code blocks...');
     const match = text.match(jsonBlockRegex);
     if (match?.[1]) {
+      console.log('[DEBUG] Found JSON code block, attempting to parse...');
       try {
         return JSON.parse(match[1]);
       } catch (e) {
-        console.warn('Failed to parse JSON from code block:', e);
+        console.warn('[WARN] Failed to parse JSON from code block:', e);
+        console.log(`[DEBUG] Code block content sample: ${match[1].substring(0, 300)}...`);
       }
+    } else {
+      console.log('[DEBUG] No JSON code block found in the response');
     }
 
     // If no code block or parsing failed, try to parse the entire text as JSON
@@ -253,12 +258,24 @@ function validateCoverages(coverages: CoverageEntry[]): {
       !coverage.planOptionName ||
       typeof coverage.premium !== 'number' ||
       typeof coverage.monthlyPremium !== 'number' ||
-      typeof coverage.unitRate !== 'number' ||
+      // Allow null unitRate for certain coverage types that might not have traditional unit rates
+      (coverage.unitRate !== null && typeof coverage.unitRate !== 'number') ||
       !coverage.unitRateBasis ||
       typeof coverage.volume !== 'number' ||
       typeof coverage.lives !== 'number' ||
       !coverage.benefitDetails
     ) {
+      console.log('[DEBUG] Invalid coverage reason:', 
+        !coverage.coverageType ? 'Missing coverageType' : 
+        !coverage.carrierName ? 'Missing carrierName' : 
+        !coverage.planOptionName ? 'Missing planOptionName' : 
+        typeof coverage.premium !== 'number' ? `Invalid premium: ${coverage.premium}` : 
+        typeof coverage.monthlyPremium !== 'number' ? `Invalid monthlyPremium: ${coverage.monthlyPremium}` : 
+        (coverage.unitRate !== null && typeof coverage.unitRate !== 'number') ? `Invalid unitRate: ${coverage.unitRate}` : 
+        !coverage.unitRateBasis ? 'Missing unitRateBasis' : 
+        typeof coverage.volume !== 'number' ? `Invalid volume: ${coverage.volume}` : 
+        typeof coverage.lives !== 'number' ? `Invalid lives: ${coverage.lives}` : 
+        !coverage.benefitDetails ? 'Missing benefitDetails' : 'Unknown reason');
       console.warn('Invalid coverage entry:', coverage);
       invalidCount++;
       continue;
@@ -547,6 +564,13 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
         console.log(`[DEBUG] Extracted text sample: ${resultResponse.data}`);
       } else {
         console.log(`[DEBUG] Extracted text sample: ${resultResponse.data.substring(0, 100)}...`);
+        console.log(`[DEBUG] Extracted text length: ${resultResponse.data.length} characters`);
+        
+        // Log a larger sample for debugging
+        console.log('[DEBUG] Larger extracted text sample:');
+        console.log('----------------START OF TEXT SAMPLE----------------');
+        console.log(resultResponse.data.substring(0, 1000));
+        console.log('----------------END OF TEXT SAMPLE----------------');
       }
       
       return resultResponse.data; // Return the extracted text
@@ -617,8 +641,12 @@ function createGeminiPayload(extractedText: string): object {
  */
 function processGeminiResponse(responseText: string): GeminiParsedResponse {
   // Parse the JSON response from Gemini
+  console.log('[DEBUG] Attempting to parse JSON from Gemini response...');
   const parsedJson = extractJsonFromGeminiResponse(responseText);
   if (!parsedJson) {
+    console.error('[ERROR] Failed to parse JSON from Gemini response');
+    // Log the first 500 characters of the response to help diagnose
+    console.log(`[DEBUG] Failed JSON parsing. Response text sample: ${responseText.substring(0, 500)}...`);
     throw new Error('Failed to parse JSON from Gemini response');
   }
 
@@ -628,7 +656,19 @@ function processGeminiResponse(responseText: string): GeminiParsedResponse {
   // If no valid coverages, create default ones
   let processedCoverages = validationResult.validCoverages;
   if (processedCoverages.length === 0) {
+    console.log('[DEBUG] No valid coverages found in Gemini response. Creating default coverages.');
+    console.log('[DEBUG] Validation result:', validationResult);
+    
+    if (parsedJson.coverages && parsedJson.coverages.length > 0) {
+      console.log(`[DEBUG] Raw coverages from Gemini (${parsedJson.coverages.length} items):`); 
+      console.log(JSON.stringify(parsedJson.coverages[0], null, 2));
+    } else {
+      console.log('[DEBUG] No coverages array found in Gemini response');
+    }
+    
     processedCoverages = createDefaultCoverages(parsedJson.metadata);
+  } else {
+    console.log(`[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`);
   }
 
   // Return the structured response
@@ -690,6 +730,9 @@ async function structureDataWithGemini(
     if (!responseText) {
       throw new Error('Empty response text from Gemini API');
     }
+    
+    // Log a sample of the Gemini response text to debug
+    console.log(`[DEBUG] Gemini response text sample (first 300 chars): ${responseText.substring(0, 300)}...`);
 
     // Process the response
     return processGeminiResponse(responseText);
@@ -832,11 +875,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // We already have the download URL from the upload result
     const downloadUrl = processedResult.url;
 
+    // Extract metadata and coverages for the top level response
+    const {
+      metadata: extractedMetadata = {},
+      coverages: extractedCoverages = []
+    } = structuredData;
+    
+    // Ensure we use the validated coverages at the top level too
     return NextResponse.json({
       success: true,
       processedData,
       url: uploadResult.url,
       downloadUrl,
+      originalFileName: file.name,
+      category: formData.get('category') as string || 'Current',
+      metadata: extractedMetadata,
+      coverages: extractedCoverages, // Use the same coverages from the processed data
     });
   } catch (error) {
     console.error('[ERROR] Document processing failed:', {
