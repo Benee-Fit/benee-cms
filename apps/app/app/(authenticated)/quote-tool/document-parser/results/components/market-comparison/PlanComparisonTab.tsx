@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { ParsedDocument } from '../../../types';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   Table,
@@ -19,40 +20,7 @@ import { Badge } from '@repo/design-system/components/ui/badge';
 import { ChevronRight, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { Input } from '@repo/design-system/components/ui/input';
 
-interface ParsedDocument {
-  originalFileName: string;
-  category: string;
-  metadata: {
-    documentType: string;
-    clientName: string;
-    carrierName: string;
-    effectiveDate: string;
-    quoteDate: string;
-    policyNumber?: string;
-    planOptionName?: string;
-    totalProposedMonthlyPlanPremium?: number;
-    fileName: string;
-    fileCategory: string;
-    planOptionTotals?: Array<{
-      planOptionName: string;
-      totalMonthlyPremium: number;
-    }>;
-    rateGuarantees?: string;
-  };
-  coverages: Array<{
-    coverageType: string;
-    carrierName: string;
-    planOptionName: string;
-    premium: number;
-    monthlyPremium: number;
-    unitRate: number;
-    unitRateBasis: string;
-    volume: number;
-    lives: number;
-    benefitDetails: Record<string, any>;
-  }>;
-  planNotes: Array<{ note: string }>;
-}
+// Using shared ParsedDocument type from types.ts
 
 interface PlanComparisonTabProps {
   results: ParsedDocument[];

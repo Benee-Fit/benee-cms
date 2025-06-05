@@ -42,6 +42,7 @@ const fileExtensionRegex = /\.\w+$/;
 /**
  * Type definitions for API responses
  */
+// Plan option total information
 interface PlanOptionTotal {
   planOptionName: string;
   totalMonthlyPremium: number;
@@ -60,14 +61,49 @@ interface RateGuarantee {
 interface Metadata {
   documentType?: string;
   clientName?: string;
+  primaryCarrierName?: string;
   carrierName?: string;
+  reportPreparedBy?: string;
   effectiveDate?: string;
+  expiryDate?: string;
   quoteDate?: string;
   policyNumber?: string;
-  planOptionName?: string;
-  totalProposedMonthlyPlanPremium?: number;
-  planOptionTotals?: PlanOptionTotal[];
-  rateGuarantees?: RateGuarantee[];
+  fileName?: string;
+  fileCategory?: string;
+  dependentChildDefinition?: string;
+  benefitYear?: string;
+  rateGuaranteeConditions?: string[] | string;
+  employeeAssistanceProgramGlobal?: string;
+}
+
+// Common volumes for plan options
+interface CommonVolumes {
+  [key: string]: number;
+}
+
+// Specific carrier proposal for a plan option
+interface CarrierProposal {
+  carrierName: string;
+  totalMonthlyPremium: number;
+  subtotals?: {
+    pooledBenefits?: number;
+    experienceRatedBenefits?: number;
+    healthSpendingAccount?: number | null;
+    adminFees?: number | null;
+  } | null;
+  rateGuaranteeText?: string;
+  targetLossRatioText?: string;
+  largeAmountPoolingText?: string | number;
+  specificCarrierNotes?: string[];
+  isRecommendedOrPrimaryInDocument?: boolean;
+}
+
+// Plan option representing a distinct benefit plan configuration
+interface PlanOption {
+  planOptionName: string;
+  planOptionBenefitSummary?: Record<string, string> | null;
+  commonVolumes?: CommonVolumes | null;
+  carrierProposals: CarrierProposal[];
 }
 
 // Benefit details for coverage entries, allowing for flexible key-value pairs
@@ -98,8 +134,9 @@ interface PlanNote {
 // Structure of the parsed response from Gemini API
 interface GeminiParsedResponse {
   metadata?: Metadata;
-  coverages?: CoverageEntry[];
-  planNotes?: PlanNote[];
+  planOptions?: PlanOption[];
+  allCoverages?: CoverageEntry[];
+  documentNotes?: string[];
 }
 
 // Options for HTTPS request options interface
@@ -213,7 +250,9 @@ function extractJsonFromGeminiResponse(
         return JSON.parse(match[1]);
       } catch (e) {
         console.warn('[WARN] Failed to parse JSON from code block:', e);
-        console.log(`[DEBUG] Code block content sample: ${match[1].substring(0, 300)}...`);
+        console.log(
+          `[DEBUG] Code block content sample: ${match[1].substring(0, 300)}...`
+        );
       }
     } else {
       console.log('[DEBUG] No JSON code block found in the response');
@@ -252,31 +291,30 @@ function validateCoverages(coverages: CoverageEntry[]): {
 
   for (const coverage of coverages) {
     // Check for required fields
+    // EHC and Dental Care may have null values for unitRate, unitRateBasis, and volume
+    // They use premiumPer(Single/Family) fields instead
+    const isHealthOrDental =
+      coverage.coverageType === 'Extended Healthcare' ||
+      coverage.coverageType === 'Dental Care';
+
     if (
       !coverage.coverageType ||
       !coverage.carrierName ||
       !coverage.planOptionName ||
       typeof coverage.premium !== 'number' ||
       typeof coverage.monthlyPremium !== 'number' ||
-      // Allow null unitRate for certain coverage types that might not have traditional unit rates
-      (coverage.unitRate !== null && typeof coverage.unitRate !== 'number') ||
-      !coverage.unitRateBasis ||
-      typeof coverage.volume !== 'number' ||
-      typeof coverage.lives !== 'number' ||
+      // Allow null unitRate and unitRateBasis for EHC/Dental and for coverage types that don't use traditional unit rates
+      (!isHealthOrDental &&
+        coverage.unitRate !== null &&
+        typeof coverage.unitRate !== 'number') ||
+      (!isHealthOrDental && !coverage.unitRateBasis) ||
+      // Allow null volume for EHC/Dental
+      (!isHealthOrDental &&
+        typeof coverage.volume !== 'number' &&
+        coverage.volume !== null) ||
+      (typeof coverage.lives !== 'number' && coverage.lives !== null) ||
       !coverage.benefitDetails
     ) {
-      console.log('[DEBUG] Invalid coverage reason:', 
-        !coverage.coverageType ? 'Missing coverageType' : 
-        !coverage.carrierName ? 'Missing carrierName' : 
-        !coverage.planOptionName ? 'Missing planOptionName' : 
-        typeof coverage.premium !== 'number' ? `Invalid premium: ${coverage.premium}` : 
-        typeof coverage.monthlyPremium !== 'number' ? `Invalid monthlyPremium: ${coverage.monthlyPremium}` : 
-        (coverage.unitRate !== null && typeof coverage.unitRate !== 'number') ? `Invalid unitRate: ${coverage.unitRate}` : 
-        !coverage.unitRateBasis ? 'Missing unitRateBasis' : 
-        typeof coverage.volume !== 'number' ? `Invalid volume: ${coverage.volume}` : 
-        typeof coverage.lives !== 'number' ? `Invalid lives: ${coverage.lives}` : 
-        !coverage.benefitDetails ? 'Missing benefitDetails' : 'Unknown reason');
-      console.warn('Invalid coverage entry:', coverage);
       invalidCount++;
       continue;
     }
@@ -298,22 +336,30 @@ function validateCoverages(coverages: CoverageEntry[]): {
  * @returns Array containing a default coverage entry
  */
 function createDefaultCoverages(metadata?: Metadata): CoverageEntry[] {
-  const defaultCoverage: CoverageEntry = {
-    coverageType: 'Unknown',
-    carrierName: metadata?.carrierName || 'Unknown Carrier',
-    planOptionName: metadata?.planOptionName || 'Default Plan',
-    premium: metadata?.totalProposedMonthlyPlanPremium || 0,
-    monthlyPremium: metadata?.totalProposedMonthlyPlanPremium || 0,
-    unitRate: 0,
-    unitRateBasis: 'Unknown',
-    volume: 0,
-    lives: 0,
-    benefitDetails: {
-      note: 'Default coverage created as no valid coverages were found in the document.',
-    },
-  };
+  // Default values if metadata is not available
+  const carrierName =
+    metadata?.primaryCarrierName || metadata?.carrierName || 'Default Carrier';
 
-  return [defaultCoverage];
+  // Try to get a plan option name from metadata, if available
+  const planOptionName = 'Default Plan';
+
+  // Create a basic coverage entry for Basic Life
+  return [
+    {
+      coverageType: 'Basic Life',
+      carrierName,
+      planOptionName,
+      premium: 0,
+      monthlyPremium: 0,
+      unitRate: 0,
+      unitRateBasis: 'per $1000',
+      volume: 0,
+      lives: 0,
+      benefitDetails: {
+        note: 'Default coverage created due to parsing error',
+      },
+    },
+  ];
 }
 
 /**
@@ -451,32 +497,36 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
     // Check if buffer is likely a PDF (starts with PDF header)
     const isPdfHeader = fileBuffer.slice(0, 4).toString() === '%PDF';
     if (!isPdfHeader) {
-      throw new Error('File does not appear to be a valid PDF (missing %PDF header)');
+      throw new Error(
+        'File does not appear to be a valid PDF (missing %PDF header)'
+      );
     }
 
     // First upload the file to DigitalOcean Spaces
     console.log('[INFO] Starting PDF text extraction...');
     console.log('[DEBUG] Uploading PDF to DigitalOcean Spaces first...');
-    
+
     // Generate a unique filename for this upload
     const timestamp = new Date().getTime();
     const randomString = Math.random().toString(36).substring(2, 10);
     const filename = `pdf-extraction-${timestamp}-${randomString}.pdf`;
-    
+
     // Upload to DigitalOcean Spaces
     const uploadResult = await uploadFile({
       userId: 'system', // Using 'system' as the user ID for this temporary file
       file: fileBuffer,
       filename: filename,
       contentType: 'application/pdf',
-      type: 'upload'
+      type: 'upload',
     });
-    
-    console.log(`[DEBUG] File uploaded to DigitalOcean Spaces: ${uploadResult.url}`);
-    
+
+    console.log(
+      `[DEBUG] File uploaded to DigitalOcean Spaces: ${uploadResult.url}`
+    );
+
     // Now send the URL to PDF.co for text extraction
     console.log('[DEBUG] Sending URL to PDF.co for text extraction...');
-    
+
     const extractTextOptions: HttpsRequestOptions = {
       hostname: PDF_CO_HOSTNAME,
       path: '/v1/pdf/convert/to/text',
@@ -484,37 +534,46 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       headers: {
         'x-api-key': PDFCO_API_KEY,
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
+        Accept: 'application/json',
+      },
     };
-    
+
     // Use async mode to handle larger documents without timeouts
     const extractionResponse = await makeHttpsRequest(
       extractTextOptions,
       JSON.stringify({
         url: uploadResult.url,
         name: filename,
-        async: true // Enable async processing for larger documents
+        async: true, // Enable async processing for larger documents
       })
     );
 
-    console.log(`[DEBUG] PDF.co extraction response status: ${extractionResponse.statusCode}`);
+    console.log(
+      `[DEBUG] PDF.co extraction response status: ${extractionResponse.statusCode}`
+    );
     if (extractionResponse.error || !extractionResponse.data) {
       console.error('[ERROR] PDF.co extraction request failed:', {
         error: extractionResponse.error,
         statusCode: extractionResponse.statusCode,
-        rawResponse: extractionResponse.rawResponse || '(No raw response)'
+        rawResponse: extractionResponse.rawResponse || '(No raw response)',
       });
-      
+
       if (extractionResponse.statusCode === 402) {
-        throw new Error('PDF.co returned Payment Required error. Please check your PDF.co account, credits, or subscription.');
+        throw new Error(
+          'PDF.co returned Payment Required error. Please check your PDF.co account, credits, or subscription.'
+        );
       }
-      
-      throw new Error(`Failed to process PDF: ${extractionResponse.error || 'Empty response'}`);
+
+      throw new Error(
+        `Failed to process PDF: ${extractionResponse.error || 'Empty response'}`
+      );
     }
-    
+
     // Log the full response to inspect its structure
-    console.log('[DEBUG] PDF.co extraction complete response:', extractionResponse.data);
+    console.log(
+      '[DEBUG] PDF.co extraction complete response:',
+      extractionResponse.data
+    );
 
     // Parse the response
     let responseData;
@@ -523,22 +582,34 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       console.log('[DEBUG] Parsed extraction response:', responseData);
     } catch (parseError) {
       console.error('[ERROR] Failed to parse PDF.co response:', parseError);
-      throw new Error(`Failed to parse PDF.co response: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+      throw new Error(
+        `Failed to parse PDF.co response: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+      );
     }
-    
+
     // Check if the response contains an error message
-    if (responseData.error === true || (typeof responseData.error === 'string' && responseData.error.length > 0)) {
+    if (
+      responseData.error === true ||
+      (typeof responseData.error === 'string' && responseData.error.length > 0)
+    ) {
       console.error('[ERROR] PDF.co returned an error:', responseData.error);
-      if (String(responseData.error).includes('Payment Required') || responseData.status === 402) {
-        throw new Error('PDF.co returned Payment Required error. Please check your PDF.co account, credits, or subscription.');
+      if (
+        String(responseData.error).includes('Payment Required') ||
+        responseData.status === 402
+      ) {
+        throw new Error(
+          'PDF.co returned Payment Required error. Please check your PDF.co account, credits, or subscription.'
+        );
       }
       throw new Error(`PDF.co error: ${responseData.error}`);
     }
-    
+
     // Handle the asynchronous job response
     if (responseData.jobId) {
-      console.log(`[DEBUG] PDF.co started async job with ID: ${responseData.jobId}`);
-      
+      console.log(
+        `[DEBUG] PDF.co started async job with ID: ${responseData.jobId}`
+      );
+
       // Poll the job status until it completes or fails
       const jobCheckOptions: HttpsRequestOptions = {
         hostname: PDF_CO_HOSTNAME,
@@ -546,31 +617,36 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
         method: 'GET',
         headers: {
           'x-api-key': PDFCO_API_KEY,
-          'Accept': 'application/json'
-        }
+          Accept: 'application/json',
+        },
       };
-      
+
       // Maximum number of status check attempts
       const MAX_ATTEMPTS = 30;
       // Delay between status checks in milliseconds (start with 2 seconds)
       let pollInterval = 2000;
-      
+
       // Poll the job status
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        console.log(`[DEBUG] Checking job status (attempt ${attempt}/${MAX_ATTEMPTS})...`);
-        
+        console.log(
+          `[DEBUG] Checking job status (attempt ${attempt}/${MAX_ATTEMPTS})...`
+        );
+
         // Wait before checking status
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-        
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
         // Check job status
         const jobStatusResponse = await makeHttpsRequest(jobCheckOptions);
-        
+
         if (jobStatusResponse.error || !jobStatusResponse.data) {
-          console.error('[ERROR] Failed to check job status:', jobStatusResponse.error);
+          console.error(
+            '[ERROR] Failed to check job status:',
+            jobStatusResponse.error
+          );
           // Continue polling despite error, as the job might still complete
           continue;
         }
-        
+
         let jobStatus;
         try {
           jobStatus = JSON.parse(jobStatusResponse.data);
@@ -579,83 +655,103 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
           console.error('[ERROR] Failed to parse job status:', parseError);
           continue;
         }
-        
+
         // Check if job is still running
         if (jobStatus.status === 'working') {
           // Increase polling interval slightly for each attempt (up to 10 seconds)
           pollInterval = Math.min(pollInterval * 1.5, 10000);
           continue;
         }
-        
+
         // Check if job failed
         if (jobStatus.status === 'failed') {
-          throw new Error(`PDF.co job failed: ${jobStatus.errorMessage || 'Unknown error'}`);
+          throw new Error(
+            `PDF.co job failed: ${jobStatus.errorMessage || 'Unknown error'}`
+          );
         }
-        
+
         // Check if job completed successfully
         if (jobStatus.status === 'success' && jobStatus.url) {
-          console.log('[DEBUG] PDF.co job completed successfully, fetching result...');
+          console.log(
+            '[DEBUG] PDF.co job completed successfully, fetching result...'
+          );
           responseData.url = jobStatus.url;
           break;
         }
       }
     }
-    
+
     // Handle the response which might contain a URL to fetch the result
     if (responseData.url) {
-      console.log('[DEBUG] PDF.co returned a result URL, fetching text content:', responseData.url);
-      
+      console.log(
+        '[DEBUG] PDF.co returned a result URL, fetching text content:',
+        responseData.url
+      );
+
       // Parse URL to get hostname and path
       const resultUrl = new URL(responseData.url);
-      
+
       // Create request options for fetching the result
       const resultOptions = {
         method: 'GET',
         hostname: resultUrl.hostname,
         path: resultUrl.pathname + resultUrl.search,
-        headers: {}
+        headers: {},
       };
-      
+
       // Fetch the result from the provided URL
       const resultResponse = await makeHttpsRequest(resultOptions);
-      
+
       if (resultResponse.error || !resultResponse.data) {
-        throw new Error(`Failed to fetch extracted text from result URL: ${resultResponse.error || 'Empty response'}`);
+        throw new Error(
+          `Failed to fetch extracted text from result URL: ${resultResponse.error || 'Empty response'}`
+        );
       }
-      
+
       console.log('[DEBUG] Successfully retrieved text content from URL');
-      console.log(`[DEBUG] Text extraction successful, extracted ${resultResponse.data.length} characters`);
-      
+      console.log(
+        `[DEBUG] Text extraction successful, extracted ${resultResponse.data.length} characters`
+      );
+
       // Log a sample of the extracted text
       if (resultResponse.data.length < 100) {
         console.log(`[DEBUG] Extracted text sample: ${resultResponse.data}`);
       } else {
-        console.log(`[DEBUG] Extracted text sample: ${resultResponse.data.substring(0, 100)}...`);
-        console.log(`[DEBUG] Extracted text length: ${resultResponse.data.length} characters`);
-        
+        console.log(
+          `[DEBUG] Extracted text sample: ${resultResponse.data.substring(0, 100)}...`
+        );
+        console.log(
+          `[DEBUG] Extracted text length: ${resultResponse.data.length} characters`
+        );
+
         // Log a larger sample for debugging
         console.log('[DEBUG] Larger extracted text sample:');
         console.log('----------------START OF TEXT SAMPLE----------------');
         console.log(resultResponse.data.substring(0, 1000));
         console.log('----------------END OF TEXT SAMPLE----------------');
       }
-      
+
       return resultResponse.data; // Return the extracted text
     } else if (responseData.text) {
       // Also support the case where text is directly in the response
-      console.log('[DEBUG] Text extraction successful, found text directly in response');
+      console.log(
+        '[DEBUG] Text extraction successful, found text directly in response'
+      );
       return responseData.text;
     }
-    
+
     // If we got here, we didn't get what we expected
-    throw new Error('No text content, result URL, or job ID found in PDF.co response');
-    
+    throw new Error(
+      'No text content, result URL, or job ID found in PDF.co response'
+    );
   } catch (error) {
     console.error('[ERROR] PDF extraction failed:', {
       error: error instanceof Error ? error.message : String(error),
-      errorObject: error
+      errorObject: error,
     });
-    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -667,7 +763,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
 function createGeminiRequestOptions(apiKey: string): HttpsRequestOptions {
   return {
     hostname: 'generativelanguage.googleapis.com',
-    path: `/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${apiKey}`,
+    path: `/v1beta/models/gemini-2.5-pro-preview-06-05:generateContent?key=${apiKey}`,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -713,36 +809,45 @@ function processGeminiResponse(responseText: string): GeminiParsedResponse {
   if (!parsedJson) {
     console.error('[ERROR] Failed to parse JSON from Gemini response');
     // Log the first 500 characters of the response to help diagnose
-    console.log(`[DEBUG] Failed JSON parsing. Response text sample: ${responseText.substring(0, 500)}...`);
+    console.log(
+      `[DEBUG] Failed JSON parsing. Response text sample: ${responseText.substring(0, 500)}...`
+    );
     throw new Error('Failed to parse JSON from Gemini response');
   }
 
-  // Validate the parsed data
-  const validationResult = validateCoverages(parsedJson.coverages || []);
+  // Validate the parsed data - now using allCoverages instead of coverages
+  const validationResult = validateCoverages(parsedJson.allCoverages || []);
 
   // If no valid coverages, create default ones
   let processedCoverages = validationResult.validCoverages;
   if (processedCoverages.length === 0) {
-    console.log('[DEBUG] No valid coverages found in Gemini response. Creating default coverages.');
+    console.log(
+      '[DEBUG] No valid coverages found in Gemini response. Creating default coverages.'
+    );
     console.log('[DEBUG] Validation result:', validationResult);
-    
-    if (parsedJson.coverages && parsedJson.coverages.length > 0) {
-      console.log(`[DEBUG] Raw coverages from Gemini (${parsedJson.coverages.length} items):`); 
-      console.log(JSON.stringify(parsedJson.coverages[0], null, 2));
+
+    if (parsedJson.allCoverages && parsedJson.allCoverages.length > 0) {
+      console.log(
+        `[DEBUG] Raw coverages from Gemini (${parsedJson.allCoverages.length} items):`
+      );
+      console.log(JSON.stringify(parsedJson.allCoverages[0], null, 2));
     } else {
-      console.log('[DEBUG] No coverages array found in Gemini response');
+      console.log('[DEBUG] No allCoverages array found in Gemini response');
     }
-    
+
     processedCoverages = createDefaultCoverages(parsedJson.metadata);
   } else {
-    console.log(`[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`);
+    console.log(
+      `[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`
+    );
   }
 
-  // Return the structured response
+  // Return the structured response with the new schema
   return {
     metadata: parsedJson.metadata,
-    coverages: processedCoverages,
-    planNotes: parsedJson.planNotes,
+    planOptions: parsedJson.planOptions,
+    allCoverages: processedCoverages,
+    documentNotes: parsedJson.documentNotes,
   };
 }
 
@@ -797,9 +902,11 @@ async function structureDataWithGemini(
     if (!responseText) {
       throw new Error('Empty response text from Gemini API');
     }
-    
+
     // Log a sample of the Gemini response text to debug
-    console.log(`[DEBUG] Gemini response text sample (first 300 chars): ${responseText.substring(0, 300)}...`);
+    console.log(
+      `[DEBUG] Gemini response text sample (first 300 chars): ${responseText.substring(0, 300)}...`
+    );
 
     // Process the response
     return processGeminiResponse(responseText);
@@ -945,9 +1052,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Extract metadata and coverages for the top level response
     const {
       metadata: extractedMetadata = {},
-      coverages: extractedCoverages = []
+      allCoverages: extractedCoverages = [],
     } = structuredData;
-    
+
     // Ensure we use the validated coverages at the top level too
     return NextResponse.json({
       success: true,
@@ -955,16 +1062,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       url: uploadResult.url,
       downloadUrl,
       originalFileName: file.name,
-      category: formData.get('category') as string || 'Current',
+      category: (formData.get('category') as string) || 'Current',
       metadata: extractedMetadata,
       coverages: extractedCoverages, // Use the same coverages from the processed data
     });
   } catch (error) {
     console.error('[ERROR] Document processing failed:', {
       error: error instanceof Error ? error.message : String(error),
-      stage: error instanceof ProcessingError ? error.stage : 'unknown'
+      stage: error instanceof ProcessingError ? error.stage : 'unknown',
     });
-    
+
     const errorMessage = getErrorMessage(error);
     const errorStage =
       error instanceof ProcessingError ? error.stage : 'unknown';
@@ -977,7 +1084,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       {
         error: errorMessage,
         stage: errorStage,
-        details: error instanceof Error ? error.message : String(error)
+        details: error instanceof Error ? error.message : String(error),
       },
       { status: statusCode }
     );

@@ -14,7 +14,7 @@ trigger: manual
 
 * **Understand `apps/` vs. `packages/`:**
     * `apps/`: Contain deployable applications (e.g., `web`, `app`, `api`, `docs`, `email`). Each is a distinct operational unit.
-    * `packages/`: Contain shared libraries and utilities (e.g., `@repo/ui`, `@repo/database`, `@repo/utils`, `@repo/config`, `@repo/feature-flags`). Code here is for consumption by one or more `apps/`.
+    * `packages/`: Contain shared libraries and utilities (e.g., `@repo/ui`, `@repo/database`, `@repo/utils`, `@repo/config`, `@repo/feature-flags`). Code here is for consumption by one or more `apps/`. 
 * **Targeting Changes:** Correctly identify if modifications are app-specific (belong in `apps/*`) or represent a shared concern (belong in `packages/*`).
 * **`turbo.json` Reference:** This file at the root defines build/dev/lint/test pipelines and dependencies between workspaces. Consult it to understand task execution and inter-package relationships.
 
@@ -22,7 +22,7 @@ trigger: manual
 
 * **Exclusive Tool:** All package management operations (add, remove, update) MUST use `pnpm` from the monorepo root.
 * **Prioritize Internal Packages (`@repo/*`):**
-    * **Rule:** Before adding a public npm package directly to an `app/*`, Windsurf MUST verify if an existing `@repo/*` package already provides the required functionality or a suitable abstraction (e.g., use `@repo/auth` for authentication features before adding `@clerk/nextjs` directly to an app).
+    * **Rule:** Before adding a public npm package directly to an `app/*`, Windsurf MUST verify if an existing `@repo/*` package already provides the required functionality or a suitable abstraction (e.g., use `@repo/auth` for authentication & @repo/design-system/components/ui/).
     * **Action:** If functionality is generic or reusable across apps, propose adding it to, or extending, an existing `packages/*` module.
 * **Adding Dependencies Correctly:**
     * To an application (e.g., `web`): `pnpm --filter web add <package-name>`
@@ -67,4 +67,4 @@ trigger: manual
 
 * Recognize and respect the type-safe environment variable setup (e.g., often using `@t3-oss/env-nextjs`). Schemas are typically per-app.
 * Local secrets are in `.env` files (gitignored). `.env.example` files serve as templates.
-* Production environment variables are configured directly on 
+* Production environment variables are configured directly on

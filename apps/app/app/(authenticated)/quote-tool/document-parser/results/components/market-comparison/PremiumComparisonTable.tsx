@@ -1,4 +1,16 @@
-import React, { useMemo } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@repo/design-system/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@repo/design-system/components/ui/select';
 import {
   Table,
   TableBody,
@@ -7,408 +19,518 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/design-system/components/ui/table';
-import {
-  Card,
-  CardContent,
-} from '@repo/design-system/components/ui/card';
-import { Badge } from '@repo/design-system/components/ui/badge';
+import React, { useState, useMemo } from 'react';
 
-// Debug logging utility
-const DEBUG_MODE = false;
-const logDebug = (message: string, data?: any) => {
-  if (DEBUG_MODE) {
-    console.log(`PremiumComparisonTable: ${message}`, data);
+// Import ParsedDocumentResult type
+import type { Coverage, ParsedDocumentResult } from '../../../types';
+
+// Debug output to console during development
+// Only log in development environment
+const debug = (...args: unknown[]): void => {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('[PremiumComparisonTable]', ...args);
   }
 };
 
-interface ParsedDocument {
-  originalFileName: string;
-  category: string;
-  metadata: {
-    documentType: string;
-    clientName: string;
-    carrierName: string;
-    effectiveDate: string;
-    quoteDate: string;
-    policyNumber?: string;
-    planOptionName?: string;
-    totalProposedMonthlyPlanPremium?: number;
-    fileName: string;
-    fileCategory: string;
-    planOptionTotals?: Array<{
-      planOptionName: string;
-      totalMonthlyPremium: number;
-    }>;
-    rateGuarantees?: string;
-  };
-  coverages: Array<{
-    coverageType: string;
-    carrierName: string;
-    planOptionName: string;
-    premium: number;
-    monthlyPremium: number;
-    unitRate: number;
-    unitRateBasis: string;
-    volume: number;
-    lives: number;
-    benefitDetails: Record<string, any>;
-  }>;
-  planNotes: Array<{ note: string }>;
+// Format number as currency
+const formatCurrency = (value: number | string | null | undefined): string => {
+  if (value === null || value === undefined || value === '') {
+    return '$0.00';
+  }
+
+  const numValue = typeof value === 'string' ? Number.parseFloat(value) : value;
+
+  if (Number.isNaN(numValue)) {
+    return '$0.00';
+  }
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numValue);
+};
+
+// Format coverage volume with appropriate units
+const formatVolume = (value: number | string | null | undefined): string => {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  const numValue = typeof value === 'string' ? Number.parseFloat(value) : value;
+
+  if (Number.isNaN(numValue)) {
+    return '-';
+  }
+
+  // Format large numbers with commas
+  return new Intl.NumberFormat('en-US').format(numValue);
+};
+
+// Map for normalizing coverage types
+const coverageTypeMap: Record<string, string> = {
+  'Basic Life': 'Basic Life',
+  'AD&D': 'AD&D',
+  'Accidental Death & Dismemberment': 'AD&D',
+  'Accidental Death and Dismemberment': 'AD&D',
+  'Dependent Life': 'Dependent Life',
+  'Dep Life': 'Dependent Life',
+  LTD: 'Long Term Disability',
+  'Long Term Disability': 'Long Term Disability',
+  STD: 'Short Term Disability',
+  'Short Term Disability': 'Short Term Disability',
+  'Extended Healthcare': 'Extended Healthcare',
+  'Extended Health': 'Extended Healthcare',
+  EHC: 'Extended Healthcare',
+  'Dental Care': 'Dental Care',
+  Dental: 'Dental Care',
+  Vision: 'Vision Care',
+  'Vision Care': 'Vision Care',
+  'Critical Illness': 'Critical Illness',
+  EAP: 'EAP',
+  'Employee Assistance Program': 'EAP',
+  'Health Spending Account': 'Health Spending Account',
+  HSA: 'Health Spending Account',
+};
+
+// Group coverage types for subtotals
+const pooledCoverageTypes = [
+  'Basic Life',
+  'AD&D',
+  'Dependent Life',
+  'Critical Illness',
+];
+
+const experienceCoverageTypes = [
+  'Long Term Disability',
+  'Short Term Disability',
+  'Extended Healthcare',
+  'Dental Care',
+  'Vision Care',
+  'EAP',
+  'Health Spending Account',
+];
+
+// Interfaces for component props and data structure
+interface CarrierProposal {
+  carrierName: string;
+  rateGuaranteeText?: string;
+}
+
+// Define interfaces for the component
+interface PlanOption {
+  planOptionName: string;
+  carrierProposals: CarrierProposal[];
+  rateGuarantees?: string[];
+}
+
+interface Metadata {
+  carrierName?: string;
+  primaryCarrierName?: string | null;
+  rateGuarantees?: string | string[] | null;
+}
+
+interface BenefitDataValue {
+  volume: string;
+  unitRate: string;
+  monthlyPremium: string;
+}
+
+interface BenefitDataItem {
+  isSubtotal?: boolean;
+  isTotal?: boolean;
+  isRateGuarantee?: boolean;
+  values: BenefitDataValue[];
+}
+
+interface BenefitDataMap {
+  [key: string]: BenefitDataItem;
 }
 
 interface PremiumComparisonTableProps {
-  results: ParsedDocument[];
+  results: ParsedDocumentResult[];
 }
 
-const PremiumComparisonTable: React.FC<PremiumComparisonTableProps> = ({ results = [] }) => {
-  // Extract carrier names from results
-  const carriers = useMemo(() => {
-    const carrierNames = ['CARRIER'];
-    
-    if (results && results.length > 0) {
-      results.forEach(result => {
-        let carrierName = null;
-        
-        // Try to get carrier name from various locations
-        if (result.metadata?.carrierName) {
-          carrierName = result.metadata.carrierName.toUpperCase();
-        } else if (result.coverages?.[0]?.carrierName) {
-          carrierName = result.coverages[0].carrierName.toUpperCase();
-        } else {
-          carrierName = `CARRIER ${results.indexOf(result) + 1}`;
+/**
+ * Premium Comparison Table Component
+ * Displays a comparison of insurance premiums across different carriers and benefit types
+ */
+export function PremiumComparisonTable({
+  results,
+}: PremiumComparisonTableProps): React.ReactElement {
+  // Initialize state for selected plan option and carriers
+  const [selectedPlanOption, setSelectedPlanOption] = useState<string>('');
+
+  // Extract all plan options from results for dropdown
+  const planOptions = useMemo(() => {
+    const options: Set<string> = new Set();
+
+    for (const result of results) {
+      if (result?.allCoverages) {
+        for (const coverage of result.allCoverages) {
+          if (coverage.planOptionName) {
+            options.add(coverage.planOptionName);
+          }
         }
-        
-        // Add to list if unique
-        if (!carrierNames.includes(carrierName)) {
-          carrierNames.push(carrierName);
-        }
-      });
+      }
     }
-    
-    logDebug('Extracted carrier names:', carrierNames);
-    return carrierNames;
+
+    return Array.from(options);
   }, [results]);
 
-  // Process results to build benefit data
-  const benefitData = useMemo(() => {
-    const benefitDataMap: Record<string, any> = {};
-    const carrierCount = carriers.length - 1;
-    
-    // Define insurance categories
-    const insuranceCategories = {
-      'pooled': [
-        'Basic Life', 'AD&D', 'Dependent Life', 'Critical Illness', 'LTD', 'STD'
-      ],
-      'experience': [
-        'Extended Healthcare', 'Dental Care', 'Vision', 'EAP', 'Health Spending Account', 'HSA'
-      ]
-    };
-    
-    // Initialize an empty values array for each carrier
-    const createEmptyValuesArray = () => {
-      return Array(carrierCount).fill(null).map(() => ({ volume: '', unitRate: '', monthlyPremium: '' }));
-    };
-    
-    // Map to normalize coverage type names
-    const coverageTypeMap: Record<string, string> = {
-      'Basic Life': 'Basic Life',
-      'AD&D': 'AD&D',
-      'Dependent Life': 'Dependent Life',
-      'Critical Illness': 'Critical Illness',
-      'LTD': 'Long Term Disability',
-      'STD': 'Short Term Disability',
-      'Extended Healthcare': 'Health Care (EHC)',
-      'Health Care (EHC)': 'Health Care (EHC)', // Add mapping for possible alternate name
-      'Vision': 'Vision',
-      'Dental Care': 'Dental Care',
-      'EAP': 'EAP',
-      'Health Spending Account': 'HSA',
-      'HSA': 'HSA'
-    };
-    
-    // Helper function to format number as currency
-    const formatNumber = (num: number | undefined) => {
-      if (num === undefined || num === null) return '';
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(num);
-    };
-    
-    // Helper function to format volume with dollar sign
-    const formatVolume = (vol: number | undefined) => {
-      if (vol === undefined || vol === null) return '';
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        maximumFractionDigits: 0,
-        minimumFractionDigits: 0
-      }).format(vol);
-    };
-    
-    // Process each result and extract coverage data
-    if (results && results.length > 0) {
-      results.forEach((result, resultIndex) => {
-        // Get carrier name
-        let carrierName = null;
-        
-        if (result.metadata?.carrierName) {
-          carrierName = result.metadata.carrierName.toUpperCase();
-        } else if (result.coverages?.[0]?.carrierName) {
-          carrierName = result.coverages[0].carrierName.toUpperCase();
-        } else {
-          carrierName = `CARRIER ${resultIndex + 1}`;
+  // Set default selected plan option when planOptions change
+  useMemo(() => {
+    if (planOptions.length > 0 && !selectedPlanOption) {
+      setSelectedPlanOption(planOptions[0]);
+    }
+  }, [planOptions, selectedPlanOption]);
+
+  // Extract carrier information from results
+  const carriers = useMemo(() => {
+    const carriersMap: Array<{ name: string; rateGuarantee?: string }> = [];
+
+    for (const result of results) {
+      const metadata = result.metadata;
+      let carrierName = '';
+      let rateGuaranteeText: string | undefined;
+
+      // Try to get carrier name from metadata or plan options
+      if (metadata?.primaryCarrierName) {
+        carrierName = metadata.primaryCarrierName;
+      } else if (metadata?.carrierName) {
+        carrierName = metadata.carrierName;
+      } else {
+        // Look in plan options
+        const allCoverages = result.allCoverages || [];
+        const coverage = allCoverages.find((c: Coverage) => c.carrierName);
+        if (coverage?.carrierName) {
+          carrierName = coverage.carrierName;
         }
-        
-        const carrierIndex = carriers.indexOf(carrierName) - 1;
-        logDebug(`Processing result ${resultIndex}, carrier: ${carrierName}, index: ${carrierIndex}`);
-        
-        if (carrierIndex < 0) {
-          logDebug(`Warning: Carrier ${carrierName} not found in carriers list`, carriers);
-          return; // Skip if carrier not found
+      }
+
+      // Format carrier name to consistent case
+      carrierName = carrierName.toUpperCase();
+
+      // Look for rate guarantees
+      if (result.planOptions && selectedPlanOption) {
+        const planOption = result.planOptions.find(
+          (po: { planOptionName: string; rateGuarantees?: string[] }) =>
+            po.planOptionName === selectedPlanOption
+        );
+
+        if (planOption?.rateGuarantees?.length > 0) {
+          rateGuaranteeText = planOption.rateGuarantees[0];
         }
-        
-        // Process coverages
-        const coveragesArray = result.coverages || [];
-        
-        if (coveragesArray.length > 0) {
-          coveragesArray.forEach(coverage => {
-            if (!coverage.coverageType) return;
-            
-            // Ensure coverageType is a string, not an object
-            const coverageTypeStr = typeof coverage.coverageType === 'string' 
-              ? coverage.coverageType 
-              : (coverage.coverageType ? String(coverage.coverageType) : 'Unknown');
-            
-            // Normalize coverage type
-            const normalizedType = coverageTypeMap[coverageTypeStr] || coverageTypeStr;
-            logDebug(`Processing coverage: ${coverageTypeStr} -> normalized to: ${normalizedType}`, coverage);
-            
-            // Initialize data structure if needed
-            if (!benefitDataMap[normalizedType]) {
-              benefitDataMap[normalizedType] = {
-                values: createEmptyValuesArray()
-              };
-            }
-            
-            // Extract data fields
-            const volume = coverage.volume;
-            const unitRate = coverage.unitRate;
-            const monthlyPremium = coverage.monthlyPremium || coverage.premium;
-            
-            // Update the values array for this benefit type
-            benefitDataMap[normalizedType].values[carrierIndex] = {
-              volume: volume !== undefined ? formatVolume(volume) : '',
-              unitRate: unitRate !== undefined ? String(unitRate) : '',
-              monthlyPremium: monthlyPremium ? formatNumber(monthlyPremium) : ''
-            };
-            
-            // Handle rate guarantees
-            if (result.metadata?.rateGuarantees) {
-              if (!benefitDataMap['Rate Guarantee']) {
-                benefitDataMap['Rate Guarantee'] = {
-                  values: createEmptyValuesArray()
-                };
-              }
-              
-              // For Rate Guarantee, keep as string but make sure we're consistent with our data structure
-              benefitDataMap['Rate Guarantee'].values[carrierIndex] = {
-                volume: '',
-                unitRate: '',
-                // Store rate guarantee as string (don't apply currency formatting since it's not a currency)
-                monthlyPremium: result.metadata.rateGuarantees || ''
-              };
-            }
-          });
+      } else if (metadata?.rateGuarantees) {
+        if (
+          Array.isArray(metadata.rateGuarantees) &&
+          metadata.rateGuarantees.length > 0
+        ) {
+          rateGuaranteeText = metadata.rateGuarantees[0];
+        } else if (typeof metadata.rateGuarantees === 'string') {
+          rateGuaranteeText = metadata.rateGuarantees;
         }
-      });
+      }
+
+      // Add carrier to list if not empty
+      if (carrierName) {
+        carriersMap.push({
+          name: carrierName,
+          rateGuarantee: rateGuaranteeText,
+        });
+      }
     }
 
-    // Calculate subtotals and totals
-    let pooledTotal = Array(carrierCount).fill(0);
-    let experienceTotal = Array(carrierCount).fill(0);
-    let grandTotal = Array(carrierCount).fill(0);
+    return carriersMap;
+  }, [results, selectedPlanOption]);
 
-    // For each benefit, add up the premiums for subtotals and grand total
-    Object.entries(benefitDataMap).forEach(([benefitName, benefit]) => {
-      if (!benefit || !benefit.values) return; // Skip if benefit data is invalid
-      
-      benefit.values.forEach((value: any, carrierIndex: number) => {
-        if (!value || !value.monthlyPremium) return;
-        
-        // Convert monthlyPremium from formatted string back to number
-        // Ensure monthlyPremium is a string before using replace
-        const monthlyPremiumStr = String(value.monthlyPremium);
-        const premium = parseFloat(
-          monthlyPremiumStr.replace(/[^0-9.-]+/g, '')
-        ) || 0;
-        
-        // Check which category this benefit belongs to
-        // Ensure benefitName is a string before calling includes
-        const benefitNameStr = typeof benefitName === 'string' ? benefitName : String(benefitName);
-        
-        const isPooled = insuranceCategories.pooled.some(
-          b => benefitNameStr.includes(b)
-        );
-        const isExperience = insuranceCategories.experience.some(
-          b => benefitNameStr.includes(b)
-        );
-        
-        // Add to appropriate totals
-        if (isPooled) {
-          pooledTotal[carrierIndex] += premium;
-        } else if (isExperience) {
-          experienceTotal[carrierIndex] += premium;
+  // Process coverages and build benefit data map
+  const benefitData = useMemo(() => {
+    const benefitDataMap: BenefitDataMap = {};
+
+    // Initialize tracking arrays for subtotals and grand total
+    const pooledTotal = new Array(carriers.length).fill(0);
+    const experienceTotal = new Array(carriers.length).fill(0);
+    const grandTotal = new Array(carriers.length).fill(0);
+
+    // Process each result (document)
+    for (const result of results) {
+      // Filter coverages by selected plan option
+      const allCoveragesArray = result.allCoverages || [];
+      const filteredCoverages = selectedPlanOption
+        ? allCoveragesArray.filter(
+            (coverage: Coverage) =>
+              coverage.planOptionName === selectedPlanOption
+          )
+        : allCoveragesArray;
+
+      // Process each coverage
+      for (const coverage of filteredCoverages) {
+        // Skip coverages without necessary data
+        if (!coverage.coverageType || !coverage.monthlyPremium) {
+          continue; // Skip this coverage
         }
-        
-        // Add to grand total
-        grandTotal[carrierIndex] += premium;
-      });
-    });
 
-    // Add subtotals and totals to the benefit data map
-    benefitDataMap['Pooled Subtotal'] = {
-      isSubtotal: true,
-      values: pooledTotal.map(total => ({
-        volume: '',
-        unitRate: '',
-        monthlyPremium: formatNumber(total)
-      }))
-    };
+        // Normalize the coverage type for consistent grouping
+        const normalizedType =
+          coverageTypeMap[coverage.coverageType] || coverage.coverageType;
 
-    benefitDataMap['Experience Subtotal'] = {
-      isSubtotal: true,
-      values: experienceTotal.map(total => ({
-        volume: '',
-        unitRate: '',
-        monthlyPremium: formatNumber(total)
-      }))
-    };
+        // Initialize benefit data item if it doesn't exist
+        if (!benefitDataMap[normalizedType]) {
+          benefitDataMap[normalizedType] = {
+            values: new Array(carriers.length).fill(null).map(() => ({
+              volume: '-',
+              unitRate: '-',
+              monthlyPremium: '-',
+            })),
+          };
+        }
 
-    benefitDataMap['Grand Total'] = {
-      isTotal: true,
-      values: grandTotal.map(total => ({
-        volume: '',
-        unitRate: '',
-        monthlyPremium: formatNumber(total)
-      }))
-    };
+        // Format coverage values
+        const formattedVolume = formatVolume(coverage.volume);
+        const formattedUnitRate = coverage.unitRate
+          ? `${coverage.unitRate}${coverage.unitRateBasis ? `/${coverage.unitRateBasis}` : ''}`
+          : '-';
+        const formattedPremium = formatCurrency(
+          coverage.monthlyPremium
+            ? Number.parseFloat(
+                coverage.monthlyPremium.toString().replace(/,/g, '')
+              )
+            : 0
+        );
+
+        // Update the benefit data with formatted values
+        benefitDataMap[normalizedType].values[
+          carriers.indexOf(coverage.carrierName)
+        ] = {
+          volume: formattedVolume,
+          unitRate: formattedUnitRate,
+          monthlyPremium: formattedPremium,
+        };
+
+        // Add to subtotal and grand total
+        const premium = Number.parseFloat(String(coverage.monthlyPremium || 0));
+        if (!Number.isNaN(premium)) {
+          // Determine which subtotal category this goes to
+          if (pooledCoverageTypes.includes(normalizedType)) {
+            pooledTotal[carriers.indexOf(coverage.carrierName)] += premium;
+          } else if (experienceCoverageTypes.includes(normalizedType)) {
+            experienceTotal[carriers.indexOf(coverage.carrierName)] += premium;
+          }
+
+          // Add to grand total regardless
+          grandTotal[carriers.indexOf(coverage.carrierName)] += premium;
+        }
+      }
+    }
+
+    // Add subtotals and totals to benefit data map
+    if (benefitDataMap && Object.keys(benefitDataMap).length > 0) {
+      // Add pooled subtotal
+      if (!benefitDataMap['Pooled Subtotal']) {
+        benefitDataMap['Pooled Subtotal'] = {
+          isSubtotal: true,
+          values: [],
+        };
+      }
+      benefitDataMap['Pooled Subtotal'].values = pooledTotal.map((total) => ({
+        volume: '-',
+        unitRate: '-',
+        monthlyPremium: formatCurrency(total),
+      }));
+
+      // Add experience subtotal
+      if (!benefitDataMap['Experience Subtotal']) {
+        benefitDataMap['Experience Subtotal'] = {
+          isSubtotal: true,
+          values: [],
+        };
+      }
+      benefitDataMap['Experience Subtotal'].values = experienceTotal.map(
+        (total) => ({
+          volume: '-',
+          unitRate: '-',
+          monthlyPremium: formatCurrency(total),
+        })
+      );
+
+      // Add grand total
+      if (!benefitDataMap['Grand Total']) {
+        benefitDataMap['Grand Total'] = { isTotal: true, values: [] };
+      }
+      benefitDataMap['Grand Total'].values = grandTotal.map((total) => ({
+        volume: '-',
+        unitRate: '-',
+        monthlyPremium: formatCurrency(total),
+      }));
+
+      // Add rate guarantee rows if available
+      for (let idx = 0; idx < carriers.length; idx++) {
+        const carrier = carriers[idx];
+        if (carrier.rateGuarantee) {
+          if (!benefitDataMap['Rate Guarantees']) {
+            benefitDataMap['Rate Guarantees'] = {
+              isRateGuarantee: true,
+              values: new Array(carriers.length).fill(null).map(() => ({
+                volume: '-',
+                unitRate: '-',
+                monthlyPremium: '-',
+              })),
+            };
+          }
+
+          benefitDataMap['Rate Guarantees'].values[idx] = {
+            volume: '-',
+            unitRate: '-',
+            monthlyPremium: carrier.rateGuarantee,
+          };
+        }
+      }
+    }
 
     return benefitDataMap;
-  }, [results, carriers]);
+  }, [results, carriers, selectedPlanOption]);
 
-  // Define benefit order for display
-  const benefitOrder = [
-    'Basic Life',
-    'AD&D',
-    'Dependent Life',
-    'Critical Illness',
-    'Long Term Disability',
-    'Short Term Disability',
-    'Pooled Subtotal',
-    'Health Care (EHC)',
-    'Dental Care',
-    'Vision',
-    'EAP',
-    'HSA',
-    'Experience Subtotal',
-    'Rate Guarantee',
-    'Grand Total'
-  ];
+  // Order benefits for display
+  const orderedBenefits = useMemo(() => {
+    const orderedKeys: string[] = [];
 
-  // Sort benefit data according to defined order
-  const sortedBenefitData = Object.entries(benefitData)
-    .sort(([nameA], [nameB]) => {
-      const indexA = benefitOrder.indexOf(nameA);
-      const indexB = benefitOrder.indexOf(nameB);
-      
-      // If both are in the order list, sort by their position
-      if (indexA >= 0 && indexB >= 0) {
-        return indexA - indexB;
+    // Add standard coverage types in a specific order
+    for (const coverageType of [
+      ...pooledCoverageTypes,
+      ...experienceCoverageTypes,
+    ]) {
+      if (benefitData[coverageType]) {
+        orderedKeys.push(coverageType);
       }
-      
-      // If only one is in the list, prioritize it
-      if (indexA >= 0) return -1;
-      if (indexB >= 0) return 1;
-      
-      // If neither is in the list, sort alphabetically
-      return nameA.localeCompare(nameB);
-    });
+    }
 
-  // Return empty state if no benefit data
-  if (sortedBenefitData.length === 0) {
-    return (
-      <div className="text-center py-6">
-        <p className="text-muted-foreground">No premium data available for comparison.</p>
-      </div>
-    );
-  }
+    // Add any remaining coverage types that aren't in the standard lists
+    for (const key of Object.keys(benefitData)) {
+      if (
+        !pooledCoverageTypes.includes(key) &&
+        !experienceCoverageTypes.includes(key) &&
+        key !== 'Pooled Subtotal' &&
+        key !== 'Experience Subtotal' &&
+        key !== 'Grand Total' &&
+        key !== 'Rate Guarantees'
+      ) {
+        orderedKeys.push(key);
+      }
+    }
+
+    // Add subtotals and totals at the end in a specific order
+    if (benefitData['Pooled Subtotal']) {
+      orderedKeys.push('Pooled Subtotal');
+    }
+
+    if (benefitData['Experience Subtotal']) {
+      orderedKeys.push('Experience Subtotal');
+    }
+
+    if (benefitData['Grand Total']) {
+      orderedKeys.push('Grand Total');
+    }
+
+    if (benefitData['Rate Guarantees']) {
+      orderedKeys.push('Rate Guarantees');
+    }
+
+    return orderedKeys;
+  }, [benefitData]);
 
   return (
     <Card>
-      <CardContent className="p-0 overflow-auto">
-        <Table className="border-collapse w-full">
+      <CardHeader>
+        <CardTitle>Premium Comparison Table</CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        {planOptions.length > 0 && (
+          <div className="flex justify-between mb-4">
+            <div className="flex items-center">
+              <span className="text-sm text-muted-foreground mr-2">
+                Plan Option:
+              </span>
+              <Select
+                value={selectedPlanOption || ''}
+                onValueChange={(value: string) => setSelectedPlanOption(value)}
+              >
+                <SelectTrigger className="w-[240px]">
+                  <SelectValue placeholder="Select a plan option" />
+                </SelectTrigger>
+                <SelectContent>
+                  {planOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+        <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-1/5">Coverage</TableHead>
-              {carriers.slice(1).map((carrier, index) => (
+            <TableRow>
+              <TableHead className="w-[200px]">Benefit</TableHead>
+              {carriers.map((carrier, index) => (
                 <React.Fragment key={`carrier-${index}`}>
                   <TableHead className="text-center">
-                    {carrier}
+                    {carrier.name} - Volume
+                  </TableHead>
+                  <TableHead className="text-center">
+                    {carrier.name} - Unit Rate
+                  </TableHead>
+                  <TableHead className="text-center">
+                    {carrier.name} - Monthly Premium
                   </TableHead>
                 </React.Fragment>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedBenefitData.map(([benefitName, benefit], index) => {
+            {(orderedBenefits || []).map((benefitName, index) => {
+              const benefit = benefitData[benefitName];
               const isSubtotal = benefit.isSubtotal;
               const isTotal = benefit.isTotal;
-              
+              const isRateGuarantee = benefit.isRateGuarantee;
+
               // Apply special styling based on row type
-              const rowClassName = isTotal
-                ? 'font-bold bg-primary/5'
-                : isSubtotal
-                ? 'font-medium bg-muted/50'
-                : 'hover:bg-muted/30';
-              
+              let rowClassName = '';
+              if (isTotal) {
+                rowClassName = 'font-bold bg-primary/5';
+              } else if (isRateGuarantee) {
+                rowClassName = 'font-medium bg-muted/20';
+              } else if (isSubtotal) {
+                rowClassName = 'font-medium bg-muted/50';
+              } else {
+                rowClassName = 'hover:bg-muted/30';
+              }
+
               return (
                 <TableRow key={`benefit-${index}`} className={rowClassName}>
-                  <TableCell className="font-medium">
-                    {benefit.indent && <span className="ml-4"></span>}
-                    {benefitName}
-                  </TableCell>
-                  
-                  {benefit.values.map((value: any, valueIndex: number) => {
-                    // Ensure all values are strings or primitives suitable for rendering
-                    const monthlyPremium = typeof value.monthlyPremium === 'object' 
-                      ? JSON.stringify(value.monthlyPremium) 
-                      : value.monthlyPremium || '';
-                      
-                    const unitRate = typeof value.unitRate === 'object'
-                      ? JSON.stringify(value.unitRate)
-                      : value.unitRate || '';
-                      
-                    const volume = typeof value.volume === 'object'
-                      ? JSON.stringify(value.volume)
-                      : value.volume || '';
-                      
-                    return (
-                      <React.Fragment key={`value-${valueIndex}`}>
-                        <TableCell className="text-center">
-                          <div className="text-xs font-mono">
-                            {monthlyPremium}
-                          </div>
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>{unitRate ? `Rate: ${unitRate}` : ''}</span>
-                            <span>{volume}</span>
-                          </div>
-                        </TableCell>
-                      </React.Fragment>
-                    );
-                  })}
+                  <TableCell>{benefitName}</TableCell>
+                  {carriers.map((_, carrierIndex) => (
+                    <React.Fragment
+                      key={`benefit-${index}-carrier-${carrierIndex}`}
+                    >
+                      <TableCell className="text-center">
+                        {!isSubtotal && !isTotal && !isRateGuarantee
+                          ? benefit.values[carrierIndex]?.volume
+                          : '-'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {!isSubtotal && !isTotal && !isRateGuarantee
+                          ? benefit.values[carrierIndex]?.unitRate
+                          : ''}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {benefit.values[carrierIndex]?.monthlyPremium || '-'}
+                      </TableCell>
+                    </React.Fragment>
+                  ))}
                 </TableRow>
               );
             })}
@@ -417,6 +539,4 @@ const PremiumComparisonTable: React.FC<PremiumComparisonTableProps> = ({ results
       </CardContent>
     </Card>
   );
-};
-
-export default PremiumComparisonTable;
+}

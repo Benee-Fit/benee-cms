@@ -1,56 +1,15 @@
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@repo/design-system/components/ui/tabs';
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
-import PremiumComparisonTable from './PremiumComparisonTable';
 import PlanComparisonTab from './PlanComparisonTab';
+import { PremiumComparisonTable } from './PremiumComparisonTable';
+import type { ParsedDocumentResult, ParsedDocument } from '../../../types';
 
-interface ParsedDocument {
-  // Add relevantCoverages to the interface to fix TypeScript issues
-  relevantCoverages?: Array<{
-    coverageType: string;
-    carrierName: string;
-    planOptionName: string;
-    premium: number;
-    monthlyPremium: number;
-    unitRate: number;
-    unitRateBasis: string;
-    volume: number;
-    lives: number;
-    benefitDetails: Record<string, unknown>;
-  }>;
-
-  originalFileName: string;
-  category: string;
-  metadata: {
-    documentType: string;
-    clientName: string;
-    carrierName: string;
-    effectiveDate: string;
-    quoteDate: string;
-    policyNumber?: string;
-    planOptionName?: string;
-    totalProposedMonthlyPlanPremium?: number;
-    fileName: string;
-    fileCategory: string;
-    planOptionTotals?: Array<{
-      planOptionName: string;
-      totalMonthlyPremium: number;
-    }>;
-    rateGuarantees?: string;
-  };
-  coverages: Array<{
-    coverageType: string;
-    carrierName: string;
-    planOptionName: string;
-    premium: number;
-    monthlyPremium: number;
-    unitRate: number;
-    unitRateBasis: string;
-    volume: number;
-    lives: number;
-    benefitDetails: Record<string, unknown>;
-  }>;
-  planNotes: Array<{ note: string }>;
-}
+// Use the ParsedDocument interface from types.ts
 
 interface MarketComparisonViewProps {
   parsedDocuments: ParsedDocument[];
@@ -60,22 +19,50 @@ interface MarketComparisonViewProps {
 
 const MarketComparisonView = ({
   parsedDocuments,
-  carriersMap
+  carriersMap,
 }: MarketComparisonViewProps) => {
   // State
   const [activeTab, setActiveTab] = useState('premium');
-  
 
-  
-  // Process documents to ensure proper structure
-  const processedDocuments = parsedDocuments.map((doc: ParsedDocument) => {
-    // Add relevantCoverages property with normalized coverages
+  // Process documents for premium comparison
+  const premiumDocuments: ParsedDocumentResult[] = parsedDocuments.map((doc: ParsedDocument) => {
+    // Extract unique plan option names
+    const planOptionNames: string[] = [];
+    
+    // Use for...of instead of forEach to satisfy lint rules
+    for (const coverage of doc.coverages) {
+      if (coverage.planOptionName && !planOptionNames.includes(coverage.planOptionName)) {
+        planOptionNames.push(coverage.planOptionName);
+      }
+    }
+
+    // Create plan options array
+    const planOptions = planOptionNames.map(name => ({
+      planOptionName: name,
+      rateGuarantees: doc.metadata.rateGuarantees ? [doc.metadata.rateGuarantees] : [],
+      planOptionTotals: {
+        monthlyPremium: doc.metadata.totalProposedMonthlyPlanPremium
+      }
+    }));
+
+    // Convert to the correct type for PremiumComparisonTable
     return {
-      ...doc,
-      relevantCoverages: doc.coverages
+      metadata: {
+        clientName: doc.metadata.clientName,
+        carrierName: doc.metadata.carrierName,
+        primaryCarrierName: doc.metadata.carrierName,
+        effectiveDate: doc.metadata.effectiveDate,
+        quoteDate: doc.metadata.quoteDate,
+        documentType: doc.metadata.documentType,
+        policyNumber: doc.metadata.policyNumber || null,
+        rateGuarantees: doc.metadata.rateGuarantees ? [doc.metadata.rateGuarantees] : null,
+      },
+      allCoverages: doc.coverages,
+      planOptions: planOptions,
+      planNotes: doc.planNotes?.map(note => note.note) || []
     };
   });
-  
+
   return (
     <div className="space-y-4">
       {/* Tabs for Premium and Plan comparison */}
@@ -84,13 +71,26 @@ const MarketComparisonView = ({
           <TabsTrigger value="premium">Premium Comparison</TabsTrigger>
           <TabsTrigger value="plan">Plan Comparison</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="premium" className="mt-0">
-          <PremiumComparisonTable results={processedDocuments} />
+          <PremiumComparisonTable results={premiumDocuments} />
         </TabsContent>
-        
+
         <TabsContent value="plan" className="mt-0">
-          <PlanComparisonTab results={processedDocuments} />
+          <PlanComparisonTab results={parsedDocuments.filter(doc => 
+            doc.coverages.every(coverage => 
+              coverage.coverageType && 
+              coverage.carrierName && 
+              coverage.planOptionName && 
+              typeof coverage.premium === 'number' && 
+              typeof coverage.monthlyPremium === 'number' && 
+              typeof coverage.unitRate === 'number' && 
+              coverage.unitRateBasis && 
+              typeof coverage.volume === 'number' && 
+              typeof coverage.lives === 'number' && 
+              coverage.benefitDetails
+            )
+          )} />
         </TabsContent>
       </Tabs>
     </div>
