@@ -217,7 +217,7 @@ export default function AlternativeComparison({
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted-foreground">Monthly Premium</div>
-                  <Badge variant={carrierTotal.priceDifference < 0 ? "success" : "destructive"}>
+                  <Badge variant={carrierTotal.priceDifference < 0 ? "secondary" : "destructive"}>
                     {carrierTotal.percentageChange.toFixed(1)}%
                   </Badge>
                 </div>

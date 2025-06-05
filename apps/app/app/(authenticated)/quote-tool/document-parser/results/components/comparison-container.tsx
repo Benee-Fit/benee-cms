@@ -12,7 +12,7 @@ import {
 } from '@repo/design-system/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
 import { Info, AlertCircle, ArrowUpDown } from 'lucide-react';
-import FullMarketComparison from './full-market-comparison';
+import MarketComparisonView from './market-comparison/MarketComparisonView';
 import SingleCarrierView from './single-carrier-view';
 import RenegotiatedComparison from './renegotiated-comparison';
 import AlternativeComparison from './alternative-comparison';
@@ -209,10 +209,16 @@ export default function ComparisonContainer() {
             </Button>
           </div>
           
-          <TabsContent value="market" className="mt-4">
-            <FullMarketComparison 
-              documents={parsedDocuments}
-              selectedCoverageType={selectedCoverageType}
+          <TabsContent value="market" className="mt-0">
+            <MarketComparisonView 
+              parsedDocuments={parsedDocuments}
+              coverageTypesList={availableCoverageTypes}
+              carriersMap={Object.fromEntries(availableCarriers.map(carrier => [
+                carrier, 
+                parsedDocuments
+                  .filter(doc => doc.metadata?.carrierName === carrier)
+                  .map(doc => doc.originalFileName)
+              ]))}
             />
           </TabsContent>
           
