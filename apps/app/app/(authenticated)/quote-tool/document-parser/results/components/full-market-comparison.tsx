@@ -69,6 +69,10 @@ interface FullMarketComparisonProps {
 }
 
 export default function FullMarketComparison({ documents, selectedCoverageType }: FullMarketComparisonProps) {
+  console.log('[DEBUG] ===== FullMarketComparison Component =====');
+  console.log(`[DEBUG] Received documents: ${documents ? documents.length : 0}`);
+  console.log(`[DEBUG] Selected coverage type: ${selectedCoverageType || 'None (showing all)'}`);
+  
   // Debug information
   const hasDocuments = documents && documents.length > 0;
   const hasCoverages = hasDocuments && documents.some(doc => 
@@ -76,36 +80,93 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
   );
   const coverageCount = hasDocuments ? 
     documents.reduce((count, doc) => count + (doc.coverages?.length || 0), 0) : 0;
+    
+  console.log(`[DEBUG] Document and coverage check: hasDocuments=${hasDocuments}, hasCoverages=${hasCoverages}, total coverages=${coverageCount}`);
+  
+  // More detailed document and coverage inspection
+  if (hasDocuments) {
+    documents.forEach((doc, idx) => {
+      const coveragesStatus = doc.coverages && Array.isArray(doc.coverages) ? 
+        `${doc.coverages.length} coverages` : 
+        'No valid coverages array';
+      console.log(`[DEBUG] Document ${idx+1}: ${doc.metadata?.carrierName || 'Unknown'} - ${coveragesStatus}`);
+      
+      // If document has coverages, inspect first coverage
+      if (doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0) {
+        console.log(`[DEBUG] Sample coverage from doc ${idx+1}: ${JSON.stringify(doc.coverages[0]).substring(0, 200)}...`);
+      }
+    });
+  }
 
-  // Group coverages by type, with improved defensive coding
-  const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document) => {
+  // Group coverages by type, with improved defensive coding and debugging
+  console.log('[DEBUG] Grouping coverages by type with filtering...');
+  const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document, docIndex) => {
     // Skip if document is null/undefined or doesn't have coverages
     if (!document || !document.coverages || !Array.isArray(document.coverages)) {
+      console.log(`[DEBUG] Skipping document ${docIndex}: No valid coverages array`);
       return acc;
     }
 
+    console.log(`[DEBUG] Processing coverages from document ${docIndex}: ${document.coverages.length} items`);
+    let includedCount = 0;
+    let filteredCount = 0;
+    let invalidCount = 0;
+    
     document.coverages.forEach(coverage => {
       // Make sure coverage is an object with required fields
-      if (coverage && typeof coverage === 'object' && 'coverageType' in coverage) {
-        const coverageType = coverage.coverageType;
-        
-        // Apply filter if selected
-        if (coverageType && (!selectedCoverageType || coverageType === selectedCoverageType)) {
-          if (!acc[coverageType]) {
-            acc[coverageType] = [];
-          }
-          
-          // Add normalized coverage object
-          acc[coverageType].push({
-            ...coverage,
-            // Ensure carrierName has a value
-            carrierName: coverage.carrierName || (document.metadata?.carrierName || 'Unknown Carrier')
-          });
-        }
+      if (!coverage || typeof coverage !== 'object') {
+        console.log(`[DEBUG] Invalid coverage in document ${docIndex}: ${coverage === null ? 'null' : typeof coverage}`);
+        invalidCount++;
+        return;
       }
+      
+      if (!('coverageType' in coverage)) {
+        console.log(`[DEBUG] Coverage missing coverageType in document ${docIndex}`);
+        invalidCount++;
+        return;
+      }
+      
+      const coverageType = coverage.coverageType;
+      
+      // Apply filter if selected
+      if (!coverageType) {
+        console.log(`[DEBUG] Coverage has empty coverageType in document ${docIndex}`);
+        invalidCount++;
+        return;
+      }
+      
+      if (selectedCoverageType && coverageType !== selectedCoverageType) {
+        // Filtered out by selected type
+        filteredCount++;
+        return;
+      }
+      
+      // Coverage passed all checks, add to appropriate bucket
+      if (!acc[coverageType]) {
+        acc[coverageType] = [];
+        console.log(`[DEBUG] Created new group for coverage type: ${coverageType}`);
+      }
+      
+      // Add normalized coverage object
+      acc[coverageType].push({
+        ...coverage,
+        // Ensure carrierName has a value
+        carrierName: coverage.carrierName || (document.metadata?.carrierName || 'Unknown Carrier')
+      });
+      includedCount++;
     });
+    
+    console.log(`[DEBUG] Document ${docIndex} coverage processing results: ${includedCount} included, ${filteredCount} filtered, ${invalidCount} invalid`);
+    
     return acc;
   }, {});
+  
+  // Log the resulting coverage groups
+  const coverageTypes = Object.keys(coveragesByType);
+  console.log(`[DEBUG] Grouped coverages into ${coverageTypes.length} types: ${coverageTypes.join(', ')}`);
+  coverageTypes.forEach(type => {
+    console.log(`[DEBUG] Type "${type}" has ${coveragesByType[type].length} coverages`);
+  });
 
   // Get unique carriers across all documents
   const uniqueCarriers = Array.from(

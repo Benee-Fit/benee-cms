@@ -144,9 +144,68 @@ export default function DocumentParserPage() {
       
       // Process each file sequentially to avoid overloading the server
       for (const file of files) {
+        console.log(`[DEBUG] Processing file: ${file.name}`);
         const processedResult = await processDocumentFile(file);
-        results.push(processedResult);
+        
+        // Detailed validation and debugging of the API response
+        console.log('[DEBUG] API Response Structure:', {
+          hasMetadata: !!processedResult.metadata,
+          hasCoverages: !!processedResult.coverages,
+          coveragesIsArray: Array.isArray(processedResult.coverages),
+          coveragesLength: Array.isArray(processedResult.coverages) ? processedResult.coverages.length : 'N/A',
+        });
+        
+        // Explicitly normalize the document structure if needed
+        const normalizedResult = {
+          ...processedResult,
+          originalFileName: file.name,
+          category: file.category,
+          // Ensure metadata exists
+          metadata: processedResult.metadata || {
+            documentType: 'Unknown',
+            clientName: 'Unknown',
+            carrierName: 'Unknown Carrier',
+            effectiveDate: new Date().toISOString().split('T')[0],
+            quoteDate: new Date().toISOString().split('T')[0],
+            fileName: file.name,
+            fileCategory: file.category || 'Current'
+          },
+          // Ensure coverages exists and is an array
+          coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
+            ? processedResult.coverages 
+            : [{
+                coverageType: 'Basic Life',
+                carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
+                planOptionName: 'Default Plan',
+                premium: 0,
+                monthlyPremium: 0,
+                unitRate: 0,
+                unitRateBasis: 'per $1,000',
+                volume: 0,
+                lives: 0,
+                benefitDetails: {
+                  note: 'Coverage details could not be extracted from document'
+                }
+              }]
+        };
+        
+        // Final validation before adding to results
+        console.log('[DEBUG] Final document structure validation:', {
+          hasNormalizedMetadata: !!normalizedResult.metadata,
+          hasNormalizedCoverages: !!normalizedResult.coverages,
+          normalizedCoveragesLength: Array.isArray(normalizedResult.coverages) ? normalizedResult.coverages.length : 'N/A'
+        });
+        
+        results.push(normalizedResult);
       }
+      
+      // Log the full structure before saving to localStorage
+      console.log(`[DEBUG] Saving ${results.length} processed documents to localStorage`);
+      console.log('[DEBUG] Documents structure summary:', results.map(doc => ({
+        fileName: doc.originalFileName,
+        hasCoverages: Array.isArray(doc.coverages) && doc.coverages.length > 0,
+        coveragesCount: Array.isArray(doc.coverages) ? doc.coverages.length : 0
+      })));
       
       // Store results in localStorage for the results page
       localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(results));

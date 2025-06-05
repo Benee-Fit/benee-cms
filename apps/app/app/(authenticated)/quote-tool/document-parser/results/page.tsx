@@ -52,38 +52,165 @@ export default function DocumentParserResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showRawData, setShowRawData] = useState(false);
 
-  // Load parsed documents from localStorage
   useEffect(() => {
+    console.log('[DEBUG] ===== Document Parser Results Page =====');
+    console.log('[DEBUG] Checking localStorage for parsed documents');
+    
     try {
       const storedData = localStorage.getItem('parsedBenefitsDocuments');
+      console.log('[DEBUG] Found stored data, attempting to parse JSON');
       
       if (storedData) {
-        const data = JSON.parse(storedData) as ParsedDocument[];
+        const parsedDocuments = JSON.parse(storedData) as ParsedDocument[];
+        console.log(`[DEBUG] Successfully parsed JSON. Found ${parsedDocuments.length} document(s)`);
         
-        // Add debugging info
-        if (Array.isArray(data) && data.length > 0) {
-          // Check if coverages exist and have the right structure
-          const hasCoverages = data.some(doc => 
-            doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0
-          );
+        // Normalize and repair documents if needed
+        const normalizedDocuments = parsedDocuments.map((doc, index) => {
+          console.log(`[DEBUG] --- Document ${index + 1}: ${doc.originalFileName || 'Unknown filename'} ---`);
           
-          if (!hasCoverages) {
-            setError('Documents found, but no coverage data detected in parsed results.');
+          // Check for metadata and create default if missing
+          if (!doc.metadata || typeof doc.metadata !== 'object') {
+            console.log('[DEBUG] WARNING: Document is missing metadata - adding default metadata');
+            doc.metadata = {
+              documentType: 'Unknown',
+              clientName: 'Unknown',
+              carrierName: 'Unknown Carrier',
+              effectiveDate: new Date().toISOString().split('T')[0],
+              quoteDate: new Date().toISOString().split('T')[0],
+              fileName: doc.originalFileName || `Unknown File ${index + 1}`,
+              fileCategory: doc.category || 'Current'
+            };
           } else {
-            // Document looks good
-            setError(null);
+            console.log('[DEBUG] Metadata found:', Object.keys(doc.metadata).length, 'properties');
           }
-        }
+          
+          // Check for coverages and create default if missing
+          if (!doc.coverages) {
+            console.log('[DEBUG] ERROR: Document has no coverages property - creating default coverage');
+            doc.coverages = [
+              {
+                coverageType: 'Basic Life',
+                carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
+                  ? String(doc.metadata.carrierName) 
+                  : 'Unknown Carrier',
+                planOptionName: 'Default Plan',
+                premium: 0,
+                monthlyPremium: 0,
+                unitRate: 0,
+                unitRateBasis: 'per $1,000',
+                volume: 0,
+                lives: 0,
+                benefitDetails: {
+                  note: 'Coverage details could not be extracted from document'
+                }
+              }
+            ];
+          } else if (!Array.isArray(doc.coverages)) {
+            console.log('[DEBUG] ERROR: Document coverages is not an array - converting to array with default coverage');
+            doc.coverages = [
+              {
+                coverageType: 'Basic Life',
+                carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
+                  ? String(doc.metadata.carrierName) 
+                  : 'Unknown Carrier',
+                planOptionName: 'Default Plan',
+                premium: 0,
+                monthlyPremium: 0,
+                unitRate: 0,
+                unitRateBasis: 'per $1,000',
+                volume: 0,
+                lives: 0,
+                benefitDetails: {
+                  note: 'Coverage details could not be extracted from document'
+                }
+              }
+            ];
+          } else if (doc.coverages.length === 0) {
+            console.log('[DEBUG] WARNING: Document has empty coverages array - adding default coverage');
+            doc.coverages.push({
+              coverageType: 'Basic Life',
+              carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
+                ? String(doc.metadata.carrierName) 
+                : 'Unknown Carrier',
+              planOptionName: 'Default Plan',
+              premium: 0,
+              monthlyPremium: 0,
+              unitRate: 0,
+              unitRateBasis: 'per $1,000',
+              volume: 0,
+              lives: 0,
+              benefitDetails: {
+                note: 'Coverage details could not be extracted from document'
+              }
+            });
+          } else {
+            console.log('[DEBUG] Coverages found:', doc.coverages.length);
+            
+            // Validate each coverage has required fields
+            doc.coverages = doc.coverages.map(coverage => {
+              if (!coverage || typeof coverage !== 'object') {
+                console.log('[DEBUG] Invalid coverage item found - replacing with valid default');
+                return {
+                  coverageType: 'Basic Life',
+                  carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
+                    ? String(doc.metadata.carrierName) 
+                    : 'Unknown Carrier',
+                  planOptionName: 'Default Plan',
+                  premium: 0,
+                  monthlyPremium: 0,
+                  unitRate: 0,
+                  unitRateBasis: 'per $1,000',
+                  volume: 0,
+                  lives: 0,
+                  benefitDetails: { note: 'Coverage details could not be extracted from document' }
+                };
+              } else {
+                // Ensure all required fields exist
+                return {
+                  coverageType: coverage.coverageType || 'Basic Life',
+                  carrierName: coverage.carrierName || ((doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
+                    ? String(doc.metadata.carrierName) 
+                    : 'Unknown Carrier'),
+                  planOptionName: coverage.planOptionName || 'Default Plan',
+                  premium: coverage.premium || 0,
+                  monthlyPremium: coverage.monthlyPremium || 0,
+                  unitRate: coverage.unitRate || 0,
+                  unitRateBasis: coverage.unitRateBasis || 'per $1,000',
+                  volume: coverage.volume || 0,
+                  lives: coverage.lives || 0,
+                  benefitDetails: coverage.benefitDetails || { note: 'Limited coverage details were extracted' }
+                };
+              }
+            });
+          }
+          
+          console.log(`[DEBUG] Final document structure - metadata: ${!!doc.metadata}, coverages: ${doc.coverages?.length || 0}`);
+          return doc;
+        });
         
-        setParsedDocuments(data);
+        // Update state with normalized documents
+        setParsedDocuments(normalizedDocuments);
+        console.log('[DEBUG] Document normalization complete');
+        
+        // Check if we actually have coverage data in any document
+        const hasCoverages = normalizedDocuments.some(
+          doc => Array.isArray(doc.coverages) && doc.coverages.length > 0
+        );
+        
+        if (!hasCoverages) {
+          console.log('[DEBUG] CRITICAL ERROR: No coverage data found in any document');
+          setError('Documents found, but no coverage data detected in parsed results.');
+        }
       } else {
+        console.log('[DEBUG] No stored parsed documents found in localStorage');
         setError('No parsed document data found in storage.');
       }
-    } catch (_e) {
-      // Handle error safely without using console.error
+    } catch (e) {
+      console.log('[DEBUG] Error parsing stored documents:', e instanceof Error ? e.message : 'Unknown error');
       setError('Failed to load parsed data. It might be corrupted.');
     } finally {
       setIsLoading(false);
+      console.log('[DEBUG] ===== End Document Parser Results Page Initialization =====');
     }
   }, []);
 

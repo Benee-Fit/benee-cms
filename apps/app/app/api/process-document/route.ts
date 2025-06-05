@@ -1,395 +1,890 @@
-import { NextRequest, NextResponse } from 'next/server';
-import https from 'https';
+import * as https from 'node:https';
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// API Keys from environment variables
-const PDFCO_API_KEY = process.env['PDF-UPLOAD-SECRET'];
-const GEMINI_API_KEY = process.env['GEMINI_API_KEY'];
+// Import auth module from the repo package
+import { currentUser } from '@repo/auth/server';
 
-// Detailed prompt template for Gemini API
-const GEMINI_PROMPT_TEMPLATE = `
-You are an expert insurance document parser for benefits brokers. 
-Extract all relevant information from this insurance document text into a JSON structure.
+// Import PDF.co API integration specific constants
+const PDF_CO_HOSTNAME = 'api.pdf.co';
+import { ENHANCED_GEMINI_PROMPT } from './gemini-prompt-enhanced';
 
-IMPORTANT INSTRUCTIONS:
-Output MUST be a valid JSON object only. Do not include any explanatory text or code markdown.
+// API Keys from environment variables (only define what's used)
+const PDFCO_API_KEY = process.env.PDF_UPLOAD_SECRET;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-The JSON object must have three top-level properties: "metadata", "coverages" (array), and "planNotes" (array).
+// S3 configuration (DigitalOcean Spaces)
+const DO_SPACES_KEY = process.env.DO_SPACES_KEY;
+const DO_SPACES_SECRET = process.env.DO_SPACES_SECRET;
+const DO_SPACES_REGION = process.env.DO_SPACES_REGION || 'us-east-1';
+const DO_SPACES_BUCKET = process.env.DO_SPACES_BUCKET;
 
-1. **METADATA (object):**
-   * documentType: (string) e.g., "Group Insurance Quote", "Renewal Report", "Market Analysis"
-   * clientName: (string) The name of the client company or organization.
-   * carrierName: (string) The name of the insurance carrier that provided this document.
-   * effectiveDate: (string) YYYY-MM-DD format. Date the policy or quote becomes effective.
-   * quoteDate: (string) YYYY-MM-DD format. Date the quote was issued.
-   * policyNumber: (string, optional) Current or proposed policy number, if available.
-   * planOptionName: (string, optional) If the document details a single plan option, state its name.
-   * totalProposedMonthlyPlanPremium: (number, optional) The total monthly premium for the entire proposed plan.
-   * rateGuarantees: (string, optional) Text describing any rate guarantees.
+// S3 (DigitalOcean Spaces) configuration
+const s3Client = new S3Client({
+  region: DO_SPACES_REGION,
+  credentials: {
+    accessKeyId: DO_SPACES_KEY as string,
+    secretAccessKey: DO_SPACES_SECRET as string,
+  },
+  endpoint: `https://${DO_SPACES_REGION}.digitaloceanspaces.com`,
+});
 
-2. **COVERAGES (array of objects):**
-   For each coverage type mentioned in the document, create an object with:
-   * coverageType: (string) Must be one of: "Basic Life", "AD&D", "Dependent Life", "Critical Illness", "LTD", "STD", 
-     "Extended Healthcare", "Dental Care", "Vision", "EAP", "Health Spending Account", "HSA"
-   * carrierName: (string) The carrier offering this specific coverage.
-   * planOptionName: (string) Which plan option this coverage belongs to.
-   * premium: (number) The premium amount, as a numeric value.
-   * monthlyPremium: (number) Same as premium, for consistency.
-   * unitRate: (number) The rate per unit of coverage, as a numeric value.
-   * unitRateBasis: (string) Description of the unit basis, e.g., "per $1,000", "per employee".
-   * volume: (number) Total coverage volume, as a numeric value.
-   * lives: (number) Number of covered individuals.
-   * benefitDetails: (object) Coverage-specific details structure varies by coverage type.
-     Include all relevant details found in the document.
-
-3. **PLAN NOTES (array of objects):**
-   * Capture any important notes, exclusions, conditions, or special provisions mentioned in the document.
-   * Each note should be an object with a "note" property containing the text.
-
-IMPORTANT FORMAT NOTES:
-* Monetary values should be numeric (not strings with currency symbols or commas).
-* Dates should be in YYYY-MM-DD format.
-* Use null for missing or N/A fields, not empty strings.
-* Use consistent field names exactly as specified.
-
-Here is the extracted text to parse:
-
-TEXT_CONTENT:
-{{TEXT_CONTENT}}
-`;
+// Define regex patterns at the module level for better performance
+const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+const fileExtensionRegex = /\.\w+$/;
 
 /**
- * Helper function to make a Promise-based HTTPS request
+ * Type definitions for API responses
  */
-function httpsRequest(options: https.RequestOptions, postData?: string): Promise<any> {
+interface PlanOptionTotal {
+  planOptionName: string;
+  totalMonthlyPremium: number;
+}
+
+// Rate guarantee information with period and details
+interface RateGuarantee {
+  coverageType?: string;
+  duration?: string;
+  endDate?: string;
+  period?: string;
+  details?: string;
+}
+
+// Document metadata including client, carrier, dates, and totals
+interface Metadata {
+  documentType?: string;
+  clientName?: string;
+  carrierName?: string;
+  effectiveDate?: string;
+  quoteDate?: string;
+  policyNumber?: string;
+  planOptionName?: string;
+  totalProposedMonthlyPlanPremium?: number;
+  planOptionTotals?: PlanOptionTotal[];
+  rateGuarantees?: RateGuarantee[];
+}
+
+// Benefit details for coverage entries, allowing for flexible key-value pairs
+interface BenefitDetails {
+  [key: string]: string | number | null | undefined | Record<string, unknown>;
+  note?: string;
+}
+
+// Coverage entry representing a single insurance coverage
+interface CoverageEntry {
+  coverageType: string;
+  carrierName: string;
+  planOptionName: string;
+  premium: number;
+  monthlyPremium: number;
+  unitRate: number;
+  unitRateBasis: string;
+  volume: number;
+  lives: number;
+  benefitDetails: BenefitDetails;
+}
+
+// Plan notes for additional document information
+interface PlanNote {
+  note: string;
+}
+
+// Structure of the parsed response from Gemini API
+interface GeminiParsedResponse {
+  metadata?: Metadata;
+  coverages?: CoverageEntry[];
+  planNotes?: PlanNote[];
+}
+
+// Options for HTTPS request options interface
+interface HttpsRequestOptions {
+  hostname: string;
+  port?: number;
+  path: string;
+  method: string;
+  headers: Record<string, string>;
+}
+
+// HTTPS response data structure
+interface HttpsResponseData {
+  statusCode?: number;
+  data?: string;
+  error?: string;
+  presignedUrl?: string;
+  url?: string;
+  rawResponse?: string;
+}
+
+// Gemini API error response
+interface GeminiErrorResponse {
+  error: {
+    code: number;
+    message: string;
+    status: string;
+  };
+}
+
+// Gemini API success response
+interface GeminiSuccessResponse {
+  candidates: {
+    content: {
+      parts: {
+        text: string;
+      }[];
+    };
+    finishReason: string;
+    safetyRatings: {
+      category: string;
+      probability: string;
+    }[];
+  }[];
+}
+
+/**
+ * Helper function to make HTTPS requests
+ * @param options HTTPS request options
+ * @param data Optional data to send in the request body
+ * @returns Promise resolving to the response data
+ */
+function makeHttpsRequest(
+  options: HttpsRequestOptions,
+  data?: string
+): Promise<HttpsResponseData> {
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
-      let data = '';
-      
+      let responseData = '';
+
       res.on('data', (chunk) => {
-        data += chunk;
+        responseData += chunk;
       });
-      
+
       res.on('end', () => {
-        try {
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-            const parsedData = JSON.parse(data);
-            resolve(parsedData);
-          } else {
-            reject(new Error(`HTTP Error: ${res.statusCode} ${data}`));
-          }
-        } catch (error) {
-          reject(new Error(`Error parsing response: ${error}`));
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({
+            statusCode: res.statusCode,
+            data: responseData,
+            rawResponse: responseData,
+          });
+        } else {
+          // For non-2xx responses, populate the error field
+          resolve({
+            statusCode: res.statusCode,
+            error: `HTTP Error: ${res.statusCode} ${res.statusMessage}. Response: ${responseData.substring(0, 200)}${responseData.length > 200 ? '...' : ''}`,
+            data: responseData, // Still provide data as it might contain useful error details
+            rawResponse: responseData,
+          });
         }
       });
     });
-    
+
     req.on('error', (error) => {
       reject(error);
     });
-    
-    if (postData) {
-      req.write(postData);
+
+    if (data) {
+      req.write(data);
     }
-    
+
     req.end();
   });
 }
 
 /**
- * Get a presigned URL from PDF.co API to upload a file
+ * Extract JSON from a Gemini API response text, handling markdown code blocks
+ * @param text The response text from Gemini API
+ * @returns Parsed JSON object or null if parsing fails
  */
-async function getPresignedUrl(fileName: string): Promise<{ presignedUrl: string, url: string }> {
-  if (!PDFCO_API_KEY) {
-    throw new Error('PDF.co API key not configured in environment variables');
-  }
-  
-  const options = {
-    hostname: 'api.pdf.co',
-    path: `/v1/file/upload/get-presigned-url?contenttype=application/octet-stream&name=${encodeURIComponent(fileName)}`,
-    method: 'GET',
-    headers: {
-      'x-api-key': PDFCO_API_KEY
+function extractJsonFromGeminiResponse(
+  text: string
+): GeminiParsedResponse | null {
+  try {
+    // First, try to extract JSON from code blocks using regex
+    const match = text.match(jsonBlockRegex);
+    if (match?.[1]) {
+      try {
+        return JSON.parse(match[1]);
+      } catch (e) {
+        console.warn('Failed to parse JSON from code block:', e);
+      }
     }
-  };
-  
-  const response = await httpsRequest(options);
-  
-  if (response.error) {
-    throw new Error(`PDF.co Error: ${response.message}`);
+
+    // If no code block or parsing failed, try to parse the entire text as JSON
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      console.warn('Failed to parse entire text as JSON:', e);
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error extracting JSON from Gemini response:', error);
+    return null;
   }
-  
+}
+
+/**
+ * Validates coverage entries to ensure they have all required fields
+ * @param coverages Array of coverage entries to validate
+ * @returns Object containing valid coverages and counts
+ */
+function validateCoverages(coverages: CoverageEntry[]): {
+  validCoverages: CoverageEntry[];
+  validCount: number;
+  invalidCount: number;
+} {
+  if (!coverages || !Array.isArray(coverages)) {
+    return { validCoverages: [], validCount: 0, invalidCount: 0 };
+  }
+
+  const validCoverages: CoverageEntry[] = [];
+  let invalidCount = 0;
+
+  for (const coverage of coverages) {
+    // Check for required fields
+    if (
+      !coverage.coverageType ||
+      !coverage.carrierName ||
+      !coverage.planOptionName ||
+      typeof coverage.premium !== 'number' ||
+      typeof coverage.monthlyPremium !== 'number' ||
+      typeof coverage.unitRate !== 'number' ||
+      !coverage.unitRateBasis ||
+      typeof coverage.volume !== 'number' ||
+      typeof coverage.lives !== 'number' ||
+      !coverage.benefitDetails
+    ) {
+      console.warn('Invalid coverage entry:', coverage);
+      invalidCount++;
+      continue;
+    }
+
+    // Add validated coverage to the list
+    validCoverages.push(coverage);
+  }
+
   return {
-    presignedUrl: response.presignedUrl,
-    url: response.url
+    validCoverages,
+    validCount: validCoverages.length,
+    invalidCount,
   };
 }
 
 /**
- * Upload a file to PDF.co's presigned URL
+ * Creates default coverage entries when no valid coverages are found
+ * @param metadata Metadata from the Gemini API response
+ * @returns Array containing a default coverage entry
  */
-async function uploadFileToPdfCo(presignedUrl: string, fileBuffer: Buffer): Promise<void> {
-  const parsedUrl = new URL(presignedUrl);
-  
-  const options = {
-    hostname: parsedUrl.hostname,
-    path: parsedUrl.pathname + parsedUrl.search,
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': fileBuffer.length
-    }
+function createDefaultCoverages(metadata?: Metadata): CoverageEntry[] {
+  const defaultCoverage: CoverageEntry = {
+    coverageType: 'Unknown',
+    carrierName: metadata?.carrierName || 'Unknown Carrier',
+    planOptionName: metadata?.planOptionName || 'Default Plan',
+    premium: metadata?.totalProposedMonthlyPlanPremium || 0,
+    monthlyPremium: metadata?.totalProposedMonthlyPlanPremium || 0,
+    unitRate: 0,
+    unitRateBasis: 'Unknown',
+    volume: 0,
+    lives: 0,
+    benefitDetails: {
+      note: 'Default coverage created as no valid coverages were found in the document.',
+    },
   };
-  
-  return new Promise((resolve, reject) => {
-    const req = https.request(options, (res) => {
-      if (res.statusCode === 200) {
-        resolve();
-      } else {
-        let errorData = '';
-        res.on('data', (chunk) => { errorData += chunk; });
-        res.on('end', () => {
-          reject(new Error(`Upload failed: ${res.statusCode} ${errorData}`));
-        });
-      }
+
+  return [defaultCoverage];
+}
+
+/**
+ * Options for HTTPS requests
+ */
+interface HttpsRequestOptions {
+  hostname: string;
+  path: string;
+  method: string;
+  headers: Record<string, string>;
+}
+
+/**
+ * HTTPS response data structure
+ */
+interface HttpsResponseData {
+  statusCode?: number;
+  data?: string;
+  error?: string;
+  presignedUrl?: string;
+  url?: string;
+  rawResponse?: string;
+}
+
+/**
+ * File upload parameters
+ */
+interface UploadFileParams {
+  userId: string;
+  file: Buffer;
+  filename: string;
+  contentType: string;
+  type: 'upload' | 'processed';
+}
+
+/**
+ * File upload result
+ */
+interface UploadFileResult {
+  key: string;
+  url: string;
+}
+
+/**
+ * File URL parameters
+ */
+interface GetFileUrlParams {
+  userId: string;
+  filename: string;
+  type: 'upload' | 'processed';
+}
+
+/**
+ * Uploads a file to DigitalOcean Spaces (S3-compatible storage)
+ * @param params Upload parameters
+ * @returns Promise resolving to the file upload result
+ */
+async function uploadFile(params: UploadFileParams): Promise<UploadFileResult> {
+  // Get folder key based on user ID and document type
+  const folderKey = `${params.userId}/${params.type}`;
+
+  // Generate unique key for the file
+  const fileKey = `${folderKey}/${params.filename}`;
+
+  // Command to upload file to S3
+  const command = new PutObjectCommand({
+    Bucket: DO_SPACES_BUCKET,
+    Key: fileKey,
+    Body: params.file,
+    ContentType: params.contentType,
+  });
+
+  try {
+    await s3Client.send(command);
+    const url = await getSignedUrl(
+      s3Client,
+      new GetObjectCommand({
+        Bucket: DO_SPACES_BUCKET,
+        Key: fileKey,
+      }),
+      { expiresIn: 3600 }
+    );
+
+    return { key: fileKey, url };
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to upload file: ${errorMessage}`);
+  }
+}
+
+/**
+ * Generates a pre-signed URL for accessing a file in S3
+ * @param params File URL parameters
+ * @returns Promise resolving to the pre-signed URL
+ */
+async function getFileUrl(params: GetFileUrlParams): Promise<string> {
+  // Generate the file key based on parameters
+  const fileKey = `${params.userId}/${params.type}/${params.filename}`;
+
+  // Create a GetObject command for the file
+  const command = new GetObjectCommand({
+    Bucket: DO_SPACES_BUCKET,
+    Key: fileKey,
+  });
+
+  try {
+    return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to generate pre-signed URL: ${errorMessage}`);
+  }
+}
+
+/**
+ * Extracts text from a PDF document using PDF.co API
+ * @param fileBuffer The PDF file buffer
+ * @returns Promise resolving to the extracted text
+ */
+async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
+  const PDF_CO_HOSTNAME = 'api.pdf.co';
+  const PDFCO_API_KEY = process.env.PDF_UPLOAD_SECRET;
+
+  if (!PDFCO_API_KEY) {
+    throw new Error('PDF.co API key is missing');
+  }
+
+  try {
+    // Validate the buffer
+    if (!fileBuffer || fileBuffer.length === 0) {
+      throw new Error('Empty or invalid PDF buffer');
+    }
+
+    // Check if buffer is likely a PDF (starts with PDF header)
+    const isPdfHeader = fileBuffer.slice(0, 4).toString() === '%PDF';
+    if (!isPdfHeader) {
+      throw new Error('File does not appear to be a valid PDF (missing %PDF header)');
+    }
+
+    // First upload the file to DigitalOcean Spaces
+    console.log('[INFO] Starting PDF text extraction...');
+    console.log('[DEBUG] Uploading PDF to DigitalOcean Spaces first...');
+    
+    // Generate a unique filename for this upload
+    const timestamp = new Date().getTime();
+    const randomString = Math.random().toString(36).substring(2, 10);
+    const filename = `pdf-extraction-${timestamp}-${randomString}.pdf`;
+    
+    // Upload to DigitalOcean Spaces
+    const uploadResult = await uploadFile({
+      userId: 'system', // Using 'system' as the user ID for this temporary file
+      file: fileBuffer,
+      filename: filename,
+      contentType: 'application/pdf',
+      type: 'upload'
     });
     
-    req.on('error', reject);
-    req.write(fileBuffer);
-    req.end();
-  });
+    console.log(`[DEBUG] File uploaded to DigitalOcean Spaces: ${uploadResult.url}`);
+    
+    // Now send the URL to PDF.co for text extraction
+    console.log('[DEBUG] Sending URL to PDF.co for text extraction...');
+    
+    const extractTextOptions: HttpsRequestOptions = {
+      hostname: PDF_CO_HOSTNAME,
+      path: '/v1/pdf/convert/to/text',
+      method: 'POST',
+      headers: {
+        'x-api-key': PDFCO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    };
+    
+    const extractionResponse = await makeHttpsRequest(
+      extractTextOptions,
+      JSON.stringify({
+        url: uploadResult.url,
+        name: filename,
+        async: false
+      })
+    );
+
+    console.log(`[DEBUG] PDF.co extraction response status: ${extractionResponse.statusCode}`);
+    if (extractionResponse.error || !extractionResponse.data) {
+      console.error('[ERROR] PDF.co extraction request failed:', {
+        error: extractionResponse.error,
+        statusCode: extractionResponse.statusCode,
+        rawResponse: extractionResponse.rawResponse || '(No raw response)'
+      });
+      
+      if (extractionResponse.statusCode === 402) {
+        throw new Error('PDF.co returned Payment Required error. Please check your PDF.co account, credits, or subscription.');
+      }
+      
+      throw new Error(`Failed to process PDF: ${extractionResponse.error || 'Empty response'}`);
+    }
+    
+    // Log the full response to inspect its structure
+    console.log('[DEBUG] PDF.co extraction complete response:', extractionResponse.data);
+
+    // Parse the response
+    let responseData;
+    try {
+      responseData = JSON.parse(extractionResponse.data);
+      console.log('[DEBUG] Parsed extraction response:', responseData);
+    } catch (parseError) {
+      console.error('[ERROR] Failed to parse PDF.co response:', parseError);
+      throw new Error(`Failed to parse PDF.co response: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+    }
+    
+    // Check if the response contains an error message
+    if (responseData.error === true || (typeof responseData.error === 'string' && responseData.error.length > 0)) {
+      console.error('[ERROR] PDF.co returned an error:', responseData.error);
+      if (String(responseData.error).includes('Payment Required') || responseData.status === 402) {
+        throw new Error('PDF.co returned Payment Required error. Please check your PDF.co account, credits, or subscription.');
+      }
+      throw new Error(`PDF.co error: ${responseData.error}`);
+    }
+    
+    // Handle the response which might contain text directly or provide a URL to fetch the result
+    if (responseData.url) {
+      console.log('[DEBUG] PDF.co returned a result URL, fetching text content:', responseData.url);
+      
+      // Parse URL to get hostname and path
+      const resultUrl = new URL(responseData.url);
+      
+      // Create request options for fetching the result
+      const resultOptions = {
+        method: 'GET',
+        hostname: resultUrl.hostname,
+        path: resultUrl.pathname + resultUrl.search,
+        headers: {}
+      };
+      
+      // Fetch the result from the provided URL
+      const resultResponse = await makeHttpsRequest(resultOptions);
+      
+      if (resultResponse.error || !resultResponse.data) {
+        throw new Error(`Failed to fetch extracted text from result URL: ${resultResponse.error || 'Empty response'}`);
+      }
+      
+      console.log('[DEBUG] Successfully retrieved text content from URL');
+      console.log(`[DEBUG] Text extraction successful, extracted ${resultResponse.data.length} characters`);
+      
+      // Log a sample of the extracted text
+      if (resultResponse.data.length < 100) {
+        console.log(`[DEBUG] Extracted text sample: ${resultResponse.data}`);
+      } else {
+        console.log(`[DEBUG] Extracted text sample: ${resultResponse.data.substring(0, 100)}...`);
+      }
+      
+      return resultResponse.data; // Return the extracted text
+    } else if (responseData.text) {
+      // Also support the case where text is directly in the response
+      console.log('[DEBUG] Text extraction successful, found text directly in response');
+      return responseData.text;
+    }
+    
+    // If we got here, we didn't get what we expected
+    throw new Error('No text content or result URL found in PDF.co response');
+    
+  } catch (error) {
+    console.error('[ERROR] PDF extraction failed:', {
+      error: error instanceof Error ? error.message : String(error),
+      errorObject: error
+    });
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**
- * Extract text from a PDF file using PDF.co API
+ * Creates the Gemini API request options
+ * @param apiKey Gemini API key
+ * @returns HttpsRequestOptions for Gemini API
  */
-async function extractTextFromPdf(fileUrl: string): Promise<string> {
-  if (!PDFCO_API_KEY) {
-    throw new Error('PDF.co API key not configured in environment variables');
-  }
-  
-  const options = {
-    hostname: 'api.pdf.co',
-    path: '/v1/pdf/convert/to/text',
+function createGeminiRequestOptions(apiKey: string): HttpsRequestOptions {
+  return {
+    hostname: 'generativelanguage.googleapis.com',
+    path: `/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${apiKey}`,
     method: 'POST',
     headers: {
-      'x-api-key': PDFCO_API_KEY,
-      'Content-Type': 'application/json'
-    }
+      'Content-Type': 'application/json',
+    },
   };
-  
-  const postData = JSON.stringify({
-    url: fileUrl,
-    inline: true,
-    async: false
-  });
-  
-  const response = await httpsRequest(options, postData);
-  
-  if (response.error) {
-    throw new Error(`PDF.co Text Extraction Error: ${response.message}`);
-  }
-  
-  return response.body || '';
 }
 
 /**
- * Process extracted text with Gemini API to structure the data
+ * Creates the payload for the Gemini API request
+ * @param extractedText Text extracted from the PDF
+ * @returns Payload object for the Gemini API
  */
-async function structureDataWithGemini(extractedText: string, fileName: string, category: string): Promise<any> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('Gemini API key not configured in environment variables');
-  }
-  
-  // Replace placeholders in the prompt
-  const prompt = GEMINI_PROMPT_TEMPLATE
-    .replace('{{FILE_NAME}}', fileName)
-    .replace('{{DOCUMENT_CATEGORY}}', category)
-    .replace('{{TEXT_CONTENT}}', extractedText);
-  
-  const requestData = JSON.stringify({
+function createGeminiPayload(extractedText: string): object {
+  return {
     contents: [
       {
         parts: [
-          { text: prompt }
-        ]
-      }
+          {
+            text: `${ENHANCED_GEMINI_PROMPT}\n\nHere's the document content to analyze:\n\n${extractedText}`,
+          },
+        ],
+      },
     ],
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.1,
+      topK: 40,
+      topP: 0.95,
       maxOutputTokens: 58192,
-      topP: 0.8,
-      topK: 40
-    }
-  });
-  
-  const options = {
-    hostname: 'generativelanguage.googleapis.com',
-    path: `/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${GEMINI_API_KEY}`,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
+      responseMimeType: 'text/plain',
+    },
   };
-  
+}
+
+/**
+ * Processes the Gemini API response and extracts the structured data
+ * @param responseText Raw text response from Gemini API
+ * @returns Parsed and validated response data
+ */
+function processGeminiResponse(responseText: string): GeminiParsedResponse {
+  // Parse the JSON response from Gemini
+  const parsedJson = extractJsonFromGeminiResponse(responseText);
+  if (!parsedJson) {
+    throw new Error('Failed to parse JSON from Gemini response');
+  }
+
+  // Validate the parsed data
+  const validationResult = validateCoverages(parsedJson.coverages || []);
+
+  // If no valid coverages, create default ones
+  let processedCoverages = validationResult.validCoverages;
+  if (processedCoverages.length === 0) {
+    processedCoverages = createDefaultCoverages(parsedJson.metadata);
+  }
+
+  // Return the structured response
+  return {
+    metadata: parsedJson.metadata,
+    coverages: processedCoverages,
+    planNotes: parsedJson.planNotes,
+  };
+}
+
+/**
+ * Structures data from extracted PDF text using Google Gemini API
+ * @param extractedText Text extracted from the PDF
+ * @returns Promise resolving to the structured data
+ */
+async function structureDataWithGemini(
+  extractedText: string
+): Promise<GeminiParsedResponse> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Gemini API key is missing');
+  }
+
   try {
-    const response = await httpsRequest(options, requestData);
-    
-    if (response.error) {
-      throw new Error(`Gemini API Error: ${JSON.stringify(response.error)}`);
+    // Prepare and make the request to Gemini API
+    const geminiOptions = createGeminiRequestOptions(GEMINI_API_KEY);
+    const payload = createGeminiPayload(extractedText);
+
+    const geminiResponse = await makeHttpsRequest(
+      geminiOptions,
+      JSON.stringify(payload)
+    );
+
+    if (geminiResponse.error || !geminiResponse.data) {
+      throw new Error(
+        `Failed to get response from Gemini API: ${geminiResponse.error || 'Empty response'}`
+      );
     }
-    
-    if (!response.candidates || response.candidates.length === 0) {
-      throw new Error('No response from Gemini API');
-    }
-    
-    const textContent = response.candidates[0].content.parts[0]?.text;
-    if (!textContent) {
-      throw new Error('Empty response from Gemini API');
-    }
-    
+
+    let responseData: GeminiSuccessResponse | GeminiErrorResponse;
     try {
-      // Check if response is wrapped in markdown code block and extract the JSON
-      let jsonContent = textContent;
-      
-      // Handle markdown code block format (```json ... ```)
-      if (textContent.startsWith('```json') || textContent.startsWith('```')) {
-        const codeBlockStartIndex = textContent.indexOf('{');
-        const codeBlockEndIndex = textContent.lastIndexOf('}');
-        
-        if (codeBlockStartIndex !== -1 && codeBlockEndIndex !== -1 && codeBlockEndIndex > codeBlockStartIndex) {
-          jsonContent = textContent.substring(codeBlockStartIndex, codeBlockEndIndex + 1);
-        }
-      }
-      
-      // Parse the JSON response
-      const parsedJson = JSON.parse(jsonContent);
-      
-      // Validate and ensure the response has the required structure
-      const validatedResponse = {
-        metadata: parsedJson.metadata || {
-          documentType: 'Unknown Type',
-          clientName: 'Unknown Client',
-          carrierName: 'Unknown Carrier',
-          effectiveDate: new Date().toISOString().split('T')[0], // today's date as fallback
-          quoteDate: new Date().toISOString().split('T')[0],
-          fileName: fileName,
-          fileCategory: category
-        },
-        coverages: Array.isArray(parsedJson.coverages) ? parsedJson.coverages : [],
-        planNotes: Array.isArray(parsedJson.planNotes) ? parsedJson.planNotes : [],
-        originalFileName: fileName,
-        category: category
-      };
-      
-      // Ensure metadata has required fields
-      if (validatedResponse.metadata && typeof validatedResponse.metadata === 'object') {
-        validatedResponse.metadata.fileName = validatedResponse.metadata.fileName || fileName;
-        validatedResponse.metadata.fileCategory = validatedResponse.metadata.fileCategory || category;
-      }
-      
-      // Create at least one default coverage if none exists
-      if (!validatedResponse.coverages || validatedResponse.coverages.length === 0) {
-        console.log('No coverages found in API response, creating default coverage');
-        validatedResponse.coverages = [{
-          coverageType: 'Basic Life',
-          carrierName: validatedResponse.metadata?.carrierName || 'Unknown Carrier',
-          planOptionName: 'Default Plan',
-          premium: 0,
-          monthlyPremium: 0,
-          unitRate: 0,
-          unitRateBasis: 'per $1,000',
-          volume: 0,
-          lives: 0,
-          benefitDetails: {
-            note: 'Coverage details could not be extracted from document'
-          }
-        }];
-      }
-      
-      return validatedResponse;
-    } catch (jsonError) {
-      const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError);
-      throw new Error(`Failed to parse Gemini response as JSON: ${textContent.substring(0, 200)}...\nError: ${errorMessage}`);
+      responseData = JSON.parse(geminiResponse.data);
+    } catch (parseError) {
+      throw new Error(
+        `Failed to parse Gemini API response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+      );
     }
+
+    // Check for error in response
+    if ('error' in responseData) {
+      throw new Error(
+        `Gemini API error: ${responseData.error.message || 'Unknown error'}`
+      );
+    }
+
+    // Extract the response text from the Gemini API response
+    const responseText =
+      responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!responseText) {
+      throw new Error('Empty response text from Gemini API');
+    }
+
+    // Process the response
+    return processGeminiResponse(responseText);
   } catch (error) {
-    console.error('Gemini API error:', error);
-    // Safely handle error messages regardless of error object structure
-    const errorMessage = error instanceof Error ? error.message : 
-      typeof error === 'object' && error !== null && 'message' in error ? String(error.message) : 
-      String(error);
-    throw new Error(`Error calling Gemini API: ${errorMessage}`);
+    throw new Error(
+      `Error structuring data with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
-export async function POST(req: NextRequest) {
-  if (!PDFCO_API_KEY || !GEMINI_API_KEY) {
-    return NextResponse.json(
-      { error: 'API keys not configured. Please set PDF-UPLOAD-SECRET and GEMINI_API_KEY in environment variables.' },
-      { status: 500 }
-    );
+/**
+ * Main handler for the POST request to process document
+ */
+/**
+ * Custom error class to help identify which step of processing failed
+ */
+class ProcessingError extends Error {
+  stage: string;
+
+  constructor(message: string, stage: string) {
+    super(message);
+    this.name = 'ProcessingError';
+    this.stage = stage;
   }
-  
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    // Parse the incoming form data
-    const formData = await req.formData();
-    const file = formData.get('file') as File | null;
-    const category = formData.get('category') as string | null;
-    
-    // Validate inputs
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    // Get the authenticated user
+    const user = await currentUser();
+
+    if (!user || !user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please sign in to upload files' },
+        { status: 401 }
+      );
     }
-    
-    if (file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'Invalid file type, only PDF is accepted' }, { status: 400 });
+
+    const userId = user.id;
+
+    // Get form data
+    const formData = await request.formData().catch((error) => {
+      throw new ProcessingError(
+        `Failed to parse form data: ${error.message}`,
+        'form_data'
+      );
+    });
+
+    const file = formData.get('file');
+
+    if (!file || !(file instanceof File)) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
-    
-    if (!category) {
-      return NextResponse.json({ error: 'No category provided' }, { status: 400 });
+
+    // Add additional file validation
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      return NextResponse.json(
+        {
+          error: 'Invalid file format',
+          details: 'Only PDF files are supported',
+        },
+        { status: 400 }
+      );
     }
-    
-    console.log('Processing file:', file.name, file.size, file.type);
-    console.log('Category:', category);
-    
-    // Read the file as an ArrayBuffer and convert to Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
-    
-    // Step 1: Get a presigned URL from PDF.co
-    console.log('Step 1: Getting presigned URL from PDF.co');
-    const { presignedUrl, url: uploadedFileUrl } = await getPresignedUrl(file.name);
-    
-    // Step 2: Upload the file to the presigned URL
-    console.log('Step 2: Uploading file to PDF.co');
-    await uploadFileToPdfCo(presignedUrl, fileBuffer);
-    
-    // Step 3: Extract text from the PDF using PDF.co API
-    console.log('Step 3: Extracting text from PDF');
-    const extractedText = await extractTextFromPdf(uploadedFileUrl);
-    console.log(`Extracted text length: ${extractedText.length} characters`);
-    
-    // Step 4: Process the extracted text with Gemini API
-    console.log('Step 4: Processing with Gemini API');
-    const structuredData = await structureDataWithGemini(extractedText, file.name, category);
-    
-    // Return the successful response with all data
-    return NextResponse.json({
-      message: 'File processed successfully',
-      originalFileName: file.name,
-      category: category,
-      // Add original filename and category to the structured data for frontend use
-      data: {
-        ...structuredData,
-        metadata: {
-          ...structuredData.metadata,
-          fileName: file.name,
-          fileCategory: category
-        }
+
+    // Check file size (10MB limit)
+    const TEN_MB = 10 * 1024 * 1024;
+    if (file.size > TEN_MB) {
+      return NextResponse.json(
+        { error: 'File too large', details: 'Maximum file size is 10MB' },
+        { status: 400 }
+      );
+    }
+
+    // Convert the file to a buffer
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    // Upload the file to S3 storage first
+    const uploadResult = await uploadFile({
+      userId,
+      file: fileBuffer,
+      filename: file.name,
+      contentType: file.type || 'application/pdf',
+      type: 'upload',
+    }).catch((error) => {
+      throw new ProcessingError(
+        `Failed to upload file: ${error.message}`,
+        'file_upload'
+      );
+    });
+
+    // Extract text from the PDF using PDF.co API
+    console.log('[INFO] Starting PDF text extraction...');
+    let extractedText;
+    try {
+      extractedText = await extractTextFromPdf(fileBuffer);
+      console.log('[INFO] PDF text extraction completed successfully');
+    } catch (error) {
+      console.error('[ERROR] PDF extraction error in main handler:', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new ProcessingError(
+        `Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`,
+        'pdf_extraction'
+      );
+    }
+
+    // Process extracted text with Gemini API
+    const structuredData = await structureDataWithGemini(extractedText).catch(
+      (error) => {
+        throw new ProcessingError(
+          `Failed to process with Gemini API: ${error.message}`,
+          'ai_processing'
+        );
       }
+    );
+
+    // Save the processed data as a JSON file
+    const processedData = {
+      ...structuredData,
+      originalFileUrl: uploadResult.url,
+      processedAt: new Date().toISOString(),
+    };
+
+    // Save processed data as JSON
+    const processedFilename = `${file.name.replace(fileExtensionRegex, '')}-processed.json`;
+    const processedResult = await uploadFile({
+      userId,
+      file: Buffer.from(JSON.stringify(processedData, null, 2)),
+      filename: processedFilename,
+      contentType: 'application/json',
+      type: 'processed',
+    }).catch((error) => {
+      throw new ProcessingError(
+        `Failed to save processed data: ${error.message}`,
+        'save_results'
+      );
+    });
+
+    // We already have the download URL from the upload result
+    const downloadUrl = processedResult.url;
+
+    return NextResponse.json({
+      success: true,
+      processedData,
+      url: uploadResult.url,
+      downloadUrl,
     });
   } catch (error) {
-    console.error('Error processing document:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: 'Processing failed', details: errorMessage }, { status: 500 });
+    console.error('[ERROR] Document processing failed:', {
+      error: error instanceof Error ? error.message : String(error),
+      stage: error instanceof ProcessingError ? error.stage : 'unknown'
+    });
+    
+    const errorMessage = getErrorMessage(error);
+    const errorStage =
+      error instanceof ProcessingError ? error.stage : 'unknown';
+    const statusCode =
+      error instanceof ProcessingError && error.stage === 'authentication'
+        ? 401
+        : 500;
+
+    return NextResponse.json(
+      {
+        error: errorMessage,
+        stage: errorStage,
+        details: error instanceof Error ? error.message : String(error)
+      },
+      { status: statusCode }
+    );
   }
+}
+
+/**
+ * Get a specific error message based on the error content
+ */
+function getErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Failed to process document';
+  }
+
+  const message = error.message.toLowerCase();
+
+  if (message.includes('auth')) {
+    return 'Authentication error';
+  }
+  if (message.includes('pdf-parse') || message.includes('pdf')) {
+    return 'PDF extraction error';
+  }
+  if (message.includes('gemini') || message.includes('generate')) {
+    return 'AI processing error';
+  }
+  if (message.includes('storage') || message.includes('upload')) {
+    return 'File storage error';
+  }
+
+  return 'Failed to process document';
 }

@@ -1,30 +1,36 @@
 'use client';
-
-import React from 'react';
+import { Button } from '@repo/design-system/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@repo/design-system/components/ui/card';
+import { BarChart, ChevronRight, FileText, FileUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Header } from '../components/header';
-import { Button } from '@repo/design-system/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
-import { FileText, BarChart, FileUp, ChevronRight } from 'lucide-react';
 
 export default function QuoteToolPage() {
   const router = useRouter();
 
   return (
     <>
-      <Header pages={["Dashboard"]} page="Quote Tool">
+      <Header pages={['Dashboard']} page="Quote Tool">
         <h2 className="text-xl font-semibold">Quote Tool</h2>
       </Header>
-      
+
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl p-6">
           <div className="mb-8">
             <h2 className="text-2xl font-bold">Welcome to the Quote Tool</h2>
             <p className="text-muted-foreground">
-              AI-powered insurance document parsing and market comparison for benefits consultants
+              AI-powered insurance document parsing and market comparison for
+              benefits consultants
             </p>
           </div>
-          
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
             <Card className="shadow-sm">
               <CardHeader>
@@ -38,18 +44,22 @@ export default function QuoteToolPage() {
               </CardHeader>
               <CardContent>
                 <p>
-                  Upload insurance documents from different carriers to extract key information using AI. 
-                  The tool categorizes documents as Current, Renegotiated, or Alternative quotes for detailed comparison.
+                  Upload insurance documents from different carriers to extract
+                  key information using AI. The tool categorizes documents as
+                  Current, Renegotiated, or Alternative quotes for detailed
+                  comparison.
                 </p>
               </CardContent>
               <CardFooter>
-                <Button onClick={() => router.push('/quote-tool/document-parser')}>
+                <Button
+                  onClick={() => router.push('/quote-tool/document-parser')}
+                >
                   Open Document Parser
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </CardFooter>
             </Card>
-            
+
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center">
@@ -62,19 +72,25 @@ export default function QuoteToolPage() {
               </CardHeader>
               <CardContent>
                 <p>
-                  View comprehensive comparisons between current plans, renegotiated options, and alternative carriers.
-                  Analyze premiums, coverage details, and potential cost savings across the market.
+                  View comprehensive comparisons between current plans,
+                  renegotiated options, and alternative carriers. Analyze
+                  premiums, coverage details, and potential cost savings across
+                  the market.
                 </p>
               </CardContent>
               <CardFooter>
-                <Button onClick={() => router.push('/quote-tool/document-parser/results')}>
+                <Button
+                  onClick={() =>
+                    router.push('/quote-tool/document-parser/results')
+                  }
+                >
                   View Comparisons
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </CardFooter>
             </Card>
           </div>
-          
+
           <div className="mt-8">
             <Card className="shadow-sm">
               <CardHeader>
@@ -86,19 +102,24 @@ export default function QuoteToolPage() {
               <CardContent>
                 <ol className="list-decimal pl-4 space-y-2">
                   <li>
-                    <strong>Upload Documents</strong> - Use the Document Parser to upload insurance quote PDFs
+                    <strong>Upload Documents</strong> - Use the Document Parser
+                    to upload insurance quote PDFs
                   </li>
                   <li>
-                    <strong>Categorize</strong> - Label documents as Current, Renegotiated, or Alternative quotes
+                    <strong>Categorize</strong> - Label documents as Current,
+                    Renegotiated, or Alternative quotes
                   </li>
                   <li>
-                    <strong>AI Processing</strong> - Our AI engine extracts structured data from your documents
+                    <strong>AI Processing</strong> - Our AI engine extracts
+                    structured data from your documents
                   </li>
                   <li>
-                    <strong>Market Comparison</strong> - View side-by-side comparison of all uploaded quotes
+                    <strong>Market Comparison</strong> - View side-by-side
+                    comparison of all uploaded quotes
                   </li>
                   <li>
-                    <strong>Analyze</strong> - Filter by coverage type and review detailed benefit information
+                    <strong>Analyze</strong> - Filter by coverage type and
+                    review detailed benefit information
                   </li>
                 </ol>
               </CardContent>
