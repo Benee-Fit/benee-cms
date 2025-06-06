@@ -4,7 +4,7 @@ import { secure } from '@repo/security';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
-import '@repo/design-system/styles/globals.css';
+import './globals.css';
 import { AppHeader } from './components/layout/AppHeader';
 
 const inter = Inter({
