@@ -10,15 +10,9 @@ import {
 import { Briefcase, Menu } from 'lucide-react';
 import Link from 'next/link';
 
-/*
-const brokerNavItems = [
-  { href: '/quoting', label: 'Quoting' },
-  { href: '/upload-documents', label: 'Upload Documents' },
-  { href: '/client-list', label: 'Client List' },
-];
-*/
+
 const navItems = [
-  { href: '/quoting', label: 'Quoting' },
+  { href: 'https://google.ca', label: 'Quoting' },
   { href: '/upload-documents', label: 'Upload Documents' },
   { href: '/client-list', label: 'Client List' },
 ];
