@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -46,6 +47,7 @@ interface ParsedDocument {
 }
 
 export default function DocumentParserResultsPage() {
+  
   const router = useRouter();
   const [parsedDocuments, setParsedDocuments] = useState<ParsedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,35 +65,51 @@ export default function DocumentParserResultsPage() {
       if (storedData) {
         const parsedDocuments = JSON.parse(storedData) as ParsedDocument[];
         console.log(`[DEBUG] Successfully parsed JSON. Found ${parsedDocuments.length} document(s)`);
+        console.log('[DEBUG] First document structure:', JSON.stringify(parsedDocuments[0], null, 2).substring(0, 500));
         
         // Normalize and repair documents if needed
         const normalizedDocuments = parsedDocuments.map((doc, index) => {
           console.log(`[DEBUG] --- Document ${index + 1}: ${doc.originalFileName || 'Unknown filename'} ---`);
           
+          // Handle nested structure - if data is under processedData, extract it
+          let actualDoc = doc;
+          if (doc.processedData) {
+            actualDoc = {
+              ...doc,
+              metadata: doc.processedData.metadata,
+              coverages: doc.processedData.coverages,
+              planNotes: doc.processedData.planNotes || []
+            };
+          }
+          
           // Check for metadata and create default if missing
-          if (!doc.metadata || typeof doc.metadata !== 'object') {
+          if (!actualDoc.metadata || typeof actualDoc.metadata !== 'object') {
             console.log('[DEBUG] WARNING: Document is missing metadata - adding default metadata');
-            doc.metadata = {
+            actualDoc.metadata = {
               documentType: 'Unknown',
               clientName: 'Unknown',
               carrierName: 'Unknown Carrier',
               effectiveDate: new Date().toISOString().split('T')[0],
               quoteDate: new Date().toISOString().split('T')[0],
-              fileName: doc.originalFileName || `Unknown File ${index + 1}`,
-              fileCategory: doc.category || 'Current'
+              fileName: actualDoc.originalFileName || `Unknown File ${index + 1}`,
+              fileCategory: actualDoc.category || 'Current'
             };
           } else {
-            console.log('[DEBUG] Metadata found:', Object.keys(doc.metadata).length, 'properties');
+            console.log('[DEBUG] Metadata found:', Object.keys(actualDoc.metadata).length, 'properties');
+            // Map primaryCarrierName to carrierName if needed
+            if (actualDoc.metadata.primaryCarrierName && !actualDoc.metadata.carrierName) {
+              actualDoc.metadata.carrierName = actualDoc.metadata.primaryCarrierName;
+            }
           }
           
           // Check for coverages and create default if missing
-          if (!doc.coverages) {
+          if (!actualDoc.coverages) {
             console.log('[DEBUG] ERROR: Document has no coverages property - creating default coverage');
-            doc.coverages = [
+            actualDoc.coverages = [
               {
                 coverageType: 'Basic Life',
-                carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
-                  ? String(doc.metadata.carrierName) 
+                carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                  ? String(actualDoc.metadata.carrierName) 
                   : 'Unknown Carrier',
                 planOptionName: 'Default Plan',
                 premium: 0,
@@ -105,13 +123,13 @@ export default function DocumentParserResultsPage() {
                 }
               }
             ];
-          } else if (!Array.isArray(doc.coverages)) {
+          } else if (!Array.isArray(actualDoc.coverages)) {
             console.log('[DEBUG] ERROR: Document coverages is not an array - converting to array with default coverage');
-            doc.coverages = [
+            actualDoc.coverages = [
               {
                 coverageType: 'Basic Life',
-                carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
-                  ? String(doc.metadata.carrierName) 
+                carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                  ? String(actualDoc.metadata.carrierName) 
                   : 'Unknown Carrier',
                 planOptionName: 'Default Plan',
                 premium: 0,
@@ -125,12 +143,12 @@ export default function DocumentParserResultsPage() {
                 }
               }
             ];
-          } else if (doc.coverages.length === 0) {
+          } else if (actualDoc.coverages.length === 0) {
             console.log('[DEBUG] WARNING: Document has empty coverages array - adding default coverage');
-            doc.coverages.push({
+            actualDoc.coverages.push({
               coverageType: 'Basic Life',
-              carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
-                ? String(doc.metadata.carrierName) 
+              carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                ? String(actualDoc.metadata.carrierName) 
                 : 'Unknown Carrier',
               planOptionName: 'Default Plan',
               premium: 0,
@@ -144,16 +162,16 @@ export default function DocumentParserResultsPage() {
               }
             });
           } else {
-            console.log('[DEBUG] Coverages found:', doc.coverages.length);
+            console.log('[DEBUG] Coverages found:', actualDoc.coverages.length);
             
             // Validate each coverage has required fields
-            doc.coverages = doc.coverages.map(coverage => {
+            actualDoc.coverages = actualDoc.coverages.map(coverage => {
               if (!coverage || typeof coverage !== 'object') {
                 console.log('[DEBUG] Invalid coverage item found - replacing with valid default');
                 return {
                   coverageType: 'Basic Life',
-                  carrierName: (doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
-                    ? String(doc.metadata.carrierName) 
+                  carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                    ? String(actualDoc.metadata.carrierName) 
                     : 'Unknown Carrier',
                   planOptionName: 'Default Plan',
                   premium: 0,
@@ -165,11 +183,11 @@ export default function DocumentParserResultsPage() {
                   benefitDetails: { note: 'Coverage details could not be extracted from document' }
                 };
               } else {
-                // Ensure all required fields exist
+                // Ensure all required fields exist and map carrier name properly
                 return {
                   coverageType: coverage.coverageType || 'Basic Life',
-                  carrierName: coverage.carrierName || ((doc.metadata && typeof doc.metadata === 'object' && 'carrierName' in doc.metadata) 
-                    ? String(doc.metadata.carrierName) 
+                  carrierName: coverage.carrierName || ((actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                    ? String(actualDoc.metadata.carrierName) 
                     : 'Unknown Carrier'),
                   planOptionName: coverage.planOptionName || 'Default Plan',
                   premium: coverage.premium || 0,
@@ -184,8 +202,7 @@ export default function DocumentParserResultsPage() {
             });
           }
           
-          console.log(`[DEBUG] Final document structure - metadata: ${!!doc.metadata}, coverages: ${doc.coverages?.length || 0}`);
-          return doc;
+          return actualDoc;
         });
         
         // Update state with normalized documents
@@ -242,6 +259,7 @@ export default function DocumentParserResultsPage() {
     setShowRawData(!showRawData);
   };
 
+
   if (isLoading) {
     return (
       <>
@@ -260,6 +278,7 @@ export default function DocumentParserResultsPage() {
       </>
     );
   }
+
 
   return (
     <>

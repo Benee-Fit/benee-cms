@@ -53,6 +53,7 @@ interface ParsedDocument {
 }
 
 export default function ComparisonContainer() {
+  
   const [parsedDocuments, setParsedDocuments] = useState<ParsedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +104,7 @@ export default function ComparisonContainer() {
           }
         }
         
+        
         setCurrentDocuments(current);
         setRenegotiatedDocuments(renegotiated);
         setAlternativeDocuments(alternative);
@@ -146,6 +148,7 @@ export default function ComparisonContainer() {
       </Alert>
     );
   }
+
 
   return (
     <div className="space-y-6">

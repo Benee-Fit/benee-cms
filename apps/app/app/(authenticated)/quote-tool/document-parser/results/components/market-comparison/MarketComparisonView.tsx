@@ -21,6 +21,7 @@ const MarketComparisonView = ({
   parsedDocuments,
   carriersMap,
 }: MarketComparisonViewProps) => {
+  
   // State
   const [activeTab, setActiveTab] = useState('premium');
 
@@ -46,7 +47,7 @@ const MarketComparisonView = ({
     }));
 
     // Convert to the correct type for PremiumComparisonTable
-    return {
+    const result = {
       metadata: {
         clientName: doc.metadata.clientName,
         carrierName: doc.metadata.carrierName,
@@ -61,7 +62,11 @@ const MarketComparisonView = ({
       planOptions: planOptions,
       planNotes: doc.planNotes?.map(note => note.note) || []
     };
+    
+    
+    return result;
   });
+  
 
   return (
     <div className="space-y-4">
