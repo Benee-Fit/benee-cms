@@ -6,6 +6,7 @@ import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import './globals.css';
 import { AppHeader } from './components/layout/AppHeader';
+import { PageLayout } from './components/layout/PageLayout';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -32,7 +33,11 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <body className={inter.className}>
           <div className="flex min-h-screen flex-col">
             <AppHeader />
-            <main className="flex-grow pt-6">{children}</main>
+            <div className="flex-grow pt-16"> {/* Added pt-16 to account for fixed header */}
+              <PageLayout>
+                {children}
+              </PageLayout>
+            </div>
           </div>
         </body>
       </html>

@@ -50,9 +50,10 @@ import {
 
 interface RevenueBreakdownProps {
   className?: string;
+  sectionId?: string;
 }
 
-export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
+export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps) {
   const [timeframe, setTimeframe] = useState('ytd');
 
   // Mock revenue data for different timeframes
@@ -232,10 +233,17 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
     value: item.totalCommission,
   }));
 
+  // Helper function to determine if a section should be rendered
+  const shouldRenderSection = (id: string): boolean => {
+    if (!sectionId) return true; // If no sectionId is provided, render all sections
+    return id === sectionId;
+  };
+
   return (
     <div className={cn('space-y-6', className)}>
       {/* Revenue Overview */}
-      <section aria-labelledby="revenue-overview-title">
+      {shouldRenderSection('revenue-overview-title') && (
+        <section aria-labelledby="revenue-overview-title">
         <Alert className="my-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Smart Alert</AlertTitle>
@@ -385,9 +393,11 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </Card>
         </div>
       </section>
+      )}
 
       {/* Team Performance */}
-      <section aria-labelledby="team-performance-title">
+      {shouldRenderSection('team-performance-title') && (
+        <section aria-labelledby="team-performance-title">
         <h3 id="team-performance-title" className="text-xl font-medium mb-2">
           Team Performance
         </h3>
@@ -475,9 +485,11 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </CardContent>
         </Card>
       </section>
+      )}
 
       {/* Commission Splits */}
-      <section aria-labelledby="commission-splits-title">
+      {shouldRenderSection('commission-splits-title') && (
+        <section aria-labelledby="commission-splits-title">
         <h3 id="commission-splits-title" className="text-xl font-medium mb-2">
           Commission Splits
         </h3>
@@ -664,9 +676,11 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </Card>
         </div>
       </section>
+      )}
 
-      {/* Revenue by Source */}
-      <section aria-labelledby="revenue-sources-title" className="pt-6">
+      {/* Revenue Sources */}
+      {shouldRenderSection('revenue-sources-title') && (
+        <section aria-labelledby="revenue-sources-title" className="pt-6">
         <h3 id="revenue-sources-title" className="text-xl font-medium mb-2">
           Revenue by Source
         </h3>
@@ -726,9 +740,11 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </CardContent>
         </Card>
       </section>
+      )}
 
       {/* Forecasting */}
-      <section aria-labelledby="forecasting-title" className="pt-6">
+      {shouldRenderSection('forecasting-title') && (
+        <section aria-labelledby="forecasting-title" className="pt-6">
         <h3 id="forecasting-title" className="text-xl font-medium mb-2">
           Forecasting (Next 12 months)
         </h3>
@@ -785,6 +801,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
           </Card>
         </div>
       </section>
+      )}
     </div>
   );
 }

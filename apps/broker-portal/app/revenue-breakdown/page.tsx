@@ -1,15 +1,11 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { RevenueBreakdown } from '../components/revenue-breakdown';
-import { PageLayout } from '../page-layout';
+export const metadata = {
+  title: 'Revenue Breakdown - Benee-fit Broker Portal',
+  description: 'View and analyze your revenue breakdown',
+};
 
 export default function RevenueBreakdownPage() {
-  return (
-    <PageLayout>
-      <div className="container mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Revenue Breakdown</h1>
-        <RevenueBreakdown />
-      </div>
-    </PageLayout>
-  );
+  redirect('/revenue-breakdown/overview');
+  // The code below is unreachable due to the redirect
 }
