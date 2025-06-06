@@ -14,10 +14,44 @@ import ComparisonContainer from './components/comparison-container';
 interface ParsedDocument {
   originalFileName: string;
   category: string;
+  processedData?: {
+    metadata: {
+      documentType: string;
+      clientName: string;
+      carrierName: string;
+      primaryCarrierName?: string;
+      effectiveDate: string;
+      quoteDate: string;
+      policyNumber?: string;
+      planOptionName?: string;
+      totalProposedMonthlyPlanPremium?: number;
+      fileName: string;
+      fileCategory: string;
+      planOptionTotals?: {
+        planOptionName: string;
+        totalMonthlyPremium: number;
+      }[];
+      rateGuarantees?: string;
+    };
+    coverages: {
+      coverageType: string;
+      carrierName: string;
+      planOptionName: string;
+      premium: number;
+      monthlyPremium: number;
+      unitRate: number;
+      unitRateBasis: string;
+      volume: number;
+      lives: number;
+      benefitDetails: Record<string, unknown>;
+    }[];
+    planNotes: { note: string }[];
+  };
   metadata: {
     documentType: string;
     clientName: string;
     carrierName: string;
+    primaryCarrierName?: string;
     effectiveDate: string;
     quoteDate: string;
     policyNumber?: string;

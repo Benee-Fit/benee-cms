@@ -110,8 +110,27 @@ const coverageTypeMap: Record<string, string> = {
 };
 
 
+// Define the master benefit order for the table
+const masterBenefitOrder = [
+  'Basic Life',
+  'AD&D',
+  'Dependent Life',
+  'Long Term Disability',
+  'Medical Second Opinion',
+  'Employee Assistance Program',
+  'Subtotal-Pooled',
+  'HEADER-EHC',
+  'Extended Healthcare-Single',
+  'Extended Healthcare-Family',
+  'HEADER-DENTAL',
+  'Dental Care-Single',
+  'Dental Care-Family',
+  'Subtotal-Experience',
+  'Grand Total',
+  'Rate Guarantees',
+];
+
 // Define order of coverage variants (Single, Family) for consistent display
-// Define variant order by coverage type
 const coverageVariantOrder: Record<string, string[]> = {
   'Extended Healthcare': ['Single', 'Family'],
   'Dental Care': ['Single', 'Family'],
@@ -125,25 +144,6 @@ const coverageVariantOrder: Record<string, string[]> = {
 // Component type definitions
 // Using the ParsedDocumentResult type for document metadata and coverages
 
-/**
- * Represents a single value cell in the benefit data table
- */
-interface BenefitDataValue {
-  volume: string;
-  unitRate: string;
-  monthlyPremium: string;
-}
-
-interface BenefitDataItem {
-  isSubtotal?: boolean;
-  isTotal?: boolean;
-  isRateGuarantee?: boolean;
-  values: BenefitDataValue[];
-};
-
-interface BenefitDataMap {
-  [benefitKey: string]: BenefitDataItem;
-}
 
 interface PremiumComparisonTableProps {
   results: ParsedDocumentResult[];
@@ -356,165 +356,7 @@ export function PremiumComparisonTable({
     return value;
   }, []);
   
-  /**
-   * Initialize benefit data for a new benefit key
-   */
-  const initializeBenefitData = useCallback((carriersLength: number): BenefitDataItem => ({
-    values: new Array(carriersLength).fill(null).map(() => ({
-      volume: "",
-      unitRate: "",
-      monthlyPremium: "",
-    })),
-  }), []);
 
-  /**
-   * Format benefit data values
-   */
-  const formatBenefitValues = useCallback((
-    extractedVolume: string | number | null,
-    extractedUnitRate: string | number | null,
-    extractedPremium: string | number | null
-  ): BenefitDataValue => ({
-    volume: typeof extractedVolume === "number" ? formatVolume(extractedVolume) : extractedVolume || "",
-    unitRate: typeof extractedUnitRate === "number" ? formatCurrency(extractedUnitRate) : extractedUnitRate || "",
-    monthlyPremium: typeof extractedPremium === "number" ? formatCurrency(extractedPremium) : extractedPremium || "",
-  }), []);
-
-  /**
-   * Get benefit key for a coverage item
-   */
-  const getBenefitKey = useCallback((coverageItem: Coverage, normalizedType: string): string => {
-    const hasVariants = Object.prototype.hasOwnProperty.call(
-      coverageVariantOrder,
-      normalizedType
-    );
-    
-    if (hasVariants && coverageItem.benefitDetails?.coverage_type) {
-      return `${normalizedType} - ${coverageItem.benefitDetails.coverage_type}`;
-    }
-    
-    return normalizedType;
-  }, []);
-
-  /**
-   * Process a single coverage item and update benefit data
-   */
-  const processCoverageItem = useCallback((
-    coverageItem: Coverage,
-    carrierIdx: number,
-    benefitData: BenefitDataMap,
-    pooledTotal: number[],
-    experienceTotal: number[],
-    grandTotal: number[],
-    carriers: Array<{ name: string; rateGuarantee: string | null }>
-  ): { isPooled: boolean; benefitKey: string } => {
-    const normalizedType = getNormalizedCoverageType(coverageItem.coverageType);
-    const isPooled = !isExperienceRatedCoverage(normalizedType);
-    const benefitKey = getBenefitKey(coverageItem, normalizedType);
-    
-    // Initialize benefit data if needed
-    if (!benefitData[benefitKey]) {
-      benefitData[benefitKey] = initializeBenefitData(carriers.length);
-    }
-    
-    // Extract values
-    const extractedVolume = extractValue(coverageItem.volume);
-    const extractedUnitRate = extractValue(coverageItem.unitRate);
-    const extractedPremium = extractValue(coverageItem.monthlyPremium);
-    const numericPremium = parseNumericValue(extractedPremium);
-    
-    // Update benefit data
-    benefitData[benefitKey].values[carrierIdx] = formatBenefitValues(
-      extractedVolume,
-      extractedUnitRate,
-      extractedPremium
-    );
-    
-    // Update totals
-    if (numericPremium > 0) {
-      if (isPooled) {
-        pooledTotal[carrierIdx] += numericPremium;
-      } else {
-        experienceTotal[carrierIdx] += numericPremium;
-      }
-      grandTotal[carrierIdx] += numericPremium;
-    }
-    
-    return { isPooled, benefitKey };
-  }, [getNormalizedCoverageType, isExperienceRatedCoverage, extractValue, parseNumericValue, initializeBenefitData, getBenefitKey, formatBenefitValues]);
-
-  /**
-   * Add subtotal and total rows to benefit data
-   */
-  const addTotalRows = useCallback((
-    benefitData: BenefitDataMap,
-    pooledTotal: number[],
-    experienceTotal: number[],
-    grandTotal: number[],
-    pooledSubtotalAdded: boolean,
-    experienceSubtotalAdded: boolean
-  ) => {
-    if (pooledSubtotalAdded) {
-      benefitData["Pooled Benefits Subtotal"] = {
-        isSubtotal: true,
-        values: pooledTotal.map((total) => ({
-          volume: "",
-          unitRate: "",
-          monthlyPremium: formatCurrency(total),
-        })),
-      };
-    }
-    
-    if (experienceSubtotalAdded) {
-      benefitData["Experience Rated Benefits Subtotal"] = {
-        isSubtotal: true,
-        values: experienceTotal.map((total) => ({
-          volume: "",
-          unitRate: "",
-          monthlyPremium: formatCurrency(total),
-        })),
-      };
-    }
-    
-    benefitData["Grand Total"] = {
-      isTotal: true,
-      values: grandTotal.map((total) => ({
-        volume: "",
-        unitRate: "",
-        monthlyPremium: formatCurrency(total),
-      })),
-    };
-  }, []);
-
-  /**
-   * Add rate guarantee rows to benefit data
-   */
-  const addRateGuarantees = useCallback((
-    benefitData: BenefitDataMap,
-    carriers: Array<{ name: string; rateGuarantee: string | null }>
-  ) => {
-    for (let idx = 0; idx < carriers.length; idx++) {
-      const carrier = carriers[idx];
-      if (!carrier.rateGuarantee) {
-        continue;
-      }
-      
-      if (!benefitData["Rate Guarantees"]) {
-        benefitData["Rate Guarantees"] = {
-          isRateGuarantee: true,
-          values: new Array(carriers.length).fill(null).map(() => ({
-            volume: "",
-            unitRate: "",
-            monthlyPremium: "",
-          })),
-        };
-      }
-      
-      if (benefitData["Rate Guarantees"]?.values?.[idx]) {
-        benefitData["Rate Guarantees"].values[idx].monthlyPremium = carrier.rateGuarantee;
-      }
-    }
-  }, []);
 
   /**
    * Filter coverages by plan option for a specific carrier
@@ -537,141 +379,184 @@ export function PremiumComparisonTable({
     );
   }, [selectedPlanOptions]);
 
-  /**
-   * Process all results and build benefit data
-   */
-  const processResults = useCallback((
-    benefitData: BenefitDataMap,
-    pooledTotal: number[],
-    experienceTotal: number[],
-    grandTotal: number[]
-  ): { pooledSubtotalAdded: boolean; experienceSubtotalAdded: boolean } => {
-    let pooledSubtotalAdded = false;
-    let experienceSubtotalAdded = false;
-    
-    for (const result of results) {
-      // Try to get carrier name from metadata or coverages
-      let carrierName = result.metadata?.carrierName;
-      
-      // If no carrier name in metadata, try to extract from first coverage
-      if (!carrierName && result.allCoverages && result.allCoverages.length > 0) {
-        const coverageWithCarrier = result.allCoverages.find(coverage => coverage.carrierName);
-        carrierName = coverageWithCarrier?.carrierName;
-      }
-      
-      if (!carrierName) {
-        continue;
-      }
-      
-      const carrierIdx = carriers.findIndex((c) => c.name === carrierName);
-      if (carrierIdx === -1) {
-        continue;
-      }
-      
-      const coverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
-      for (const coverageItem of coverages) {
-        const { isPooled } = processCoverageItem(
-          coverageItem,
-          carrierIdx,
-          benefitData,
-          pooledTotal,
-          experienceTotal,
-          grandTotal,
-          carriers
-        );
-        
-        pooledSubtotalAdded = pooledSubtotalAdded || isPooled;
-        experienceSubtotalAdded = experienceSubtotalAdded || !isPooled;
-      }
-    }
-    
-    return { pooledSubtotalAdded, experienceSubtotalAdded };
-  }, [results, carriers, filterCoveragesByCarrierPlan, processCoverageItem]);
 
   /**
-   * Process parsed insurance document results to create a structured benefit data map
+   * Process parsed insurance document results to create ordered rows
    */
-  const benefitDataMap = useMemo<BenefitDataMap>(() => {
+  const orderedRows = useMemo(() => {
     if (carriers.length === 0) {
-      return {};
+      return [];
     }
-    
-    const benefitData: BenefitDataMap = {};
-    const pooledTotal = new Array(carriers.length).fill(0);
-    const experienceTotal = new Array(carriers.length).fill(0);
-    const grandTotal = new Array(carriers.length).fill(0);
-    
-    const { pooledSubtotalAdded, experienceSubtotalAdded } = processResults(
-      benefitData,
-      pooledTotal,
-      experienceTotal,
-      grandTotal
-    );
-    
-    addTotalRows(
-      benefitData,
-      pooledTotal,
-      experienceTotal,
-      grandTotal,
-      pooledSubtotalAdded,
-      experienceSubtotalAdded
-    );
-    
-    addRateGuarantees(benefitData, carriers);
-    
-    // Add placeholder if no data
-    if (Object.keys(benefitData).length === 0 && carriers.length > 0) {
-      benefitData["No Benefits Data Available"] = {
-        values: carriers.map(() => ({
-          volume: "",
-          unitRate: "",
-          monthlyPremium: "",
-        })),
-      };
-      
-      if (benefitData["No Benefits Data Available"].values.length > 0) {
-        benefitData["No Benefits Data Available"].values[0].monthlyPremium = "No data found";
-      }
-    }
-    
-    return benefitData;
-  }, [carriers, processResults, addTotalRows, addRateGuarantees]);
-  
-  /**
-   * Define sort order for special rows
-   */
-  const specialRowOrder: Record<string, number> = {
-    'Pooled Benefits Subtotal': 1000,
-    'Experience Rated Benefits Subtotal': 2000,
-    'Grand Total': 3000,
-    'Rate Guarantees': 4000,
-  };
 
-  /**
-   * Order benefits for display in a logical sequence
-   */
-  const orderedBenefits = useMemo(() => {
-    return Object.keys(benefitDataMap).sort((a, b) => {
-      const orderA = specialRowOrder[a] || 0;
-      const orderB = specialRowOrder[b] || 0;
+    const carriersLength = carriers.length;
+    const pooledTotal = new Array(carriersLength).fill(0);
+    const experienceTotal = new Array(carriersLength).fill(0);
+    const grandTotal = new Array(carriersLength).fill(0);
+
+    // 1. First, create a quick-access map of all coverages for performance.
+    const processedCoverages = new Map<string, Coverage>();
+    for (const result of results) {
+      const carrierName = result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
+      if (!carrierName) continue;
       
-      // If both have special orders, sort by order
-      if (orderA && orderB) {
-        return orderA - orderB;
+      const carrierIdx = carriers.findIndex(c => c.name === carrierName);
+      if (carrierIdx === -1) continue;
+
+      const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
+
+      for (const coverage of filteredCoverages) {
+        const normalizedType = getNormalizedCoverageType(coverage.coverageType);
+        const key = `${carrierName}-${normalizedType}`;
+        processedCoverages.set(key, coverage);
       }
-      
-      // If only one has special order, it goes after regular items
-      if (orderA) {
-        return 1;
+    }
+
+    // 2. Now, build the orderedRows array by iterating through our master list.
+    const rows: any[] = [];
+    for (const key of masterBenefitOrder) {
+      if (key.startsWith('HEADER-')) {
+        // Handle Header Rows
+        if (key === 'HEADER-EHC') {
+          rows.push({ type: 'header', label: 'Health Care (EHC)' });
+        }
+        if (key === 'HEADER-DENTAL') {
+          rows.push({ type: 'header', label: 'Dental Care' });
+        }
+      } else if (key.startsWith('Subtotal-')) {
+        // Handle Subtotal Rows - will be inserted later
+        continue;
+      } else if (key === 'Grand Total' || key === 'Rate Guarantees') {
+        // Totals and Guarantees are handled at the end
+        continue;
+      } else if (key.includes('-Single') || key.includes('-Family')) {
+        // Handle Single/Family sub-rows for EHC and Dental
+        const [baseType, variant] = key.split('-');
+        const rowData = {
+          type: 'subBenefit',
+          label: variant,
+          values: new Array(carriersLength).fill({ volume: '', unitRate: '', monthlyPremium: '$0.00' })
+        };
+
+        carriers.forEach((carrier, idx) => {
+          const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
+          if (coverage && coverage.benefitDetails) {
+            // Handle Single/Family variants from benefit details
+            const details = coverage.benefitDetails as any;
+            let premium, rate, lives;
+            
+            if (variant === 'Single') {
+              premium = details.totalPremiumSingle || coverage.monthlyPremium;
+              rate = details.premiumPerSingle || coverage.unitRate;
+              lives = details.livesSingle || coverage.volume;
+            } else {
+              premium = details.totalPremiumFamily;
+              rate = details.premiumPerFamily;
+              lives = details.livesFamily;
+            }
+            
+            rowData.values[idx] = {
+              volume: formatVolume(lives),
+              unitRate: formatCurrency(rate),
+              monthlyPremium: formatCurrency(premium),
+            };
+            
+            const numericPremium = parseNumericValue(premium);
+            if (numericPremium > 0) {
+              experienceTotal[idx] += numericPremium;
+              grandTotal[idx] += numericPremium;
+            }
+          }
+        });
+        rows.push(rowData);
+      } else {
+        // Handle standard benefit rows
+        const rowData = {
+          type: 'benefit',
+          label: key,
+          values: new Array(carriersLength).fill({ volume: '-', unitRate: '-', monthlyPremium: '$0.00' })
+        };
+
+        carriers.forEach((carrier, idx) => {
+          const coverage = processedCoverages.get(`${carrier.name}-${key}`);
+          if (coverage) {
+            rowData.values[idx] = {
+              volume: formatVolume(coverage.volume),
+              unitRate: formatCurrency(coverage.unitRate),
+              monthlyPremium: formatCurrency(coverage.monthlyPremium),
+            };
+            const numericPremium = parseNumericValue(coverage.monthlyPremium);
+            if (numericPremium > 0) {
+              // Determine if this is pooled or experience-rated
+              const isPooled = !isExperienceRatedCoverage(key);
+              if (isPooled) {
+                pooledTotal[idx] += numericPremium;
+              } else {
+                experienceTotal[idx] += numericPremium;
+              }
+              grandTotal[idx] += numericPremium;
+            }
+          }
+        });
+        rows.push(rowData);
       }
-      if (orderB) {
-        return -1;
+    }
+
+    // 3. Insert subtotals, grand total, and rate guarantees at the correct positions.
+    const finalRows: any[] = [];
+    for (const row of rows) {
+      finalRows.push(row);
+      if (row.label === 'Employee Assistance Program') {
+        finalRows.push({
+          type: 'subtotal',
+          label: 'Sub-total - Pooled Coverage',
+          values: pooledTotal.map(total => ({ 
+            volume: '', 
+            unitRate: '', 
+            monthlyPremium: formatCurrency(total) 
+          }))
+        });
       }
-      
-      // Default to alphabetical sorting for regular items
-      return a.localeCompare(b);
+      if (row.label === 'Family' && row.type === 'subBenefit') {
+        // Check if this is the last Family row (Dental Care)
+        const currentIndex = finalRows.length - 1;
+        const isDentalFamily = finalRows.slice(0, currentIndex).some(r => r.label === 'Dental Care');
+        if (isDentalFamily) {
+          finalRows.push({
+            type: 'subtotal',
+            label: 'Sub-total - Experience Rated Benefits',
+            values: experienceTotal.map(total => ({ 
+              volume: '', 
+              unitRate: '', 
+              monthlyPremium: formatCurrency(total) 
+            }))
+          });
+        }
+      }
+    }
+
+    finalRows.push({
+      type: 'total',
+      label: 'Grand Total',
+      values: grandTotal.map(total => ({ 
+        volume: '', 
+        unitRate: '', 
+        monthlyPremium: formatCurrency(total) 
+      }))
     });
-  }, [benefitDataMap]);
+    
+    finalRows.push({
+      type: 'rateGuarantee',
+      label: 'Rate Guarantees',
+      values: carriers.map(carrier => ({ 
+        volume: '', 
+        unitRate: '', 
+        monthlyPremium: carrier.rateGuarantee || '-' 
+      }))
+    });
+
+    return finalRows;
+  }, [carriers, results, selectedPlanOptions, filterCoveragesByCarrierPlan, getNormalizedCoverageType, isExperienceRatedCoverage, parseNumericValue]);
+  
 
   return (
     <Card>
@@ -765,49 +650,63 @@ export function PremiumComparisonTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orderedBenefits.map((benefitKey) => {
-              const benefit = benefitDataMap[benefitKey] || { 
-                values: [], 
-                isSubtotal: false, 
-                isTotal: false, 
-                isRateGuarantee: false 
-              };
-              const isSubtotal = benefit.isSubtotal || false;
-              const isTotal = benefit.isTotal || false;
-              const isRateGuarantee = benefit.isRateGuarantee || false;
-
+            {orderedRows.map((row, index) => {
               // Apply special styling based on row type
               let rowClassName = '';
               
-              if (isTotal) {
+              if (row.type === 'header') {
+                rowClassName = 'font-bold bg-blue-50 text-blue-900';
+              } else if (row.type === 'total') {
                 rowClassName = 'font-bold bg-primary/5';
-              } else if (isRateGuarantee) {
+              } else if (row.type === 'rateGuarantee') {
                 rowClassName = 'font-medium bg-muted/20';
-              } else if (isSubtotal) {
+              } else if (row.type === 'subtotal') {
                 rowClassName = 'font-medium bg-muted/50';
+              } else if (row.type === 'subBenefit') {
+                rowClassName = 'hover:bg-muted/30 pl-6';
               } else {
                 rowClassName = 'hover:bg-muted/30';
               }
               
               return (
-                <TableRow key={`benefit-${benefitKey}`} className={rowClassName}>
-                  <TableCell>{benefitKey}</TableCell>
+                <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
+                  <TableCell className={row.type === 'subBenefit' ? 'pl-8' : ''}>
+                    {row.type === 'header' ? (
+                      <span className="text-sm font-semibold uppercase tracking-wide">
+                        {row.label}
+                      </span>
+                    ) : row.type === 'subBenefit' ? (
+                      <span className="text-sm text-muted-foreground">
+                        • {row.label}
+                      </span>
+                    ) : (
+                      row.label
+                    )}
+                  </TableCell>
                   {carriers.map((_, carrierIndex) => (
                     <React.Fragment
-                      key={`benefit-${benefitKey}-carrier-${carrierIndex}`}
+                      key={`row-${index}-carrier-${carrierIndex}`}
                     >
                       <TableCell className="text-center">
-                        {!isSubtotal && !isTotal && !isRateGuarantee
-                          ? benefit.values[carrierIndex]?.volume
+                        {row.type !== 'subtotal' && 
+                         row.type !== 'total' && 
+                         row.type !== 'rateGuarantee' && 
+                         row.type !== 'header'
+                          ? row.values[carrierIndex]?.volume || '-'
                           : ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        {!isSubtotal && !isTotal && !isRateGuarantee
-                          ? benefit.values[carrierIndex]?.unitRate
+                        {row.type !== 'subtotal' && 
+                         row.type !== 'total' && 
+                         row.type !== 'rateGuarantee' && 
+                         row.type !== 'header'
+                          ? row.values[carrierIndex]?.unitRate || '-'
                           : ""}
                       </TableCell>
                       <TableCell className="text-center">
-                        {benefit.values[carrierIndex]?.monthlyPremium || ""}
+                        {row.type !== 'header'
+                          ? row.values[carrierIndex]?.monthlyPremium || '-'
+                          : ""}
                       </TableCell>
                     </React.Fragment>
                   ))}
