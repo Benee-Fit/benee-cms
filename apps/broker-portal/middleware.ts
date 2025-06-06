@@ -1,21 +1,43 @@
-import { authMiddleware } from '@repo/auth/middleware';
-import {
-  noseconeMiddleware,
-  noseconeOptions,
-} from '@repo/security/middleware';
-import type { NextMiddleware } from 'next/server';
+import { NextResponse } from 'next/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
-const securityHeaders = noseconeMiddleware(noseconeOptions);
+// This is the exact pattern Clerk expects for middleware
+export default clerkMiddleware(async (auth, req) => {
+  // Check if the route is public (sign-in or sign-up)
+  const isPublic =
+    req.nextUrl.pathname.startsWith('/sign-in') ||
+    req.nextUrl.pathname.startsWith('/sign-up');
 
-export default authMiddleware(() =>
-  securityHeaders()
-) as unknown as NextMiddleware;
+  if (isPublic) {
+    return NextResponse.next();
+  }
 
+  // For non-public routes, protect with authentication
+  try {
+    await auth.protect();
+    return NextResponse.next();
+  } catch (error) {
+    // Redirect to sign-in if authentication fails
+    const signInUrl = new URL('/sign-in', req.url);
+    signInUrl.searchParams.set('redirect_url', req.url);
+    return NextResponse.redirect(signInUrl);
+  }
+});
+
+// Configure which routes the middleware applies to
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    // Match all routes except for static files
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+
+    // Explicitly include important application routes
+    '/',
+    '/client-insights/:path*',
+    '/industry-insight/:path*',
+    '/revenue-breakdown/:path*',
+    '/outstanding-quotes/:path*',
+
+    // API routes
+    '/api/:path*',
   ],
 };

@@ -187,7 +187,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
     { source: 'New Business', amount: 124500, percentage: 45 },
     { source: 'Renewals', amount: 89700, percentage: 32 },
     { source: 'Plan Adjustments', amount: 41800, percentage: 15 },
-    { source: 'Special Commissions', amount: 22400, percentage: 8 }
+    { source: 'Special Commissions', amount: 22400, percentage: 8 },
   ];
 
   // Revenue by source data
@@ -233,15 +233,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
   }));
 
   return (
-    <div className={cn('space-y-6 p-6', className)}>
-      <div>
-        <h2 className="text-2xl font-semibold mb-1">Revenue Breakdown</h2>
-        <p className="text-muted-foreground">
-          Track earnings, performance, and commissions across your broker
-          portfolio.
-        </p>
-      </div>
-
+    <div className={cn('space-y-6', className)}>
       {/* Revenue Overview */}
       <section aria-labelledby="revenue-overview-title">
         <Alert className="my-4">
@@ -255,7 +247,7 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
         <h3 id="revenue-overview-title" className="text-xl font-medium mb-2">
           Revenue Overview
         </h3>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Total Block Revenue</CardTitle>
@@ -305,66 +297,80 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
             </CardContent>
           </Card>
         </div>
-      </section>
-
-      {/* Revenue Split Section */}
-      <section aria-labelledby="revenue-split-title" className="mt-6">
-        <h3 id="revenue-split-title" className="text-xl font-medium mb-2">
-          Revenue Split
-        </h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          {/* Product Type Pie Chart */}
+        <div className="mt-6">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">By Product Type</CardTitle>
+              <CardTitle className="text-base">
+                Growth Trendline (YoY)
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4">
               <ChartContainer
-                id="product-type-pie"
-                className="h-60"
+                className="h-[300px] aspect-[4/3] w-full"
                 config={{
-                  value: {
-                    color: '#000000', // Black
+                  current: {
+                    label: 'Current Year',
+                    color: 'hsl(var(--primary))',
+                  },
+                  previous: {
+                    label: 'Previous Year',
+                    color: 'hsl(var(--primary) / 0.5)',
                   },
                 }}
               >
-                <PieChart>
-                  <Pie
-                    data={productTypeSplits}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, value }) => `${name}: ${value}%`}
-                    labelLine={false}
-                  >
-                    {productTypeSplits.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
+                <LineChart
+                  data={growthChartData}
+                  margin={{ top: 10, right: 30, bottom: 30, left: 50 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="month"
+                    className="text-xs text-muted-foreground"
+                  />
+                  <YAxis
+                    className="text-xs text-muted-foreground"
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                    width={60}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="current"
+                    name="Current Year"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="previous"
+                    name="Previous Year"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 6 }}
+                    stroke="black"
+                  />
                   <ChartTooltip
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         return (
                           <div className="rounded-lg border bg-background p-2 shadow-sm">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                {payload[0].name}
-                              </span>
-                              <span className="font-bold text-muted-foreground">
-                                {payload[0].value}%
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                $
-                                {Math.round(
-                                  (revenueData[
-                                    timeframe as keyof typeof revenueData
-                                  ] *
-                                    (payload[0].value as number)) /
-                                    100
-                                ).toLocaleString()}
-                              </span>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex flex-col">
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                  Current
+                                </span>
+                                <span className="font-bold text-muted-foreground">
+                                  ${payload[0].value?.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                  Previous
+                                </span>
+                                <span className="font-bold text-muted-foreground">
+                                  ${payload[1].value?.toLocaleString()}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -372,228 +378,12 @@ export function RevenueBreakdown({ className }: RevenueBreakdownProps) {
                       return null;
                     }}
                   />
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          {/* Carrier Pie Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">By Carrier</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                id="carrier-pie"
-                className="h-60"
-                config={{
-                  value: {
-                    color: '#1a1a1a', // Very dark grey
-                  },
-                }}
-              >
-                <PieChart>
-                  <Pie
-                    data={carrierSplits}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, value }) => `${name}: ${value}%`}
-                    labelLine={false}
-                  >
-                    {carrierSplits.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="rounded-lg border bg-background p-2 shadow-sm">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                {payload[0].name}
-                              </span>
-                              <span className="font-bold text-muted-foreground">
-                                {payload[0].value}%
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                $
-                                {Math.round(
-                                  (revenueData[
-                                    timeframe as keyof typeof revenueData
-                                  ] *
-                                    (payload[0].value as number)) /
-                                    100
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                </PieChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          {/* Business Type Pie Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">By Business Type</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                id="business-type-pie"
-                className="h-60"
-                config={{
-                  value: {
-                    color: '#333333', // Dark grey
-                  },
-                }}
-              >
-                <PieChart>
-                  <Pie
-                    data={businessTypeSplits}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, value }) => `${name}: ${value}%`}
-                    labelLine={false}
-                  >
-                    {businessTypeSplits.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="rounded-lg border bg-background p-2 shadow-sm">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                {payload[0].name}
-                              </span>
-                              <span className="font-bold text-muted-foreground">
-                                {payload[0].value}%
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                $
-                                {Math.round(
-                                  (revenueData[
-                                    timeframe as keyof typeof revenueData
-                                  ] *
-                                    (payload[0].value as number)) /
-                                    100
-                                ).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                </PieChart>
+                  <ChartLegend />
+                </LineChart>
               </ChartContainer>
             </CardContent>
           </Card>
         </div>
-      </section>
-
-      <section aria-labelledby="growth-trendline-title">
-        <h3 id="growth-trendline-title" className="text-xl font-medium mb-2">
-          Growth Trendline
-        </h3>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Growth Trendline (YoY)</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <ChartContainer
-              className="h-[300px] aspect-[4/3] w-full"
-              config={{
-                current: {
-                  label: 'Current Year',
-                  color: 'hsl(var(--primary))',
-                },
-                previous: {
-                  label: 'Previous Year',
-                  color: 'hsl(var(--primary) / 0.5)',
-                },
-              }}
-            >
-              <LineChart
-                data={growthChartData}
-                margin={{ top: 10, right: 30, bottom: 30, left: 50 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="month"
-                  className="text-xs text-muted-foreground"
-                />
-                <YAxis
-                  className="text-xs text-muted-foreground"
-                  tickFormatter={(value) => `$${value.toLocaleString()}`}
-                  width={60}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="current"
-                  name="Current Year"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="previous"
-                  name="Previous Year"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 6 }}
-                  stroke="black"
-                />
-                <ChartTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Current
-                              </span>
-                              <span className="font-bold text-muted-foreground">
-                                ${payload[0].value?.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[0.70rem] uppercase text-muted-foreground">
-                                Previous
-                              </span>
-                              <span className="font-bold text-muted-foreground">
-                                ${payload[1].value?.toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <ChartLegend />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
       </section>
 
       {/* Team Performance */}

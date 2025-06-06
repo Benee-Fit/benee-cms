@@ -16,6 +16,9 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { PageLayout } from './page-layout';
+
+// Import the components from their new locations - this may need to be updated
+// after we move the components
 import { CalendarGrid } from './components/calendar-grid';
 import { BenefitSearchForm } from './components/chat/benefit-search-form';
 
@@ -66,14 +69,6 @@ export default function HomePage() {
   return (
     <PageLayout>
       <div className="container mx-auto p-6 space-y-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Broker Portal</h1>
-          <p className="text-muted-foreground">
-            Monitor your broker activities, track commissions, and get insights on
-            your client portfolio.
-          </p>
-        </div>
-
         <section className="mt-10 mb-10 p-6 max-w-2xl mx-auto">
           <BenefitSearchForm />
         </section>
@@ -96,8 +91,7 @@ export default function HomePage() {
                   </CardContent>
                   <div className="p-6 pt-0">
                     <span className="text-xs text-primary group-hover:underline flex items-center">
-                      Go to {tile.title}{' '}
-                      <ArrowRight className="ml-1 h-3 w-3" />
+                      Go to {tile.title} <ArrowRight className="ml-1 h-3 w-3" />
                     </span>
                   </div>
                 </Card>
