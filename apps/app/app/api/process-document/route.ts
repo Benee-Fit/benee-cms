@@ -13,11 +13,12 @@ import { currentUser } from '@repo/auth/server';
 
 // Import PDF.co API integration specific constants
 const PDF_CO_HOSTNAME = 'api.pdf.co';
+// Import the enhanced prompt (originally designed for Gemini, now used with Claude)
 import { ENHANCED_GEMINI_PROMPT } from './gemini-prompt-enhanced';
 
 // API Keys from environment variables (only define what's used)
 const PDFCO_API_KEY = process.env.PDF_UPLOAD_SECRET;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
 // S3 configuration (DigitalOcean Spaces)
 const DO_SPACES_KEY = process.env.DO_SPACES_KEY;
@@ -131,8 +132,70 @@ interface PlanNote {
   note: string;
 }
 
-// Structure of the parsed response from Gemini API
-interface GeminiParsedResponse {
+// Structure of the new Claude response format
+interface ClaudeResponseFormat {
+  highLevelOverview?: Array<{
+    carrierName: string;
+    planOption: string;
+    totalMonthlyPremium: number;
+    rateGuarantee?: string;
+    pooledBenefitsSubtotal?: number;
+    experienceRatedSubtotal?: number;
+    keyHighlights?: string[];
+  }>;
+  granularBreakdown?: Array<{
+    benefitCategory: string;
+    benefitType: string;
+    carrierData: Record<string, {
+      volume?: {
+        total?: string | number;
+        single?: number;
+        family?: number;
+        breakdown?: {
+          employees?: number;
+          dependents?: number;
+        };
+      };
+      unitRate?: {
+        single?: number;
+        family?: number;
+        basis?: string;
+        currency?: string;
+      };
+      monthlyPremium?: {
+        total?: number;
+        single?: number;
+        family?: number;
+        currency?: string;
+      };
+      coverage?: {
+        amount?: number;
+        type?: string;
+        currency?: string;
+        details?: string;
+        included?: boolean;
+        coinsurance?: number;
+        maximum?: string | number;
+        frequency?: string;
+        deductible?: number;
+        formulary?: string;
+        payDirectCard?: boolean;
+        cardNumber?: string;
+        dispensingFee?: boolean;
+        spouseAmount?: number;
+        childAmount?: number;
+        feeGuide?: string;
+        preventativeFrequency?: string;
+        scalingUnits?: number;
+        perPractitioner?: boolean;
+        pooling?: string;
+      };
+    }>;
+  }>;
+}
+
+// Structure of the parsed response from Claude API
+interface ClaudeParsedResponse {
   metadata?: Metadata;
   planOptions?: PlanOption[];
   allCoverages?: CoverageEntry[];
@@ -158,29 +221,31 @@ interface HttpsResponseData {
   rawResponse?: string;
 }
 
-// Gemini API error response
-interface GeminiErrorResponse {
+// Claude API error response
+interface ClaudeErrorResponse {
+  type: string;
   error: {
-    code: number;
+    type: string;
     message: string;
-    status: string;
   };
 }
 
-// Gemini API success response
-interface GeminiSuccessResponse {
-  candidates: {
-    content: {
-      parts: {
-        text: string;
-      }[];
-    };
-    finishReason: string;
-    safetyRatings: {
-      category: string;
-      probability: string;
-    }[];
+// Claude API success response
+interface ClaudeSuccessResponse {
+  id: string;
+  type: string;
+  role: string;
+  content: {
+    type: string;
+    text: string;
   }[];
+  model: string;
+  stop_reason: string;
+  stop_sequence: string | null;
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+  };
 }
 
 /**
@@ -233,21 +298,170 @@ function makeHttpsRequest(
 }
 
 /**
- * Extract JSON from a Gemini API response text, handling markdown code blocks
- * @param text The response text from Gemini API
+ * Transform the new Claude response format to the legacy format expected by the frontend
+ * @param claudeResponse The new Claude response format
+ * @returns Transformed response in the legacy format
+ */
+function transformClaudeResponse(claudeResponse: ClaudeResponseFormat): ClaudeParsedResponse {
+  const { highLevelOverview = [], granularBreakdown = [] } = claudeResponse;
+  
+  // Extract metadata from high level overview
+  const firstOverview = highLevelOverview[0];
+  const metadata: Metadata = {
+    primaryCarrierName: firstOverview?.carrierName || 'Unknown Carrier',
+    carrierName: firstOverview?.carrierName || 'Unknown Carrier',
+    documentType: 'Quote',
+    clientName: 'Unknown Client',
+    effectiveDate: new Date().toISOString().split('T')[0],
+    quoteDate: new Date().toISOString().split('T')[0],
+  };
+
+  // Extract plan options from high level overview
+  const planOptions: PlanOption[] = highLevelOverview.map(overview => ({
+    planOptionName: overview.planOption,
+    planOptionBenefitSummary: overview.keyHighlights ? 
+      overview.keyHighlights.reduce((acc, highlight, index) => {
+        acc[`highlight_${index + 1}`] = highlight;
+        return acc;
+      }, {} as Record<string, string>) : null,
+    commonVolumes: null,
+    carrierProposals: [{
+      carrierName: overview.carrierName,
+      totalMonthlyPremium: overview.totalMonthlyPremium,
+      subtotals: {
+        pooledBenefits: overview.pooledBenefitsSubtotal || null,
+        experienceRatedBenefits: overview.experienceRatedSubtotal || null,
+        healthSpendingAccount: null,
+        adminFees: null,
+      },
+      rateGuaranteeText: overview.rateGuarantee,
+      isRecommendedOrPrimaryInDocument: true,
+    }]
+  }));
+
+  // Transform granular breakdown to coverage entries
+  const allCoverages: CoverageEntry[] = [];
+  
+  for (const breakdown of granularBreakdown) {
+    const { benefitType, carrierData } = breakdown;
+    
+    // Normalize coverage type
+    let coverageType = benefitType;
+    if (benefitType.includes('Basic Life') || benefitType.includes('Employee Term Life')) {
+      coverageType = 'Basic Life';
+    } else if (benefitType.includes('Healthcare') || benefitType.includes('Health')) {
+      coverageType = 'Extended Healthcare';
+    } else if (benefitType.includes('Dental')) {
+      coverageType = 'Dental Care';
+    } else if (benefitType.includes('Vision')) {
+      coverageType = 'Vision';
+    } else if (benefitType.includes('AD&D')) {
+      coverageType = 'AD&D';
+    } else if (benefitType.includes('Dependent Life')) {
+      coverageType = 'Dependent Life';
+    } else if (benefitType.includes('Prescription Drugs')) {
+      coverageType = 'Extended Healthcare';
+    }
+    
+    for (const [carrierPlanKey, data] of Object.entries(carrierData)) {
+      // Extract carrier name and plan option from the key
+      const [carrierName, ...planParts] = carrierPlanKey.split(' - ');
+      const planOptionName = planParts.join(' - ') || 'Default Plan';
+      
+      // Skip if coverage is not included
+      if (data.coverage?.included === false) {
+        continue;
+      }
+      
+      // Debug premium extraction
+      if (benefitType.includes('Dental') || benefitType.includes('Prescription') || benefitType.includes('Healthcare')) {
+        console.log(`[DEBUG] Processing ${benefitType} for ${carrierPlanKey}:`);
+        console.log(`[DEBUG] Monthly Premium Data:`, JSON.stringify(data.monthlyPremium, null, 2));
+        console.log(`[DEBUG] Unit Rate Data:`, JSON.stringify(data.unitRate, null, 2));
+        console.log(`[DEBUG] Volume Data:`, JSON.stringify(data.volume, null, 2));
+      }
+      
+      const coverage: CoverageEntry = {
+        coverageType,
+        carrierName: carrierName || 'Unknown Carrier',
+        planOptionName,
+        premium: data.monthlyPremium?.total || 0,
+        monthlyPremium: data.monthlyPremium?.total || 0,
+        unitRate: data.unitRate?.single || data.unitRate?.family || 0,
+        unitRateBasis: data.unitRate?.basis || 'per unit',
+        volume: typeof data.volume?.total === 'string' ? 
+          Number.parseFloat(data.volume.total.replace(/,/g, '')) : 
+          (data.volume?.total as number) || data.volume?.single || data.volume?.family || 0,
+        lives: data.volume?.breakdown?.employees || 0,
+        // Add individual premium rates for Extended Healthcare and Dental Care
+        ...(data.monthlyPremium?.single !== undefined && {
+          livesSingle: data.volume?.single || 1,
+          premiumPerSingle: data.monthlyPremium.single,
+        }),
+        ...(data.monthlyPremium?.family !== undefined && {
+          livesFamily: data.volume?.family || data.volume?.breakdown?.dependents || 1,
+          premiumPerFamily: data.monthlyPremium.family,
+        }),
+        // Also check if we have unit rates for single/family to use as premiumPerSingle/Family
+        ...(!data.monthlyPremium?.single && data.unitRate?.single !== undefined && {
+          livesSingle: data.volume?.single || 1,
+          premiumPerSingle: data.unitRate.single,
+        }),
+        ...(!data.monthlyPremium?.family && data.unitRate?.family !== undefined && {
+          livesFamily: data.volume?.family || data.volume?.breakdown?.dependents || 1,
+          premiumPerFamily: data.unitRate.family,
+        }),
+        benefitDetails: {
+          details: data.coverage?.details || 'Details not specified',
+          coinsurance: data.coverage?.coinsurance,
+          maximum: data.coverage?.maximum,
+          frequency: data.coverage?.frequency,
+          deductible: data.coverage?.deductible,
+          amount: data.coverage?.amount,
+          currency: data.coverage?.currency || data.unitRate?.currency,
+          formulary: data.coverage?.formulary,
+          payDirectCard: data.coverage?.payDirectCard ? 'Yes' : 'No',
+          cardNumber: data.coverage?.cardNumber,
+          spouseAmount: data.coverage?.spouseAmount,
+          childAmount: data.coverage?.childAmount,
+          feeGuide: data.coverage?.feeGuide,
+          preventativeFrequency: data.coverage?.preventativeFrequency,
+          scalingUnits: data.coverage?.scalingUnits,
+          perPractitioner: data.coverage?.perPractitioner ? 'Yes' : 'No',
+          pooling: data.coverage?.pooling,
+        }
+      };
+      
+      allCoverages.push(coverage);
+    }
+  }
+
+  return {
+    metadata,
+    planOptions,
+    allCoverages,
+    documentNotes: [],
+  };
+}
+
+/**
+ * Extract JSON from a Claude API response text, handling markdown code blocks
+ * @param text The response text from Claude API
  * @returns Parsed JSON object or null if parsing fails
  */
-function extractJsonFromGeminiResponse(
+function extractJsonFromClaudeResponse(
   text: string
-): GeminiParsedResponse | null {
+): ClaudeParsedResponse | null {
   try {
     // First, try to extract JSON from code blocks using regex
     console.log('[DEBUG] Attempting to extract JSON from code blocks...');
     const match = text.match(jsonBlockRegex);
+    let parsedJson: unknown = null;
+    
     if (match?.[1]) {
       console.log('[DEBUG] Found JSON code block, attempting to parse...');
       try {
-        return JSON.parse(match[1]);
+        parsedJson = JSON.parse(match[1]);
       } catch (e) {
         console.warn('[WARN] Failed to parse JSON from code block:', e);
         console.log(
@@ -259,15 +473,47 @@ function extractJsonFromGeminiResponse(
     }
 
     // If no code block or parsing failed, try to parse the entire text as JSON
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      console.warn('Failed to parse entire text as JSON:', e);
+    if (!parsedJson) {
+      try {
+        parsedJson = JSON.parse(text);
+      } catch (e) {
+        console.warn('Failed to parse entire text as JSON:', e);
+        return null;
+      }
     }
 
+    // Check if it's the new Claude format and transform it
+    if (parsedJson && typeof parsedJson === 'object' && parsedJson !== null) {
+      const jsonObj = parsedJson as Record<string, unknown>;
+      
+      console.log('[DEBUG] JSON object keys:', Object.keys(jsonObj));
+      console.log('[DEBUG] Has highLevelOverview:', !!jsonObj.highLevelOverview);
+      console.log('[DEBUG] Has granularBreakdown:', !!jsonObj.granularBreakdown);
+      console.log('[DEBUG] Has metadata:', !!jsonObj.metadata);
+      console.log('[DEBUG] Has allCoverages:', !!jsonObj.allCoverages);
+      
+      if (jsonObj.highLevelOverview || jsonObj.granularBreakdown) {
+        console.log('[DEBUG] Detected new Claude response format, transforming...');
+        console.log('[DEBUG] Full Claude response:', JSON.stringify(jsonObj, null, 2));
+        return transformClaudeResponse(jsonObj as ClaudeResponseFormat);
+      }
+
+      // If it's already in the legacy format, return as is
+      if (jsonObj.metadata || jsonObj.allCoverages || jsonObj.planOptions) {
+        console.log('[DEBUG] Detected legacy response format, using as is...');
+        console.log('[DEBUG] Legacy response sample:', JSON.stringify({
+          metadata: !!jsonObj.metadata,
+          allCoverages: Array.isArray(jsonObj.allCoverages) ? jsonObj.allCoverages.length : 'not array',
+          planOptions: Array.isArray(jsonObj.planOptions) ? jsonObj.planOptions.length : 'not array'
+        }));
+        return jsonObj as ClaudeParsedResponse;
+      }
+    }
+
+    console.warn('[WARN] Unrecognized response format');
     return null;
   } catch (error) {
-    console.error('Error extracting JSON from Gemini response:', error);
+    console.error('Error extracting JSON from Claude response:', error);
     return null;
   }
 }
@@ -332,7 +578,7 @@ function validateCoverages(coverages: CoverageEntry[]): {
 
 /**
  * Creates default coverage entries when no valid coverages are found
- * @param metadata Metadata from the Gemini API response
+ * @param metadata Metadata from the Claude API response
  * @returns Array containing a default coverage entry
  */
 function createDefaultCoverages(metadata?: Metadata): CoverageEntry[] {
@@ -756,63 +1002,58 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
 }
 
 /**
- * Creates the Gemini API request options
- * @param apiKey Gemini API key
- * @returns HttpsRequestOptions for Gemini API
+ * Creates the Claude API request options
+ * @param apiKey Claude API key
+ * @returns HttpsRequestOptions for Claude API
  */
-function createGeminiRequestOptions(apiKey: string): HttpsRequestOptions {
+function createClaudeRequestOptions(apiKey: string): HttpsRequestOptions {
   return {
-    hostname: 'generativelanguage.googleapis.com',
-    path: `/v1beta/models/gemini-2.5-pro-preview-06-05:generateContent?key=${apiKey}`,
+    hostname: 'api.anthropic.com',
+    path: '/v1/messages',
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
     },
   };
 }
 
 /**
- * Creates the payload for the Gemini API request
+ * Creates the payload for the Claude API request
  * @param extractedText Text extracted from the PDF
- * @returns Payload object for the Gemini API
+ * @returns Payload object for the Claude API
  */
-function createGeminiPayload(extractedText: string): object {
+function createClaudePayload(extractedText: string): object {
   return {
-    contents: [
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8192,
+    temperature: 0.1,
+    messages: [
       {
-        parts: [
-          {
-            text: `${ENHANCED_GEMINI_PROMPT}\n\nHere's the document content to analyze:\n\n${extractedText}`,
-          },
-        ],
+        role: 'user',
+        content: `${ENHANCED_GEMINI_PROMPT}\n\nHere's the document content to analyze:\n\n${extractedText}`,
       },
     ],
-    generationConfig: {
-      temperature: 0.1,
-      topK: 40,
-      topP: 0.95,
-      maxOutputTokens: 58192,
-      responseMimeType: 'text/plain',
-    },
   };
 }
 
 /**
- * Processes the Gemini API response and extracts the structured data
- * @param responseText Raw text response from Gemini API
+ * Processes the Claude API response and extracts the structured data
+ * @param responseText Raw text response from Claude API
  * @returns Parsed and validated response data
  */
-function processGeminiResponse(responseText: string): GeminiParsedResponse {
-  // Parse the JSON response from Gemini
-  console.log('[DEBUG] Attempting to parse JSON from Gemini response...');
-  const parsedJson = extractJsonFromGeminiResponse(responseText);
+function processClaudeResponse(responseText: string): ClaudeParsedResponse {
+  // Parse the JSON response from Claude
+  console.log('[DEBUG] Attempting to parse JSON from Claude response...');
+  const parsedJson = extractJsonFromClaudeResponse(responseText);
   if (!parsedJson) {
-    console.error('[ERROR] Failed to parse JSON from Gemini response');
+    console.error('[ERROR] Failed to parse JSON from Claude response');
     // Log the first 500 characters of the response to help diagnose
     console.log(
       `[DEBUG] Failed JSON parsing. Response text sample: ${responseText.substring(0, 500)}...`
     );
-    throw new Error('Failed to parse JSON from Gemini response');
+    throw new Error('Failed to parse JSON from Claude response');
   }
 
   // Validate the parsed data - now using allCoverages instead of coverages
@@ -822,23 +1063,23 @@ function processGeminiResponse(responseText: string): GeminiParsedResponse {
   let processedCoverages = validationResult.validCoverages;
   if (processedCoverages.length === 0) {
     console.log(
-      '[DEBUG] No valid coverages found in Gemini response. Creating default coverages.'
+      '[DEBUG] No valid coverages found in Claude response. Creating default coverages.'
     );
     console.log('[DEBUG] Validation result:', validationResult);
 
     if (parsedJson.allCoverages && parsedJson.allCoverages.length > 0) {
       console.log(
-        `[DEBUG] Raw coverages from Gemini (${parsedJson.allCoverages.length} items):`
+        `[DEBUG] Raw coverages from Claude (${parsedJson.allCoverages.length} items):`
       );
       console.log(JSON.stringify(parsedJson.allCoverages[0], null, 2));
     } else {
-      console.log('[DEBUG] No allCoverages array found in Gemini response');
+      console.log('[DEBUG] No allCoverages array found in Claude response');
     }
 
     processedCoverages = createDefaultCoverages(parsedJson.metadata);
   } else {
     console.log(
-      `[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`
+      `[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Claude response`
     );
   }
 
@@ -852,67 +1093,87 @@ function processGeminiResponse(responseText: string): GeminiParsedResponse {
 }
 
 /**
- * Structures data from extracted PDF text using Google Gemini API
+ * Structures data from extracted PDF text using Anthropic Claude API
  * @param extractedText Text extracted from the PDF
  * @returns Promise resolving to the structured data
  */
-async function structureDataWithGemini(
+async function structureDataWithClaude(
   extractedText: string
-): Promise<GeminiParsedResponse> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('Gemini API key is missing');
+): Promise<ClaudeParsedResponse> {
+  if (!CLAUDE_API_KEY) {
+    throw new Error('Claude API key is missing');
   }
 
   try {
-    // Prepare and make the request to Gemini API
-    const geminiOptions = createGeminiRequestOptions(GEMINI_API_KEY);
-    const payload = createGeminiPayload(extractedText);
+    // Prepare and make the request to Claude API
+    const claudeOptions = createClaudeRequestOptions(CLAUDE_API_KEY);
+    const payload = createClaudePayload(extractedText);
 
-    const geminiResponse = await makeHttpsRequest(
-      geminiOptions,
+    console.log('[DEBUG] Claude API request payload:', JSON.stringify(payload, null, 2));
+
+    const claudeResponse = await makeHttpsRequest(
+      claudeOptions,
       JSON.stringify(payload)
     );
 
-    if (geminiResponse.error || !geminiResponse.data) {
+    console.log('[DEBUG] Claude API raw response:', {
+      statusCode: claudeResponse.statusCode,
+      error: claudeResponse.error,
+      dataLength: claudeResponse.data?.length || 0,
+      rawResponseSample: claudeResponse.rawResponse?.substring(0, 500) + '...'
+    });
+
+    if (claudeResponse.error || !claudeResponse.data) {
       throw new Error(
-        `Failed to get response from Gemini API: ${geminiResponse.error || 'Empty response'}`
+        `Failed to get response from Claude API: ${claudeResponse.error || 'Empty response'}`
       );
     }
 
-    let responseData: GeminiSuccessResponse | GeminiErrorResponse;
+    let responseData: ClaudeSuccessResponse | ClaudeErrorResponse;
     try {
-      responseData = JSON.parse(geminiResponse.data);
+      responseData = JSON.parse(claudeResponse.data);
+      console.log('[DEBUG] Parsed Claude API response structure:', {
+        hasError: 'error' in responseData,
+        hasContent: 'content' in responseData,
+        contentLength: 'content' in responseData ? responseData.content?.length : 0,
+        model: 'model' in responseData ? responseData.model : 'N/A',
+        usage: 'usage' in responseData ? responseData.usage : 'N/A'
+      });
+      console.log('[DEBUG] Full Claude API response:', JSON.stringify(responseData, null, 2));
     } catch (parseError) {
+      console.log('[ERROR] Failed to parse Claude response. Raw data:', claudeResponse.data?.substring(0, 1000));
       throw new Error(
-        `Failed to parse Gemini API response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
+        `Failed to parse Claude API response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
       );
     }
 
     // Check for error in response
     if ('error' in responseData) {
       throw new Error(
-        `Gemini API error: ${responseData.error.message || 'Unknown error'}`
+        `Claude API error: ${responseData.error.message || 'Unknown error'}`
       );
     }
 
-    // Extract the response text from the Gemini API response
-    const responseText =
-      responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Extract the response text from the Claude API response
+    const responseText = responseData.content?.[0]?.text || '';
 
     if (!responseText) {
-      throw new Error('Empty response text from Gemini API');
+      console.log('[ERROR] Empty response text from Claude API. Full response:', JSON.stringify(responseData, null, 2));
+      throw new Error('Empty response text from Claude API');
     }
 
-    // Log a sample of the Gemini response text to debug
+    // Log the complete Claude response text for debugging
+    console.log('[DEBUG] Claude response text (FULL):', responseText);
     console.log(
-      `[DEBUG] Gemini response text sample (first 300 chars): ${responseText.substring(0, 300)}...`
+      `[DEBUG] Claude response text sample (first 300 chars): ${responseText.substring(0, 300)}...`
     );
+    console.log(`[DEBUG] Claude response text length: ${responseText.length} characters`);
 
     // Process the response
-    return processGeminiResponse(responseText);
+    return processClaudeResponse(responseText);
   } catch (error) {
     throw new Error(
-      `Error structuring data with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Error structuring data with Claude: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -957,38 +1218,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       id: 'authentication',
       name: 'Authentication',
       description: 'Verifying user credentials',
-      status: 'pending'
+      status: 'pending',
     },
     form_validation: {
       id: 'form_validation',
-      name: 'Form Validation', 
+      name: 'Form Validation',
       description: 'Validating uploaded document',
-      status: 'pending'
+      status: 'pending',
     },
     file_upload: {
       id: 'file_upload',
       name: 'File Upload',
       description: 'Uploading document to secure storage',
-      status: 'pending'
+      status: 'pending',
     },
     pdf_extraction: {
       id: 'pdf_extraction',
       name: 'PDF Extraction',
       description: 'Extracting text content from PDF',
-      status: 'pending'
+      status: 'pending',
     },
     ai_processing: {
       id: 'ai_processing',
       name: 'AI Processing',
-      description: 'Processing data with Gemini AI',
-      status: 'pending'
+      description: 'Processing data with Claude AI',
+      status: 'pending',
     },
     save_results: {
       id: 'save_results',
       name: 'Saving Results',
       description: 'Saving processed data',
-      status: 'pending'
-    }
+      status: 'pending',
+    },
   };
 
   /**
@@ -1014,7 +1275,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
 
   // Helper function to update stage status
-  const updateStage = (stageId: string, status: ProcessStage['status'], details?: string, progress?: number) => {
+  const updateStage = (
+    stageId: string,
+    status: ProcessStage['status'],
+    details?: string,
+    progress?: number
+  ) => {
     if (stages[stageId]) {
       stages[stageId].status = status;
       if (status === 'in_progress' && !stages[stageId].startTime) {
@@ -1029,12 +1295,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         stages[stageId].progress = progress;
       }
     }
-    
+
     // Log stage updates with the structured logger
-    logger.info(`Process stage updated: ${stageId}`, { 
-      status, 
+    logger.info(`Process stage updated: ${stageId}`, {
+      status,
       details: details || undefined,
-      progress: progress !== undefined ? `${progress}%` : undefined 
+      progress: progress !== undefined ? `${progress}%` : undefined,
     });
   };
 
@@ -1046,11 +1312,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!user || !user.id) {
       updateStage('authentication', 'failed', 'User not authenticated');
       return NextResponse.json(
-        { 
-          error: 'Authentication error', 
+        {
+          error: 'Authentication error',
           detail: 'Please sign in to upload files',
           suggestedAction: 'Sign in again or refresh your session',
-          stages: Object.values(stages)
+          stages: Object.values(stages),
         },
         { status: 401 }
       );
@@ -1062,7 +1328,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     updateStage('form_validation', 'in_progress');
     // Get form data
     const formData = await request.formData().catch((error) => {
-      updateStage('form_validation', 'failed', `Form data parsing error: ${error.message}`);
+      updateStage(
+        'form_validation',
+        'failed',
+        `Form data parsing error: ${error.message}`
+      );
       throw new ProcessingError(
         `Failed to parse form data: ${error.message}`,
         'form_validation'
@@ -1073,12 +1343,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!file || !(file instanceof File)) {
       updateStage('form_validation', 'failed', 'No file uploaded');
-      return NextResponse.json({ 
-        error: 'Missing document', 
-        detail: 'No file was uploaded',
-        suggestedAction: 'Please select a PDF file to upload',
-        stages: Object.values(stages)
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: 'Missing document',
+          detail: 'No file was uploaded',
+          suggestedAction: 'Please select a PDF file to upload',
+          stages: Object.values(stages),
+        },
+        { status: 400 }
+      );
     }
 
     // Add additional file validation
@@ -1088,8 +1361,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         {
           error: 'Invalid file format',
           detail: 'Only PDF files are supported',
-          suggestedAction: 'Please convert your document to PDF format before uploading',
-          stages: Object.values(stages)
+          suggestedAction:
+            'Please convert your document to PDF format before uploading',
+          stages: Object.values(stages),
         },
         { status: 400 }
       );
@@ -1100,11 +1374,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (file.size > TEN_MB) {
       updateStage('form_validation', 'failed', 'File too large');
       return NextResponse.json(
-        { 
-          error: 'File too large', 
+        {
+          error: 'File too large',
           detail: 'Maximum file size is 10MB',
-          suggestedAction: 'Please compress your PDF or split it into smaller files',
-          stages: Object.values(stages)
+          suggestedAction:
+            'Please compress your PDF or split it into smaller files',
+          stages: Object.values(stages),
         },
         { status: 400 }
       );
@@ -1139,10 +1414,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let extractedText: string;
     try {
       extractedText = await extractTextFromPdf(fileBuffer);
-      updateStage('pdf_extraction', 'completed', `Extracted ${extractedText.length} characters`);
+      updateStage(
+        'pdf_extraction',
+        'completed',
+        `Extracted ${extractedText.length} characters`
+      );
       logger.info('PDF text extraction completed successfully');
     } catch (error) {
-      updateStage('pdf_extraction', 'failed', `Extraction error: ${error instanceof Error ? error.message : String(error)}`);
+      updateStage(
+        'pdf_extraction',
+        'failed',
+        `Extraction error: ${error instanceof Error ? error.message : String(error)}`
+      );
       logger.error('PDF extraction error in main handler:', {
         error: error instanceof Error ? error.message : String(error),
       });
@@ -1153,13 +1436,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // AI processing stage
-    updateStage('ai_processing', 'in_progress', 'Analyzing document with Gemini AI');
-    // Process extracted text with Gemini API
-    const structuredData = await structureDataWithGemini(extractedText).catch(
-      (error) => {
-        updateStage('ai_processing', 'failed', `AI processing error: ${error.message}`);
+    updateStage(
+      'ai_processing',
+      'in_progress',
+      'Analyzing document with Claude AI'
+    );
+    // Process extracted text with Claude API
+    const structuredData = await structureDataWithClaude(extractedText).catch(
+      (error: Error) => {
+        updateStage(
+          'ai_processing',
+          'failed',
+          `AI processing error: ${error.message}`
+        );
         throw new ProcessingError(
-          `Failed to process with Gemini API: ${error.message}`,
+          `Failed to process with Claude API: ${error.message}`,
           'ai_processing'
         );
       }
@@ -1173,11 +1464,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ...structuredData,
       originalFileUrl: uploadResult.url,
       processedAt: new Date().toISOString(),
-      processingStages: Object.values(stages)
+      processingStages: Object.values(stages),
     };
 
     // Save processed data as JSON
     const processedFilename = `${file.name.replace(fileExtensionRegex, '')}-processed.json`;
+    
+    console.log('[DEBUG] Processed data being saved:', JSON.stringify(processedData, null, 2));
+    
     const processedResult = await uploadFile({
       userId,
       file: Buffer.from(JSON.stringify(processedData, null, 2)),
@@ -1201,21 +1495,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       metadata: extractedMetadata = {},
       allCoverages: extractedCoverages = [],
     } = structuredData;
-    
+
     // Count the different coverage types for better feedback
-    const coverageTypes = (extractedCoverages as Array<{coverageType?: string}>).reduce((counts: Record<string, number>, coverage) => {
-      const type = coverage.coverageType || 'unknown';
-      counts[type] = (counts[type] || 0) + 1;
-      return counts;
-    }, {} as Record<string, number>);
-    
+    const coverageTypes = (
+      extractedCoverages as Array<{ coverageType?: string }>
+    ).reduce(
+      (counts: Record<string, number>, coverage) => {
+        const type = coverage.coverageType || 'unknown';
+        counts[type] = (counts[type] || 0) + 1;
+        return counts;
+      },
+      {} as Record<string, number>
+    );
+
     const coverageCount = extractedCoverages.length;
     const coverageSummary = Object.entries(coverageTypes)
       .map(([type, count]) => `${type}: ${count}`)
       .join(', ');
 
     // Ensure we use the validated coverages at the top level too
-    return NextResponse.json({
+    const finalResponse = {
       success: true,
       processedData,
       url: uploadResult.url,
@@ -1228,9 +1527,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         processingTime: calculateProcessingTime(stages),
         coverageCount,
         coverageSummary,
-        processingStages: Object.values(stages)
-      }
-    });
+        processingStages: Object.values(stages),
+      },
+      rawJsonContent: JSON.stringify(processedData, null, 2), // Add raw JSON content for display
+    };
+    
+    console.log('[DEBUG] Final API response being returned:', JSON.stringify(finalResponse, null, 2));
+    
+    return NextResponse.json(finalResponse);
   } catch (error) {
     logger.error('Document processing failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -1238,8 +1542,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const errorDetails = getErrorMessage(error);
-    const errorStage = error instanceof ProcessingError ? error.stage : 'unknown';
-    const statusCode = error instanceof ProcessingError && error.stage === 'authentication' ? 401 : 500;
+    const errorStage =
+      error instanceof ProcessingError ? error.stage : 'unknown';
+    const statusCode =
+      error instanceof ProcessingError && error.stage === 'authentication'
+        ? 401
+        : 500;
 
     return NextResponse.json(
       {
@@ -1247,7 +1555,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         technicalDetails: errorDetails.technicalDetails,
         suggestedAction: errorDetails.suggestedAction,
         stage: errorStage,
-        stages: Object.values(stages)
+        stages: Object.values(stages),
       },
       { status: statusCode }
     );
@@ -1260,29 +1568,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 function calculateProcessingTime(stages: Record<string, ProcessStage>): string {
   const allStages = Object.values(stages);
   const startTimes = allStages
-    .map(stage => stage.startTime ? new Date(stage.startTime).getTime() : null)
-    .filter(time => time !== null) as number[];
-  
+    .map((stage) =>
+      stage.startTime ? new Date(stage.startTime).getTime() : null
+    )
+    .filter((time) => time !== null) as number[];
+
   const endTimes = allStages
-    .map(stage => stage.endTime ? new Date(stage.endTime).getTime() : null)
-    .filter(time => time !== null) as number[];
-  
+    .map((stage) => (stage.endTime ? new Date(stage.endTime).getTime() : null))
+    .filter((time) => time !== null) as number[];
+
   if (startTimes.length === 0 || endTimes.length === 0) {
     return 'Unknown';
   }
-  
+
   const firstStart = Math.min(...startTimes);
   const lastEnd = Math.max(...endTimes);
-  
+
   const totalTimeMs = lastEnd - firstStart;
   if (totalTimeMs < 1000) {
     return `${totalTimeMs}ms`;
-  } 
-  
+  }
+
   if (totalTimeMs < 60000) {
     return `${(totalTimeMs / 1000).toFixed(2)}s`;
-  } 
-  
+  }
+
   return `${(totalTimeMs / 60000).toFixed(2)}min`;
 }
 
@@ -1311,23 +1621,31 @@ function getErrorMessage(error: unknown): {
     return {
       message: 'Authentication error',
       technicalDetails: errorMessage,
-      suggestedAction: 'Please sign in again or contact support if the issue persists.',
+      suggestedAction:
+        'Please sign in again or contact support if the issue persists.',
     };
   }
 
   // PDF extraction errors
   if (lowerMessage.includes('pdf-parse') || lowerMessage.includes('pdf')) {
-    let suggestedAction = 'Try a different PDF file or ensure your PDF is not password-protected.';
-    
+    let suggestedAction =
+      'Try a different PDF file or ensure your PDF is not password-protected.';
+
     // More specific PDF extraction error suggestions
     if (lowerMessage.includes('password') || lowerMessage.includes('encrypt')) {
-      suggestedAction = 'The PDF appears to be password-protected. Please upload an unprotected version.';
-    } else if (lowerMessage.includes('corrupt') || lowerMessage.includes('invalid format')) {
-      suggestedAction = 'The PDF file appears to be corrupted. Please try recreating or re-exporting the PDF.';
+      suggestedAction =
+        'The PDF appears to be password-protected. Please upload an unprotected version.';
+    } else if (
+      lowerMessage.includes('corrupt') ||
+      lowerMessage.includes('invalid format')
+    ) {
+      suggestedAction =
+        'The PDF file appears to be corrupted. Please try recreating or re-exporting the PDF.';
     } else if (lowerMessage.includes('timeout')) {
-      suggestedAction = 'The PDF processing timed out. Try with a smaller or simpler document.';
+      suggestedAction =
+        'The PDF processing timed out. Try with a smaller or simpler document.';
     }
-    
+
     return {
       message: 'PDF extraction error',
       technicalDetails: errorMessage,
@@ -1336,18 +1654,33 @@ function getErrorMessage(error: unknown): {
   }
 
   // AI processing errors
-  if (lowerMessage.includes('gemini') || lowerMessage.includes('generate') || lowerMessage.includes('ai processing')) {
+  if (
+    lowerMessage.includes('claude') ||
+    lowerMessage.includes('gemini') ||
+    lowerMessage.includes('generate') ||
+    lowerMessage.includes('ai processing')
+  ) {
     let suggestedAction = 'Please try again or try with a different document.';
-    
+
     // More specific AI errors
     if (lowerMessage.includes('quota') || lowerMessage.includes('rate limit')) {
-      suggestedAction = 'Our AI service is experiencing high demand. Please try again in a few minutes.';
-    } else if (lowerMessage.includes('content policy') || lowerMessage.includes('content filter')) {
-      suggestedAction = 'The document contains content that could not be processed. Please ensure the document contains only insurance information.';
-    } else if (lowerMessage.includes('parse') || lowerMessage.includes('json') || lowerMessage.includes('format')) {
-      suggestedAction = 'The document structure could not be properly interpreted. Try with a clearer document layout.';
+      suggestedAction =
+        'Our AI service is experiencing high demand. Please try again in a few minutes.';
+    } else if (
+      lowerMessage.includes('content policy') ||
+      lowerMessage.includes('content filter')
+    ) {
+      suggestedAction =
+        'The document contains content that could not be processed. Please ensure the document contains only insurance information.';
+    } else if (
+      lowerMessage.includes('parse') ||
+      lowerMessage.includes('json') ||
+      lowerMessage.includes('format')
+    ) {
+      suggestedAction =
+        'The document structure could not be properly interpreted. Try with a clearer document layout.';
     }
-    
+
     return {
       message: 'AI processing error',
       technicalDetails: errorMessage,
@@ -1356,11 +1689,16 @@ function getErrorMessage(error: unknown): {
   }
 
   // Storage errors
-  if (lowerMessage.includes('storage') || lowerMessage.includes('upload') || lowerMessage.includes('s3')) {
+  if (
+    lowerMessage.includes('storage') ||
+    lowerMessage.includes('upload') ||
+    lowerMessage.includes('s3')
+  ) {
     return {
       message: 'File storage error',
       technicalDetails: errorMessage,
-      suggestedAction: 'Please try uploading again. If the problem persists, contact support.',
+      suggestedAction:
+        'Please try uploading again. If the problem persists, contact support.',
     };
   }
 
@@ -1377,6 +1715,7 @@ function getErrorMessage(error: unknown): {
   return {
     message: 'Failed to process document',
     technicalDetails: errorMessage,
-    suggestedAction: 'Please try again with a different document or contact support if the issue persists.',
+    suggestedAction:
+      'Please try again with a different document or contact support if the issue persists.',
   };
 }
