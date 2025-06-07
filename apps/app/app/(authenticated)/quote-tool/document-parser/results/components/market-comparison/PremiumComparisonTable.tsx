@@ -58,6 +58,24 @@ const formatCurrency = (value: number | string | null | undefined): string => {
   }).format(numValue);
 };
 
+// Format unit rate as decimal (not currency)
+const formatUnitRate = (value: number | string | null | undefined): string => {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+
+  const numValue = typeof value === 'string' ? Number.parseFloat(value.replace(/,/g, '')) : value;
+
+  if (Number.isNaN(numValue)) {
+    return '-';
+  }
+
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  }).format(numValue);
+};
+
 // Format coverage volume with appropriate units
 const formatVolume = (volume: string | number | null | undefined): string => {
   if (!volume) {
@@ -263,7 +281,7 @@ export function PremiumComparisonTable({
   }, [extractRateGuarantee, extractCarriersFromCoverages]);
 
   /**
-   * Extract unique carriers from results
+   * Extract unique carriers from results with preferred ordering
    */
   const carriers = useMemo<Array<{
     name: string;
@@ -279,9 +297,47 @@ export function PremiumComparisonTable({
       processResultForCarriers(result, carriersMap);
     }
     
-    return carriersMap.size === 0 
-      ? [{ name: 'No Carrier Data', rateGuarantee: null }]
-      : Array.from(carriersMap.values());
+    if (carriersMap.size === 0) {
+      return [{ name: 'No Carrier Data', rateGuarantee: null }];
+    }
+    
+    // Define preferred carrier order for consistent display
+    const preferredOrder = [
+      'Manulife',
+      'Manulife Financial', 
+      'Sun Life',
+      'Sun Life Financial',
+      'Empire Life',
+      'Canada Life',
+      'Victor',
+      'Victor Insurance'
+    ];
+    
+    const carriersArray = Array.from(carriersMap.values());
+    
+    // Sort carriers according to preferred order, with unknown carriers at the end
+    return carriersArray.sort((a, b) => {
+      const indexA = preferredOrder.findIndex(preferred => 
+        a.name.toLowerCase().includes(preferred.toLowerCase()) || 
+        preferred.toLowerCase().includes(a.name.toLowerCase())
+      );
+      const indexB = preferredOrder.findIndex(preferred => 
+        b.name.toLowerCase().includes(preferred.toLowerCase()) || 
+        preferred.toLowerCase().includes(b.name.toLowerCase())
+      );
+      
+      // If both carriers are in preferred order, sort by their position
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      
+      // If only one is in preferred order, it comes first
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      
+      // If neither is in preferred order, sort alphabetically
+      return a.name.localeCompare(b.name);
+    });
   }, [results, processResultForCarriers]);
 
   // Set default selected plan options when carriers change
@@ -458,7 +514,7 @@ export function PremiumComparisonTable({
             
             rowData.values[idx] = {
               volume: formatVolume(lives),
-              unitRate: formatCurrency(rate),
+              unitRate: formatUnitRate(rate),
               monthlyPremium: formatCurrency(premium),
             };
             
@@ -483,7 +539,7 @@ export function PremiumComparisonTable({
           if (coverage) {
             rowData.values[idx] = {
               volume: formatVolume(coverage.volume),
-              unitRate: formatCurrency(coverage.unitRate),
+              unitRate: formatUnitRate(coverage.unitRate),
               monthlyPremium: formatCurrency(coverage.monthlyPremium),
             };
             const numericPremium = parseNumericValue(coverage.monthlyPremium);
