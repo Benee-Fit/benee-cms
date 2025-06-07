@@ -505,10 +505,25 @@ export function PremiumComparisonTable({
               rate = (coverage as any).premiumPerSingle || coverage.unitRate;
               lives = (coverage as any).livesSingle || 0;
             } else {
-              // For Family: premiumPerFamily is the rate per family unit
+              // For Family: need to normalize premiumPerFamily data
               const familyLives = (coverage as any).livesFamily || 1;
-              rate = (coverage as any).premiumPerFamily || 0;  // This is per-unit rate
-              premium = rate * familyLives;  // Calculate total: rate × volume
+              const familyPremium = (coverage as any).premiumPerFamily || 0;
+              
+              // Check if premiumPerFamily is already the per-unit rate or total premium
+              // If familyLives > 1 and familyPremium seems like a total (much larger than single rate)
+              const singleRate = (coverage as any).premiumPerSingle || 0;
+              
+              // Heuristic: if familyPremium is more than 3x the singleRate, it's likely a total
+              // Otherwise, treat it as per-unit rate
+              if (familyLives > 1 && singleRate > 0 && familyPremium > (singleRate * 3)) {
+                // familyPremium appears to be total family premium, calculate per-unit rate
+                rate = familyPremium / familyLives;
+                premium = familyPremium;  // Use the total as-is
+              } else {
+                // familyPremium appears to be per-unit rate
+                rate = familyPremium;
+                premium = rate * familyLives;  // Calculate total: rate × volume
+              }
               lives = familyLives;
             }
             
@@ -542,8 +557,12 @@ export function PremiumComparisonTable({
               unitRate: formatUnitRate(coverage.unitRate),
               monthlyPremium: formatCurrency(coverage.monthlyPremium),
             };
+            
+            // THIS IS THE KEY CHANGE:
+            // Only add to totals here if it's NOT a benefit that we are
+            // handling with a single/family breakdown.
             const numericPremium = parseNumericValue(coverage.monthlyPremium);
-            if (numericPremium > 0) {
+            if (numericPremium > 0 && key !== 'Extended Healthcare' && key !== 'Dental Care') {
               // Determine if this is pooled or experience-rated
               const isPooled = !isExperienceRatedCoverage(key);
               if (isPooled) {
