@@ -58,7 +58,7 @@ const formatCurrency = (value: number | string | null | undefined): string => {
   }).format(numValue);
 };
 
-// Format unit rate as decimal (not currency)
+// Format unit rate as decimal (not currency) - CHANGED TO 2 DECIMAL PLACES
 const formatUnitRate = (value: number | string | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '-';
@@ -71,8 +71,8 @@ const formatUnitRate = (value: number | string | null | undefined): string => {
   }
 
   return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
+    minimumFractionDigits: 2, // CHANGED FROM 3
+    maximumFractionDigits: 2, // CHANGED FROM 3
   }).format(numValue);
 };
 
@@ -265,7 +265,19 @@ export function PremiumComparisonTable({
     }
     
     const carrierName = metadata.carrierName;
-    const rateGuaranteeText = extractRateGuarantee(metadata.rateGuarantees);
+    
+    // Try multiple sources for rate guarantee information
+    let rateGuaranteeText = extractRateGuarantee(metadata.rateGuarantees);
+    
+    // If no rate guarantee in metadata.rateGuarantees, check planOptions
+    if (!rateGuaranteeText && result.planOptions) {
+      for (const planOption of result.planOptions) {
+        if (planOption.rateGuarantees && planOption.rateGuarantees.length > 0) {
+          rateGuaranteeText = extractRateGuarantee(planOption.rateGuarantees);
+          break;
+        }
+      }
+    }
     
     if (!carriersMap.has(carrierName)) {
       carriersMap.set(carrierName, {
@@ -473,10 +485,22 @@ export function PremiumComparisonTable({
       if (key.startsWith('HEADER-')) {
         // Handle Header Rows
         if (key === 'HEADER-EHC') {
-          rows.push({ type: 'header', label: 'Health Care (EHC)' });
+          rows.push({ 
+            key, 
+            type: 'header', 
+            label: 'HEALTH CARE (EHC)', 
+            volume: '',
+            values: new Array(carriersLength).fill({ unitRate: '', monthlyPremium: '' })
+          });
         }
         if (key === 'HEADER-DENTAL') {
-          rows.push({ type: 'header', label: 'Dental Care' });
+          rows.push({ 
+            key, 
+            type: 'header', 
+            label: 'DENTAL CARE', 
+            volume: '',
+            values: new Array(carriersLength).fill({ unitRate: '', monthlyPremium: '' })
+          });
         }
       } else if (key.startsWith('Subtotal-')) {
         // Handle Subtotal Rows - will be inserted later
@@ -487,23 +511,31 @@ export function PremiumComparisonTable({
       } else if (key.includes('-Single') || key.includes('-Family')) {
         // Handle Single/Family sub-rows for EHC and Dental
         const [baseType, variant] = key.split('-');
+        
+        // Find first coverage with lives data for volume column
+        const firstCoverageWithLives = carriers
+          .map(c => processedCoverages.get(`${c.name}-${baseType}`))
+          .find(cov => cov && (variant === 'Single' ? (cov as any).livesSingle : (cov as any).livesFamily));
+        const lives = variant === 'Single' ? (firstCoverageWithLives as any)?.livesSingle : (firstCoverageWithLives as any)?.livesFamily;
+        
         const rowData = {
+          key,
           type: 'subBenefit',
           label: variant,
-          values: new Array(carriersLength).fill({ volume: '', unitRate: '', monthlyPremium: '$0.00' })
+          volume: formatVolume(lives),
+          values: new Array(carriersLength).fill({ unitRate: '', monthlyPremium: '$0.00' })
         };
 
         carriers.forEach((carrier, idx) => {
           const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
           if (coverage) {
             // Handle Single/Family variants - data is stored directly on coverage object
-            let premium, rate, lives;
+            let premium, rate;
             
             if (variant === 'Single') {
               // For Single: total premium for all single enrollees
               premium = (coverage as any).premiumPerSingle || 0;
               rate = (coverage as any).premiumPerSingle || coverage.unitRate;
-              lives = (coverage as any).livesSingle || 0;
             } else {
               // For Family: need to normalize premiumPerFamily data
               const familyLives = (coverage as any).livesFamily || 1;
@@ -524,11 +556,9 @@ export function PremiumComparisonTable({
                 rate = familyPremium;
                 premium = rate * familyLives;  // Calculate total: rate × volume
               }
-              lives = familyLives;
             }
             
             rowData.values[idx] = {
-              volume: formatVolume(lives),
               unitRate: formatUnitRate(rate),
               monthlyPremium: formatCurrency(premium),
             };
@@ -543,17 +573,23 @@ export function PremiumComparisonTable({
         rows.push(rowData);
       } else {
         // Handle standard benefit rows
+        // Find first coverage with volume for the consolidated volume column
+        const firstCoverageWithVolume = carriers
+          .map(c => processedCoverages.get(`${c.name}-${key}`))
+          .find(cov => cov && cov.volume);
+          
         const rowData = {
+          key,
           type: 'benefit',
           label: key,
-          values: new Array(carriersLength).fill({ volume: '-', unitRate: '-', monthlyPremium: '$0.00' })
+          volume: firstCoverageWithVolume ? formatVolume(firstCoverageWithVolume.volume) : '-',
+          values: new Array(carriersLength).fill({ unitRate: '-', monthlyPremium: '$0.00' })
         };
 
         carriers.forEach((carrier, idx) => {
           const coverage = processedCoverages.get(`${carrier.name}-${key}`);
           if (coverage) {
             rowData.values[idx] = {
-              volume: formatVolume(coverage.volume),
               unitRate: formatUnitRate(coverage.unitRate),
               monthlyPremium: formatCurrency(coverage.monthlyPremium),
             };
@@ -578,31 +614,46 @@ export function PremiumComparisonTable({
       }
     }
 
-    // 3. Insert subtotals, grand total, and rate guarantees at the correct positions.
+    // 3. Filter out empty benefit rows (where no carrier has a premium)
+    const filteredRows = rows.filter(row => {
+      // Keep headers, subtotals, and other summary rows
+      if (row.type !== 'benefit') {
+        return true;
+      }
+      // Check if any carrier has a non-zero premium for this benefit
+      return row.values.some((cell: any) => cell && parseNumericValue(cell.monthlyPremium) > 0);
+    });
+
+    // 4. Insert subtotals, grand total, and rate guarantees at the correct positions.
     const finalRows: any[] = [];
-    for (const row of rows) {
+    for (const row of filteredRows) {
       finalRows.push(row);
-      if (row.label === 'Employee Assistance Program') {
+      
+      // CHANGE 1: Insert Pooled Subtotal after Dependent Life
+      if (row.label === 'Dependent Life') {
         finalRows.push({
+          key: 'Subtotal-Pooled',
           type: 'subtotal',
           label: 'Sub-total - Pooled Coverage',
+          volume: '',
           values: pooledTotal.map(total => ({ 
-            volume: '', 
             unitRate: '', 
             monthlyPremium: formatCurrency(total) 
           }))
         });
       }
+      
       if (row.label === 'Family' && row.type === 'subBenefit') {
         // Check if this is the last Family row (Dental Care)
         const currentIndex = finalRows.length - 1;
-        const isDentalFamily = finalRows.slice(0, currentIndex).some(r => r.label === 'Dental Care');
+        const isDentalFamily = finalRows.slice(0, currentIndex).some(r => r.label === 'DENTAL CARE');
         if (isDentalFamily) {
           finalRows.push({
+            key: 'Subtotal-Experience',
             type: 'subtotal',
             label: 'Sub-total - Experience Rated Benefits',
+            volume: '',
             values: experienceTotal.map(total => ({ 
-              volume: '', 
               unitRate: '', 
               monthlyPremium: formatCurrency(total) 
             }))
@@ -612,20 +663,22 @@ export function PremiumComparisonTable({
     }
 
     finalRows.push({
+      key: 'Grand Total',
       type: 'total',
       label: 'Grand Total',
+      volume: '',
       values: grandTotal.map(total => ({ 
-        volume: '', 
         unitRate: '', 
         monthlyPremium: formatCurrency(total) 
       }))
     });
     
     finalRows.push({
+      key: 'Rate Guarantees',
       type: 'rateGuarantee',
       label: 'Rate Guarantees',
+      volume: '',
       values: carriers.map(carrier => ({ 
-        volume: '', 
         unitRate: '', 
         monthlyPremium: carrier.rateGuarantee || '-' 
       }))
@@ -686,6 +739,7 @@ export function PremiumComparisonTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[200px]">Benefit</TableHead>
+              <TableHead className="text-center">Volume</TableHead> {/* NEW SINGLE VOLUME HEADER */}
               {carriers.map((carrier, index) => {
                 const selectedPlan = selectedPlanOptions[carrier.name];
                 const availableOptions = carrierPlanOptions[carrier.name] || [];
@@ -694,7 +748,7 @@ export function PremiumComparisonTable({
                   <TableHead
                     key={`header-carrier-${index}`}
                     className="text-center"
-                    colSpan={3}
+                    colSpan={2}
                   >
                     <div className="flex flex-col">
                       <span className="font-semibold">
@@ -717,9 +771,9 @@ export function PremiumComparisonTable({
             </TableRow>
             <TableRow>
               <TableHead />
+              <TableHead /> {/* Empty header for volume column */}
               {carriers.map((_, index) => (
                 <React.Fragment key={`subheader-${index}`}>
-                  <TableHead className="text-center">Volume</TableHead>
                   <TableHead className="text-center">Unit Rate</TableHead>
                   <TableHead className="text-center">Monthly Premium</TableHead>
                 </React.Fragment>
@@ -732,7 +786,8 @@ export function PremiumComparisonTable({
               let rowClassName = '';
               
               if (row.type === 'header') {
-                rowClassName = 'font-bold bg-blue-50 text-blue-900';
+                // CHANGE 2: No background color for headers
+                rowClassName = '';
               } else if (row.type === 'total') {
                 rowClassName = 'font-bold bg-primary/5';
               } else if (row.type === 'rateGuarantee') {
@@ -740,53 +795,80 @@ export function PremiumComparisonTable({
               } else if (row.type === 'subtotal') {
                 rowClassName = 'font-medium bg-muted/50';
               } else if (row.type === 'subBenefit') {
-                rowClassName = 'hover:bg-muted/30 pl-6';
+                rowClassName = 'hover:bg-muted/30';
               } else {
                 rowClassName = 'hover:bg-muted/30';
               }
               
+              // CHANGE 2: Special rendering for header rows with no background
+              if (row.type === 'header') {
+                return (
+                  <TableRow key={`row-${index}-${row.label}`}>
+                    <TableCell className="font-bold" colSpan={2 + carriers.length * 2}>
+                      {row.label}
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+              
+              if (row.type === 'rateGuarantee') {
+                // Special rendering for Rate Guarantees row
+                return (
+                  <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
+                    <TableCell>{row.label}</TableCell>
+                    <TableCell /> {/* Empty cell for volume column */}
+                    {carriers.map((_, carrierIndex) => (
+                      <TableCell
+                        key={`rate-guarantee-${carrierIndex}`}
+                        colSpan={2}
+                        className="text-center"
+                      >
+                        {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              }
+              
               return (
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                  <TableCell className={row.type === 'subBenefit' ? 'pl-8' : ''}>
-                    {row.type === 'header' ? (
-                      <span className="text-sm font-semibold uppercase tracking-wide">
-                        {row.label}
-                      </span>
-                    ) : row.type === 'subBenefit' ? (
-                      <span className="text-sm text-muted-foreground">
-                        • {row.label}
-                      </span>
-                    ) : (
-                      row.label
-                    )}
+                  <TableCell className={row.type === 'subBenefit' ? 'pl-8 text-sm text-muted-foreground' : ''}>
+                    {/* CHANGE 3: No bullet points for sub-benefits */}
+                    {row.label}
                   </TableCell>
-                  {carriers.map((_, carrierIndex) => (
-                    <React.Fragment
-                      key={`row-${index}-carrier-${carrierIndex}`}
-                    >
+                  <TableCell className="text-center">
+                    {row.type !== 'subtotal' && 
+                     row.type !== 'total' && 
+                     row.type !== 'rateGuarantee' && 
+                     row.type !== 'header'
+                      ? row.volume || '-'
+                      : ""}
+                  </TableCell>
+                  {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
+                    <React.Fragment key={`${row.key}-${cellIdx}`}>
                       <TableCell className="text-center">
                         {row.type !== 'subtotal' && 
                          row.type !== 'total' && 
                          row.type !== 'rateGuarantee' && 
                          row.type !== 'header'
-                          ? row.values[carrierIndex]?.volume || '-'
-                          : ""}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {row.type !== 'subtotal' && 
-                         row.type !== 'total' && 
-                         row.type !== 'rateGuarantee' && 
-                         row.type !== 'header'
-                          ? row.values[carrierIndex]?.unitRate || '-'
+                          ? cell?.unitRate || '-'
                           : ""}
                       </TableCell>
                       <TableCell className="text-center">
                         {row.type !== 'header'
-                          ? row.values[carrierIndex]?.monthlyPremium || '-'
+                          ? cell?.monthlyPremium || '-'
                           : ""}
                       </TableCell>
                     </React.Fragment>
-                  ))}
+                  )) : (
+                    // Fallback for rows without values array
+                    carriers.map((_, cellIdx) => (
+                      <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
+                        <TableCell className="text-center">-</TableCell>
+                        <TableCell className="text-center">-</TableCell>
+                      </React.Fragment>
+                    ))
+                  )}
                 </TableRow>
               );
             })}
