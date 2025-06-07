@@ -439,19 +439,21 @@ export function PremiumComparisonTable({
 
         carriers.forEach((carrier, idx) => {
           const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
-          if (coverage && coverage.benefitDetails) {
-            // Handle Single/Family variants from benefit details
-            const details = coverage.benefitDetails as any;
+          if (coverage) {
+            // Handle Single/Family variants - data is stored directly on coverage object
             let premium, rate, lives;
             
             if (variant === 'Single') {
-              premium = details.totalPremiumSingle || coverage.monthlyPremium;
-              rate = details.premiumPerSingle || coverage.unitRate;
-              lives = details.livesSingle || coverage.volume;
+              // For Single: total premium for all single enrollees
+              premium = (coverage as any).premiumPerSingle || 0;
+              rate = (coverage as any).premiumPerSingle || coverage.unitRate;
+              lives = (coverage as any).livesSingle || 0;
             } else {
-              premium = details.totalPremiumFamily;
-              rate = details.premiumPerFamily;
-              lives = details.livesFamily;
+              // For Family: premiumPerFamily is the rate per family unit
+              const familyLives = (coverage as any).livesFamily || 1;
+              rate = (coverage as any).premiumPerFamily || 0;  // This is per-unit rate
+              premium = rate * familyLives;  // Calculate total: rate × volume
+              lives = familyLives;
             }
             
             rowData.values[idx] = {

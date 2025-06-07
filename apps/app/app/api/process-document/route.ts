@@ -139,6 +139,43 @@ interface GeminiParsedResponse {
   documentNotes?: string[];
 }
 
+// NEW - Enhanced JSON structure types (add support without breaking existing)
+interface HighLevelOverview {
+  carrierName: string;
+  planOption: string;
+  totalMonthlyPremium: number;
+  rateGuarantee: string;
+  pooledBenefitsSubtotal: number;
+  experienceRatedSubtotal: number;
+  keyHighlights: string;
+}
+
+interface GranularBreakdown {
+  benefitCategory: string;
+  benefitType: string;
+  carrierData: Array<{
+    carrierName: string;
+    planOption: string;
+    included: boolean;
+    volume?: number | null;
+    unitRate?: number | null;
+    monthlyPremium?: number | null;
+    coverageDetails: any;
+  }>;
+}
+
+// Enhanced response type that can contain both old and new formats
+interface EnhancedGeminiResponse {
+  // Old format (backward compatibility)
+  metadata?: Metadata;
+  planOptions?: PlanOption[];
+  allCoverages?: CoverageEntry[];
+  documentNotes?: string[];
+  // New format
+  highLevelOverview?: HighLevelOverview[];
+  granularBreakdown?: GranularBreakdown[];
+}
+
 // Options for HTTPS request options interface
 interface HttpsRequestOptions {
   hostname: string;
@@ -239,7 +276,7 @@ function makeHttpsRequest(
  */
 function extractJsonFromGeminiResponse(
   text: string
-): GeminiParsedResponse | null {
+): EnhancedGeminiResponse | null {
   try {
     // First, try to extract JSON from code blocks using regex
     console.log('[DEBUG] Attempting to extract JSON from code blocks...');
@@ -802,7 +839,7 @@ function createGeminiPayload(extractedText: string): object {
  * @param responseText Raw text response from Gemini API
  * @returns Parsed and validated response data
  */
-function processGeminiResponse(responseText: string): GeminiParsedResponse {
+function processGeminiResponse(responseText: string): EnhancedGeminiResponse {
   // Parse the JSON response from Gemini
   console.log('[DEBUG] Attempting to parse JSON from Gemini response...');
   const parsedJson = extractJsonFromGeminiResponse(responseText);
@@ -815,40 +852,56 @@ function processGeminiResponse(responseText: string): GeminiParsedResponse {
     throw new Error('Failed to parse JSON from Gemini response');
   }
 
-  // Validate the parsed data - now using allCoverages instead of coverages
-  const validationResult = validateCoverages(parsedJson.allCoverages || []);
+  // Check if this is the new enhanced format
+  const hasNewFormat = parsedJson.highLevelOverview && parsedJson.granularBreakdown;
+  
+  if (hasNewFormat) {
+    console.log('[DEBUG] Detected new enhanced JSON format with highLevelOverview and granularBreakdown');
+    // Validate the new format
+    if (!Array.isArray(parsedJson.highLevelOverview) || !Array.isArray(parsedJson.granularBreakdown)) {
+      console.error('[ERROR] New format detected but arrays are invalid');
+      throw new Error('Invalid new format: highLevelOverview and granularBreakdown must be arrays');
+    }
+    
+    console.log(`[DEBUG] Successfully parsed new format with ${parsedJson.highLevelOverview.length} overview items and ${parsedJson.granularBreakdown.length} breakdown items`);
+    return parsedJson;
+  } else {
+    console.log('[DEBUG] Processing legacy format with allCoverages');
+    // Handle legacy format
+    const validationResult = validateCoverages(parsedJson.allCoverages || []);
 
-  // If no valid coverages, create default ones
-  let processedCoverages = validationResult.validCoverages;
-  if (processedCoverages.length === 0) {
-    console.log(
-      '[DEBUG] No valid coverages found in Gemini response. Creating default coverages.'
-    );
-    console.log('[DEBUG] Validation result:', validationResult);
-
-    if (parsedJson.allCoverages && parsedJson.allCoverages.length > 0) {
+    // If no valid coverages, create default ones
+    let processedCoverages = validationResult.validCoverages;
+    if (processedCoverages.length === 0) {
       console.log(
-        `[DEBUG] Raw coverages from Gemini (${parsedJson.allCoverages.length} items):`
+        '[DEBUG] No valid coverages found in Gemini response. Creating default coverages.'
       );
-      console.log(JSON.stringify(parsedJson.allCoverages[0], null, 2));
+      console.log('[DEBUG] Validation result:', validationResult);
+
+      if (parsedJson.allCoverages && parsedJson.allCoverages.length > 0) {
+        console.log(
+          `[DEBUG] Raw coverages from Gemini (${parsedJson.allCoverages.length} items):`
+        );
+        console.log(JSON.stringify(parsedJson.allCoverages[0], null, 2));
+      } else {
+        console.log('[DEBUG] No allCoverages array found in Gemini response');
+      }
+
+      processedCoverages = createDefaultCoverages(parsedJson.metadata);
     } else {
-      console.log('[DEBUG] No allCoverages array found in Gemini response');
+      console.log(
+        `[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`
+      );
     }
 
-    processedCoverages = createDefaultCoverages(parsedJson.metadata);
-  } else {
-    console.log(
-      `[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`
-    );
+    // Return the structured response with legacy format
+    return {
+      metadata: parsedJson.metadata,
+      planOptions: parsedJson.planOptions,
+      allCoverages: processedCoverages,
+      documentNotes: parsedJson.documentNotes,
+    };
   }
-
-  // Return the structured response with the new schema
-  return {
-    metadata: parsedJson.metadata,
-    planOptions: parsedJson.planOptions,
-    allCoverages: processedCoverages,
-    documentNotes: parsedJson.documentNotes,
-  };
 }
 
 /**
@@ -858,7 +911,7 @@ function processGeminiResponse(responseText: string): GeminiParsedResponse {
  */
 async function structureDataWithGemini(
   extractedText: string
-): Promise<GeminiParsedResponse> {
+): Promise<EnhancedGeminiResponse> {
   if (!GEMINI_API_KEY) {
     throw new Error('Gemini API key is missing');
   }
@@ -1196,41 +1249,63 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // We already have the download URL from the upload result
     const downloadUrl = processedResult.url;
 
-    // Extract metadata and coverages for the top level response
-    const {
-      metadata: extractedMetadata = {},
-      allCoverages: extractedCoverages = [],
-    } = structuredData;
+    // Handle both old and new format responses
+    const hasNewFormat = structuredData.highLevelOverview && structuredData.granularBreakdown;
     
-    // Count the different coverage types for better feedback
-    const coverageTypes = (extractedCoverages as Array<{coverageType?: string}>).reduce((counts: Record<string, number>, coverage) => {
-      const type = coverage.coverageType || 'unknown';
-      counts[type] = (counts[type] || 0) + 1;
-      return counts;
-    }, {} as Record<string, number>);
-    
-    const coverageCount = extractedCoverages.length;
-    const coverageSummary = Object.entries(coverageTypes)
-      .map(([type, count]) => `${type}: ${count}`)
-      .join(', ');
+    if (hasNewFormat) {
+      // New enhanced format
+      console.log('[DEBUG] Returning new enhanced format response');
+      return NextResponse.json({
+        success: true,
+        processedData: structuredData, // Contains highLevelOverview and granularBreakdown
+        url: uploadResult.url,
+        downloadUrl,
+        originalFileName: file.name,
+        category: (formData.get('category') as string) || 'Current',
+        processingStats: {
+          processingTime: calculateProcessingTime(stages),
+          overviewCount: structuredData.highLevelOverview?.length || 0,
+          granularCount: structuredData.granularBreakdown?.length || 0,
+          processingStages: Object.values(stages)
+        }
+      });
+    } else {
+      // Legacy format
+      console.log('[DEBUG] Returning legacy format response');
+      const {
+        metadata: extractedMetadata = {},
+        allCoverages: extractedCoverages = [],
+      } = structuredData;
+      
+      // Count the different coverage types for better feedback
+      const coverageTypes = (extractedCoverages as Array<{coverageType?: string}>).reduce((counts: Record<string, number>, coverage) => {
+        const type = coverage.coverageType || 'unknown';
+        counts[type] = (counts[type] || 0) + 1;
+        return counts;
+      }, {} as Record<string, number>);
+      
+      const coverageCount = extractedCoverages.length;
+      const coverageSummary = Object.entries(coverageTypes)
+        .map(([type, count]) => `${type}: ${count}`)
+        .join(', ');
 
-    // Ensure we use the validated coverages at the top level too
-    return NextResponse.json({
-      success: true,
-      processedData,
-      url: uploadResult.url,
-      downloadUrl,
-      originalFileName: file.name,
-      category: (formData.get('category') as string) || 'Current',
-      metadata: extractedMetadata,
-      coverages: extractedCoverages,
-      processingStats: {
-        processingTime: calculateProcessingTime(stages),
-        coverageCount,
-        coverageSummary,
-        processingStages: Object.values(stages)
-      }
-    });
+      return NextResponse.json({
+        success: true,
+        processedData,
+        url: uploadResult.url,
+        downloadUrl,
+        originalFileName: file.name,
+        category: (formData.get('category') as string) || 'Current',
+        metadata: extractedMetadata,
+        coverages: extractedCoverages,
+        processingStats: {
+          processingTime: calculateProcessingTime(stages),
+          coverageCount,
+          coverageSummary,
+          processingStages: Object.values(stages)
+        }
+      });
+    }
   } catch (error) {
     logger.error('Document processing failed', {
       error: error instanceof Error ? error.message : String(error),
