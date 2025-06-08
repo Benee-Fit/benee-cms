@@ -737,14 +737,14 @@ export function PremiumComparisonTable({
           </div>
         )}
         <div className="overflow-x-auto border rounded-lg">
-          <Table className="table-fixed text-sm">
+          <Table className="table-fixed text-sm w-full">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[160px] sticky left-0 bg-background border-r z-20">
                   <div className="font-semibold text-sm">Benefit</div>
                 </TableHead>
                 <TableHead className="w-[70px] text-center">
-                  <div className="font-semibold text-xs">#</div>
+                  <div className="font-semibold text-xs">Volume</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
                   const selectedPlan = selectedPlanOptions[carrier.name];
@@ -808,7 +808,7 @@ export function PremiumComparisonTable({
               if (row.type === 'header') {
                 return (
                   <TableRow key={`row-${index}-${row.label}`}>
-                    <TableCell className="font-bold border-y bg-muted/30 sticky left-0 z-10 py-3" colSpan={2 + carriers.length * 2}>
+                    <TableCell className="font-bold text-sm border-y bg-muted/30 py-3 sticky left-0 z-10" colSpan={2 + carriers.length * 2}>
                       <div className="text-sm break-words leading-relaxed">{row.label}</div>
                     </TableCell>
                   </TableRow>

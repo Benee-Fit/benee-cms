@@ -41,12 +41,12 @@ const DetailRenderer = ({ details }: { details: any }) => {
     <ul className="space-y-2">
       {Object.entries(details).map(([key, value]) => (
         <li key={key} className="text-sm">
-          <div className="font-semibold capitalize text-muted-foreground mb-1 break-words">
+          <span className="font-semibold text-foreground capitalize break-words">
             {key.replace(/([A-Z])/g, ' $1')}:
-          </div>
-          <div className="break-words whitespace-normal leading-relaxed text-foreground">
+          </span>
+          <span className="ml-2 text-muted-foreground break-words whitespace-normal leading-relaxed">
             {String(value)}
-          </div>
+          </span>
         </li>
       ))}
     </ul>
@@ -277,10 +277,10 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
             .filter(filterBySearch)
             .map((category) => (
               <AccordionItem key={category.name} value={category.name}>
-                <AccordionTrigger className="hover:no-underline text-lg font-semibold py-4">
+                <AccordionTrigger className="hover:no-underline text-base font-semibold hover:bg-muted/50 rounded-md px-4">
                   <span className="font-semibold text-left">{category.name}</span>
                 </AccordionTrigger>
-                <AccordionContent>
+                <AccordionContent className="p-2">
                   <div className="overflow-x-auto">
                     <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
                       <TableHeader>
@@ -290,13 +290,9 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                           </TableHead>
                           {carriers.map((carrier, index) => (
                             <TableHead key={carrier.id} className="min-w-[250px] max-w-[350px]">
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="font-semibold text-sm break-words text-center">
-                                  {carrier.name}
-                                </div>
-                                <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                                  {results[index]?.category || 'Current'}
-                                </Badge>
+                              <div className="flex flex-col items-center justify-center gap-1.5 p-2">
+                                <div className="font-semibold text-sm text-center">{carrier.name}</div>
+                                <Badge variant="secondary">{results[index]?.metadata?.planOptions?.[0]?.planOptionName || 'Details'}</Badge>
                               </div>
                             </TableHead>
                           ))}
@@ -305,7 +301,7 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                       <TableBody>
                         {category.fields.map((field) => (
                           <TableRow key={field.id}>
-                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[180px] min-w-[180px]">
+                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[180px] min-w-[180px] p-4">
                               <div className="text-sm break-words whitespace-normal leading-relaxed">
                                 {field.label}
                               </div>
