@@ -32,17 +32,21 @@ interface PlanComparisonTabProps {
   results: ParsedDocument[];
 }
 
-// DetailRenderer component for clean data presentation
+// DetailRenderer component for clean data presentation with better text wrapping
 const DetailRenderer = ({ details }: { details: any }) => {
   if (!details || typeof details !== 'object') {
-    return <p className="text-sm">{details || '-'}</p>;
+    return <p className="text-sm break-words whitespace-normal leading-relaxed">{details || '-'}</p>;
   }
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-2">
       {Object.entries(details).map(([key, value]) => (
-        <li key={key} className="text-sm flex flex-col">
-          <span className="font-semibold capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}:</span>
-          <span className="ml-2">{String(value)}</span>
+        <li key={key} className="text-sm">
+          <div className="font-semibold capitalize text-muted-foreground mb-1 break-words">
+            {key.replace(/([A-Z])/g, ' $1')}:
+          </div>
+          <div className="break-words whitespace-normal leading-relaxed text-foreground">
+            {String(value)}
+          </div>
         </li>
       ))}
     </ul>
@@ -285,9 +289,9 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                             <div className="font-semibold">Benefit</div>
                           </TableHead>
                           {carriers.map((carrier, index) => (
-                            <TableHead key={carrier.id} className="min-w-[200px]">
+                            <TableHead key={carrier.id} className="min-w-[250px] max-w-[350px]">
                               <div className="flex flex-col items-center gap-1">
-                                <div className="font-semibold text-sm break-words">
+                                <div className="font-semibold text-sm break-words text-center">
                                   {carrier.name}
                                 </div>
                                 <Badge variant="outline" className="text-xs px-1.5 py-0.5">
@@ -301,8 +305,8 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                       <TableBody>
                         {category.fields.map((field) => (
                           <TableRow key={field.id}>
-                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r">
-                              <div className="text-sm break-words">
+                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[180px] min-w-[180px]">
+                              <div className="text-sm break-words whitespace-normal leading-relaxed">
                                 {field.label}
                               </div>
                             </TableCell>
@@ -318,13 +322,15 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                                 data[coverageType][field.id] : null;
 
                               return (
-                                <TableCell key={index} className="align-top p-4">
-                                  <DetailRenderer 
-                                    details={fieldValue === true ? 'Yes' :
-                                           fieldValue === false ? 'No' :
-                                           fieldValue === 0 ? '0' :
-                                           fieldValue} 
-                                  />
+                                <TableCell key={index} className="align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden">
+                                  <div className="break-words whitespace-normal">
+                                    <DetailRenderer 
+                                      details={fieldValue === true ? 'Yes' :
+                                             fieldValue === false ? 'No' :
+                                             fieldValue === 0 ? '0' :
+                                             fieldValue} 
+                                    />
+                                  </div>
                                 </TableCell>
                               );
                             })}
