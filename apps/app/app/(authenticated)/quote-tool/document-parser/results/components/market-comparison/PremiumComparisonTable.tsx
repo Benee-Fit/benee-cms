@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/design-system/components/ui/table';
+import { Badge } from '@repo/design-system/components/ui/badge';
 import React, { useMemo, useState, useCallback } from 'react';
 
 // Import ParsedDocumentResult and Coverage types
@@ -735,51 +736,54 @@ export function PremiumComparisonTable({
             </div>
           </div>
         )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Benefit</TableHead>
-              <TableHead className="text-center">Volume</TableHead> {/* NEW SINGLE VOLUME HEADER */}
-              {carriers.map((carrier, index) => {
-                const selectedPlan = selectedPlanOptions[carrier.name];
-                const availableOptions = carrierPlanOptions[carrier.name] || [];
-                
-                return (
-                  <TableHead
-                    key={`header-carrier-${index}`}
-                    className="text-center"
-                    colSpan={2}
-                  >
-                    <div className="flex flex-col">
-                      <span className="font-semibold">
-                        {carrier.name || 'Unknown Carrier'}
-                      </span>
-                      {selectedPlan && (
-                        <span className="text-xs text-muted-foreground font-normal">
-                          {selectedPlan}
-                          {availableOptions.length > 1 && (
-                            <span className="ml-1">
-                              (1 of {availableOptions.length})
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-            <TableRow>
-              <TableHead />
-              <TableHead /> {/* Empty header for volume column */}
-              {carriers.map((_, index) => (
-                <React.Fragment key={`subheader-${index}`}>
-                  <TableHead className="text-center">Unit Rate</TableHead>
-                  <TableHead className="text-center">Monthly Premium</TableHead>
-                </React.Fragment>
-              ))}
-            </TableRow>
-          </TableHeader>
+        <div className="overflow-x-auto border rounded-lg">
+          <Table className="table-fixed text-sm">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[160px] sticky left-0 bg-background border-r z-20">
+                  <div className="font-semibold text-sm">Benefit</div>
+                </TableHead>
+                <TableHead className="w-[70px] text-center">
+                  <div className="font-semibold text-xs">#</div>
+                </TableHead>
+                {carriers.map((carrier, index) => {
+                  const selectedPlan = selectedPlanOptions[carrier.name];
+                  const availableOptions = carrierPlanOptions[carrier.name] || [];
+                  
+                  return (
+                    <TableHead
+                      key={`header-carrier-${index}`}
+                      className="text-center p-2 border-l"
+                      colSpan={2}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-semibold text-base">{carrier.name || 'Unknown Carrier'}</span>
+                        {selectedPlan && (
+                          <Badge variant="outline">
+                            {selectedPlan}
+                            {availableOptions.length > 1 && (
+                              <span className="ml-1">
+                                (1/{availableOptions.length})
+                              </span>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+              <TableRow>
+                <TableHead className="sticky left-0 bg-background border-r z-20" />
+                <TableHead />
+                {carriers.map((_, index) => (
+                  <React.Fragment key={`subheader-${index}`}>
+                    <TableHead className="text-center border-l">Unit Rate</TableHead>
+                    <TableHead className="text-center">Monthly Premium</TableHead>
+                  </React.Fragment>
+                ))}
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {orderedRows.map((row, index) => {
               // Apply special styling based on row type
@@ -789,41 +793,47 @@ export function PremiumComparisonTable({
                 // CHANGE 2: No background color for headers
                 rowClassName = '';
               } else if (row.type === 'total') {
-                rowClassName = 'font-bold bg-primary/5';
+                rowClassName = 'font-bold bg-muted';
               } else if (row.type === 'rateGuarantee') {
                 rowClassName = 'font-medium bg-muted/20';
               } else if (row.type === 'subtotal') {
-                rowClassName = 'font-medium bg-muted/50';
+                rowClassName = 'font-semibold bg-muted/50';
               } else if (row.type === 'subBenefit') {
                 rowClassName = 'hover:bg-muted/30';
               } else {
                 rowClassName = 'hover:bg-muted/30';
               }
               
-              // CHANGE 2: Special rendering for header rows with no background
+              // Enhanced styling for header rows
               if (row.type === 'header') {
                 return (
                   <TableRow key={`row-${index}-${row.label}`}>
-                    <TableCell className="font-bold" colSpan={2 + carriers.length * 2}>
-                      {row.label}
+                    <TableCell className="font-bold border-y bg-muted/30 sticky left-0 z-10 py-3" colSpan={2 + carriers.length * 2}>
+                      <div className="text-sm break-words leading-relaxed">{row.label}</div>
                     </TableCell>
                   </TableRow>
                 );
               }
               
               if (row.type === 'rateGuarantee') {
-                // Special rendering for Rate Guarantees row
+                // Special rendering for Rate Guarantees row with proper spanning
                 return (
                   <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                    <TableCell>{row.label}</TableCell>
-                    <TableCell /> {/* Empty cell for volume column */}
+                    <TableCell className="sticky left-0 bg-background border-r font-medium z-10 py-3 align-top">
+                      <div className="text-sm break-words leading-relaxed">{row.label}</div>
+                    </TableCell>
+                    <TableCell className="text-center py-3 align-top">
+                      <div className="text-sm">-</div>
+                    </TableCell>
                     {carriers.map((_, carrierIndex) => (
                       <TableCell
                         key={`rate-guarantee-${carrierIndex}`}
                         colSpan={2}
-                        className="text-center"
+                        className="text-center px-2 border-l py-3 align-top"
                       >
-                        {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
+                        <div className="text-sm break-words leading-relaxed">
+                          {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
+                        </div>
                       </TableCell>
                     ))}
                   </TableRow>
@@ -832,40 +842,51 @@ export function PremiumComparisonTable({
               
               return (
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                  <TableCell className={row.type === 'subBenefit' ? 'pl-8 text-sm text-muted-foreground' : ''}>
-                    {/* CHANGE 3: No bullet points for sub-benefits */}
-                    {row.label}
+                  <TableCell className={`sticky left-0 bg-background border-r z-10 py-3 align-top ${row.type === 'subBenefit' ? 'pl-6 text-muted-foreground' : row.type === 'subtotal' || row.type === 'total' ? 'font-bold' : 'font-medium'}`}>
+                    <div className="text-sm break-words leading-relaxed">
+                      {row.label}
+                    </div>
                   </TableCell>
-                  <TableCell className="text-center">
-                    {row.type !== 'subtotal' && 
-                     row.type !== 'total' && 
-                     row.type !== 'rateGuarantee' && 
-                     row.type !== 'header'
-                      ? row.volume || '-'
-                      : ""}
+                  <TableCell className="text-center px-2 py-3 align-top">
+                    <div className="text-sm break-words leading-relaxed">
+                      {row.type !== 'subtotal' && 
+                       row.type !== 'total' && 
+                       row.type !== 'rateGuarantee' && 
+                       row.type !== 'header'
+                        ? row.volume || '-'
+                        : "-"}
+                    </div>
                   </TableCell>
                   {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className="text-center">
-                        {row.type !== 'subtotal' && 
-                         row.type !== 'total' && 
-                         row.type !== 'rateGuarantee' && 
-                         row.type !== 'header'
-                          ? cell?.unitRate || '-'
-                          : ""}
+                      <TableCell className={`text-center px-2 py-3 align-top border-l`}>
+                        <div className="text-sm break-words leading-relaxed">
+                          {row.type !== 'subtotal' && 
+                           row.type !== 'total' && 
+                           row.type !== 'rateGuarantee' && 
+                           row.type !== 'header'
+                            ? cell?.unitRate || '-'
+                            : "-"}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-center">
-                        {row.type !== 'header'
-                          ? cell?.monthlyPremium || '-'
-                          : ""}
+                      <TableCell className="text-center px-2 py-3 align-top">
+                        <div className="text-sm font-medium break-words leading-relaxed">
+                          {row.type !== 'header'
+                            ? cell?.monthlyPremium || '-'
+                            : "-"}
+                        </div>
                       </TableCell>
                     </React.Fragment>
                   )) : (
                     // Fallback for rows without values array
                     carriers.map((_, cellIdx) => (
                       <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className="text-center">-</TableCell>
-                        <TableCell className="text-center">-</TableCell>
+                        <TableCell className={`text-center px-2 py-3 align-top border-l`}>
+                          <div className="text-sm">-</div>
+                        </TableCell>
+                        <TableCell className="text-center px-2 py-3 align-top">
+                          <div className="text-sm">-</div>
+                        </TableCell>
                       </React.Fragment>
                     ))
                   )}
@@ -874,6 +895,7 @@ export function PremiumComparisonTable({
             })}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

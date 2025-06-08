@@ -15,6 +15,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@repo/design-system/components/ui/card';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@repo/design-system/components/ui/accordion';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { ChevronRight, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
@@ -25,6 +31,23 @@ import { Input } from '@repo/design-system/components/ui/input';
 interface PlanComparisonTabProps {
   results: ParsedDocument[];
 }
+
+// DetailRenderer component for clean data presentation
+const DetailRenderer = ({ details }: { details: any }) => {
+  if (!details || typeof details !== 'object') {
+    return <p className="text-sm">{details || '-'}</p>;
+  }
+  return (
+    <ul className="space-y-1">
+      {Object.entries(details).map(([key, value]) => (
+        <li key={key} className="text-sm flex flex-col">
+          <span className="font-semibold capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}:</span>
+          <span className="ml-2">{String(value)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 // Helper function to extract benefit information from coverage data
 const extractBenefitData = (coverages: any[], benefitField: string): Record<string, any> => {
@@ -126,52 +149,17 @@ const benefitCategories = [
 ];
 
 const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) => {
-  // State for expanded/collapsed categories
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
-    'LIFE INSURANCE & AD&D': true,
-    'DEPENDENT LIFE': true,
-    'LONG TERM DISABILITY': true,
-    'EXTENDED HEALTHCARE': true,
-    'DENTAL CARE': true
-  });
-
-  // State for tracking if all categories are expanded
-  const [allExpanded, setAllExpanded] = useState<boolean>(true);
-  
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // Toggle category expansion
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(prev => {
-      const newState = {
-        ...prev,
-        [category]: !prev[category]
-      };
-      // Check if all are expanded after this update
-      const areAllExpanded = Object.values(newState).every(value => value === true);
-      setAllExpanded(areAllExpanded);
-      return newState;
-    });
-  };
-
-  // Toggle all categories
-  const toggleAllCategories = (expand: boolean) => {
-    const updatedState: Record<string, boolean> = {};
-    Object.keys(expandedCategories).forEach(category => {
-      updatedState[category] = expand;
-    });
-    setExpandedCategories(updatedState);
-    setAllExpanded(expand);
-  };
-  
-  // Check if all categories are expanded initially
-  useEffect(() => {
-    const areAllExpanded = Object.values(expandedCategories).every(value => value === true);
-    if (areAllExpanded !== allExpanded) {
-      setAllExpanded(areAllExpanded);
-    }
-  }, []);
+  // Default expanded accordion items
+  const [expandedItems, setExpandedItems] = useState<string[]>([
+    'LIFE INSURANCE & AD&D',
+    'DEPENDENT LIFE', 
+    'LONG TERM DISABILITY',
+    'EXTENDED HEALTHCARE',
+    'DENTAL CARE'
+  ]);
 
   // Clean up carrier name
   const getProperCarrierName = (result: ParsedDocument): string => {
@@ -262,9 +250,9 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toggleAllCategories(!allExpanded)}
+              onClick={() => setExpandedItems(expandedItems.length === benefitCategories.length ? [] : benefitCategories.map(cat => cat.name))}
             >
-              {allExpanded ? (
+              {expandedItems.length === benefitCategories.length ? (
                 <>
                   <ChevronUp className="h-4 w-4 mr-1" />
                   Collapse All
@@ -279,79 +267,76 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
-        <div className="overflow-auto">
-          <Table>
-            <TableHeader className="sticky top-0 z-10">
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[200px]">Benefit</TableHead>
-                {carriers.map((carrier, index) => (
-                  <TableHead key={carrier.id} className="min-w-[180px]">
-                    <div className="flex flex-col">
-                      <span className="font-semibold">{carrier.name}</span>
-                      <Badge variant="outline" className="mt-1 w-fit">
-                        {results[index]?.category || 'Current'}
-                      </Badge>
-                    </div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {benefitCategories
-                .filter(filterBySearch)
-                .map((category) => (
-                  <React.Fragment key={category.name}>
-                    {/* Category header row */}
-                    <TableRow 
-                      className="bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => toggleCategory(category.name)}
-                    >
-                      <TableCell colSpan={carriers.length + 1} className="font-semibold">
-                        <div className="flex items-center">
-                          {expandedCategories[category.name] ? (
-                            <ChevronDown className="h-4 w-4 mr-2 transition-transform" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 mr-2 transition-transform" />
-                          )}
-                          {category.name}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-
-                    {/* Category content rows, only shown when expanded */}
-                    {expandedCategories[category.name] && category.fields.map((field) => (
-                      <TableRow key={field.id} className="hover:bg-muted/20 transition-colors">
-                        <TableCell className="pl-8 font-medium text-sm">
-                          {field.label}
-                        </TableCell>
-                        {benefitData.map((data, index) => {
-                          // Find the corresponding coverage type in the data
-                          const coverageType = Object.keys(data).find(key => 
-                            key.toUpperCase().includes(category.name.split(' ')[0]) ||
-                            category.name.includes(key.toUpperCase())
-                          );
-                          
-                          // Get the field value if it exists
-                          const fieldValue = coverageType && data[coverageType] ? 
-                            data[coverageType][field.id] : null;
-
-                          return (
-                            <TableCell key={index} className="text-sm">
-                              {fieldValue === true ? 'Yes' :
-                               fieldValue === false ? 'No' :
-                               fieldValue === 0 ? '0' :
-                               fieldValue || '-'}
+      <CardContent className="p-4">
+        <Accordion type="multiple" value={expandedItems} onValueChange={setExpandedItems}>
+          {benefitCategories
+            .filter(filterBySearch)
+            .map((category) => (
+              <AccordionItem key={category.name} value={category.name}>
+                <AccordionTrigger className="hover:no-underline text-lg font-semibold py-4">
+                  <span className="font-semibold text-left">{category.name}</span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="overflow-x-auto">
+                    <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="sticky left-0 bg-background z-10 border-r">
+                            <div className="font-semibold">Benefit</div>
+                          </TableHead>
+                          {carriers.map((carrier, index) => (
+                            <TableHead key={carrier.id} className="min-w-[200px]">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="font-semibold text-sm break-words">
+                                  {carrier.name}
+                                </div>
+                                <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                                  {results[index]?.category || 'Current'}
+                                </Badge>
+                              </div>
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {category.fields.map((field) => (
+                          <TableRow key={field.id}>
+                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r">
+                              <div className="text-sm break-words">
+                                {field.label}
+                              </div>
                             </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                  </React.Fragment>
-                ))}
-            </TableBody>
-          </Table>
-        </div>
+                            {benefitData.map((data, index) => {
+                              // Find the corresponding coverage type in the data
+                              const coverageType = Object.keys(data).find(key => 
+                                key.toUpperCase().includes(category.name.split(' ')[0]) ||
+                                category.name.includes(key.toUpperCase())
+                              );
+                              
+                              // Get the field value if it exists
+                              const fieldValue = coverageType && data[coverageType] ? 
+                                data[coverageType][field.id] : null;
+
+                              return (
+                                <TableCell key={index} className="align-top p-4">
+                                  <DetailRenderer 
+                                    details={fieldValue === true ? 'Yes' :
+                                           fieldValue === false ? 'No' :
+                                           fieldValue === 0 ? '0' :
+                                           fieldValue} 
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+        </Accordion>
       </CardContent>
     </Card>
   );
