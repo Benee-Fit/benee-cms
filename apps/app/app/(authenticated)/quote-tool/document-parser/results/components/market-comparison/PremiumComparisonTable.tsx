@@ -282,6 +282,23 @@ export function PremiumComparisonTable({
       }
     }
     
+    // If still no rate guarantee, check documentNotes or planNotes
+    if (!rateGuaranteeText) {
+      // Check new format documentNotes
+      const documentNotes = (result as any).processedData?.documentNotes || [];
+      // Check old format planNotes
+      const planNotes = result.planNotes || [];
+      const allNotes = [...documentNotes, ...planNotes];
+      
+      for (const note of allNotes) {
+        const noteText = typeof note === 'string' ? note : note.note || '';
+        if (noteText.toLowerCase().includes('rate guarantee')) {
+          rateGuaranteeText = noteText;
+          break;
+        }
+      }
+    }
+    
     if (!carriersMap.has(carrierName)) {
       carriersMap.set(carrierName, {
         name: carrierName,
@@ -705,10 +722,10 @@ export function PremiumComparisonTable({
         <h3 className="text-lg font-semibold mb-4 text-gray-800">Plan Overview</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {highLevelOverview.map((overview, index) => (
-            <Card key={`${overview.carrierName}-${index}`} className="border-l-4 border-l-teal-500 hover:shadow-md transition-shadow duration-200">
+            <Card key={`${overview.carrierName}-${index}`} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow duration-200">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-teal-700">
+                  <CardTitle className="text-base font-semibold text-blue-700">
                     {overview.carrierName}
                   </CardTitle>
                   <Badge variant="secondary" className="text-xs">
@@ -776,53 +793,12 @@ export function PremiumComparisonTable({
             <h3 className="text-lg font-semibold mb-4 text-gray-800">Detailed Breakdown</h3>
           </div>
         )}
-        {Object.keys(carrierPlanOptions).length > 0 && (
-          <div className="mb-4">
-            <div className="text-sm text-muted-foreground mb-2">
-              Plan Options by Carrier:
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {carriers.map((carrier) => {
-                const availableOptions = carrierPlanOptions[carrier.name] || [];
-                if (availableOptions.length === 0) return null;
-                
-                return (
-                  <div key={carrier.name} className="flex flex-col space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      {carrier.name}
-                    </label>
-                    <Select
-                      value={selectedPlanOptions[carrier.name] || ''}
-                      onValueChange={(value: string) => updateCarrierPlanOption(carrier.name, value)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select plan option" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableOptions.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {availableOptions.length > 1 && (
-                      <span className="text-xs text-muted-foreground">
-                        {availableOptions.length} options available
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
         <div className="overflow-x-auto border rounded-lg shadow-sm w-full">
           <Table className="table-fixed text-sm w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500 px-3 py-3`} colSpan={2}>
-                  <div className="font-semibold text-base text-teal-600">Carrier</div>
+                <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-indigo-500 px-3 py-3`} colSpan={2}>
+                  <div className="font-semibold text-base text-indigo-600">Carrier</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
                   const selectedPlan = selectedPlanOptions[carrier.name];
@@ -831,20 +807,34 @@ export function PremiumComparisonTable({
                   return (
                     <TableHead
                       key={`header-carrier-${index}`}
-                      className={`text-center px-3 py-3 border-l border-b-2 border-b-teal-500 transition-colors duration-200 hover:bg-teal-50/50 cursor-default ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}
+                      className={`text-center px-3 py-3 border-l border-b-2 border-b-indigo-500 transition-colors duration-200 hover:bg-indigo-50/50 cursor-default ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
                       colSpan={2}
                     >
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="font-semibold text-base text-teal-600">{carrier.name || 'Unknown Carrier'}</span>
-                        {selectedPlan && (
-                          <Badge variant="outline">
-                            {selectedPlan}
-                            {availableOptions.length > 1 && (
-                              <span className="ml-1">
-                                (1/{availableOptions.length})
-                              </span>
-                            )}
-                          </Badge>
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="font-semibold text-base text-indigo-600 text-center leading-tight">{carrier.name || 'Unknown Carrier'}</span>
+                        {availableOptions.length > 0 && (
+                          <div className="w-full max-w-[180px]">
+                            <Select
+                              value={selectedPlan || ''}
+                              onValueChange={(value: string) => updateCarrierPlanOption(carrier.name, value)}
+                            >
+                              <SelectTrigger className="w-full h-8 text-xs bg-white border-gray-300 hover:border-gray-400 focus:border-indigo-500">
+                                <SelectValue 
+                                  placeholder="Select plan" 
+                                  className="text-xs truncate"
+                                />
+                              </SelectTrigger>
+                              <SelectContent className="max-w-[250px]">
+                                {availableOptions.map((option) => (
+                                  <SelectItem key={option} value={option} className="text-xs">
+                                    <span className="truncate max-w-[220px] block" title={option}>
+                                      {option}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
                       </div>
                     </TableHead>
@@ -852,16 +842,16 @@ export function PremiumComparisonTable({
                 })}
               </TableRow>
               <TableRow>
-                <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500 px-3 py-3`}>
+                <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-indigo-500 px-3 py-3`}>
                   <div className="font-semibold text-sm">Benefit</div>
                 </TableHead>
-                <TableHead className="border-b-2 border-b-teal-500 text-center px-3 py-3 bg-slate-100">
+                <TableHead className="border-b-2 border-b-indigo-500 text-center px-3 py-3 bg-slate-100">
                   <div className="font-semibold text-sm">Volume</div>
                 </TableHead>
                 {carriers.map((_, index) => (
                   <React.Fragment key={`subheader-${index}`}>
-                    <TableHead className={`text-center border-l border-b-2 border-b-teal-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>Unit Rate</TableHead>
-                    <TableHead className={`text-center border-b-2 border-b-teal-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>Monthly Premium</TableHead>
+                    <TableHead className={`text-center border-l border-b-2 border-b-indigo-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Unit Rate</TableHead>
+                    <TableHead className={`text-center border-b-2 border-b-indigo-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Monthly Premium</TableHead>
                   </React.Fragment>
                 ))}
               </TableRow>
@@ -879,7 +869,7 @@ export function PremiumComparisonTable({
               } else if (row.type === 'rateGuarantee') {
                 rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-muted/20`;
               } else if (row.type === 'subtotal') {
-                rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-teal-50 border-t border-t-teal-200/50`;
+                rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-blue-200 border-t border-t-blue-300`;
               } else if (row.type === 'subBenefit') {
                 rowClassName = 'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
               } else {
@@ -908,7 +898,7 @@ export function PremiumComparisonTable({
                       <TableCell
                         key={`rate-guarantee-${carrierIndex}`}
                         colSpan={2}
-                        className={`text-center px-3 py-3 border-l align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100/50' : ''}`}
+                        className={`text-center px-3 py-3 border-l align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100' : ''}`}
                       >
                         <div className={`break-words leading-relaxed ${row.isBold ? 'text-sm font-bold' : 'text-sm'}`}>
                           <span className="text-slate-600">
@@ -924,19 +914,19 @@ export function PremiumComparisonTable({
               return (
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
                   {row.label === 'Sub-total - Pooled Coverage' || row.label === 'Sub-total - Experience Rated Benefits' || row.label === 'TOTAL MONTHLY PREMIUM*' ? (
-                    <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
+                    <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
                       <div className="text-sm break-words leading-relaxed">
                         {row.label}
                       </div>
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
+                      <TableCell className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.label}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-slate-100/50 hover:bg-blue-50/50'} transition-colors duration-200`}>
+                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-slate-100 hover:bg-blue-50/50'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.type !== 'subtotal' && 
                            row.type !== 'total' && 
@@ -950,17 +940,17 @@ export function PremiumComparisonTable({
                   )}
                   {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
+                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.type !== 'subtotal' && 
                            row.type !== 'total' && 
                            row.type !== 'rateGuarantee' && 
                            row.type !== 'header'
                             ? cell?.unitRate || '-'
-                            : "-"}
+                            : ""}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
+                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                         <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
                           {row.type !== 'header' ? (
                             <span className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}>
@@ -974,10 +964,10 @@ export function PremiumComparisonTable({
                     // Fallback for rows without values array
                     carriers.map((_, cellIdx) => (
                       <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
+                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                           <div className="text-sm">-</div>
                         </TableCell>
-                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
+                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                           <div className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}>-</div>
                         </TableCell>
                       </React.Fragment>
