@@ -803,9 +803,9 @@ export function PremiumComparisonTable({
               } else if (row.type === 'subtotal') {
                 rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-teal-50 border-t border-t-teal-200/50`;
               } else if (row.type === 'subBenefit') {
-                rowClassName = 'hover:bg-muted/20 transition-colors duration-150';
+                rowClassName = 'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
               } else {
-                rowClassName = 'hover:bg-muted/20 transition-colors duration-150';
+                rowClassName = 'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
               }
               
               // Enhanced styling for header rows
@@ -853,12 +853,12 @@ export function PremiumComparisonTable({
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell className={`w-[375px] sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`}>
+                      <TableCell className={`w-[375px] sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.label}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-slate-100/50'}`}>
+                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-slate-100/50 hover:bg-blue-50/50'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.type !== 'subtotal' && 
                            row.type !== 'total' && 
@@ -872,7 +872,7 @@ export function PremiumComparisonTable({
                   )}
                   {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.type !== 'subtotal' && 
                            row.type !== 'total' && 
@@ -882,7 +882,7 @@ export function PremiumComparisonTable({
                             : "-"}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                         <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
                           {row.type !== 'header' ? (
                             <span className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}>
@@ -896,10 +896,10 @@ export function PremiumComparisonTable({
                     // Fallback for rows without values array
                     carriers.map((_, cellIdx) => (
                       <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                           <div className="text-sm">-</div>
                         </TableCell>
-                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
                           <div className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}>-</div>
                         </TableCell>
                       </React.Fragment>
