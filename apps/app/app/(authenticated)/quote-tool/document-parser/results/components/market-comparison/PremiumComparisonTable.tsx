@@ -870,7 +870,7 @@ export function PremiumComparisonTable({
                   )}
                   {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className={`text-center px-3 py-3 align-top border-l w-[100px] min-w-[100px] max-w-[100px] ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.type !== 'subtotal' && 
                            row.type !== 'total' && 
@@ -880,7 +880,7 @@ export function PremiumComparisonTable({
                             : "-"}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top w-[150px] min-w-[150px] max-w-[150px] ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                         <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
                           {row.type !== 'header'
                             ? cell?.monthlyPremium || '-'
@@ -892,10 +892,10 @@ export function PremiumComparisonTable({
                     // Fallback for rows without values array
                     carriers.map((_, cellIdx) => (
                       <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className={`text-center px-3 py-3 align-top border-l w-[100px] min-w-[100px] max-w-[100px] ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                           <div className="text-sm">-</div>
                         </TableCell>
-                        <TableCell className={`text-center px-3 py-3 align-top w-[150px] min-w-[150px] max-w-[150px] ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                           <div className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}>-</div>
                         </TableCell>
                       </React.Fragment>
