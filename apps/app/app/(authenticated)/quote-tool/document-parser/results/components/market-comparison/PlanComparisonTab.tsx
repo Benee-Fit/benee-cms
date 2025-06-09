@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { ParsedDocument } from '../../../types';
+import { useState, useEffect, useRef } from 'react';
+import type { FC } from 'react';
+import type { ParsedDocument, Coverage } from '../../../types';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   Table,
@@ -32,8 +33,11 @@ interface PlanComparisonTabProps {
   results: ParsedDocument[];
 }
 
+// Type for benefit details which can be string, number, boolean, or nested object with those types
+type BenefitDetail = string | number | boolean | null | { [key: string]: BenefitDetail };
+
 // DetailRenderer component for clean data presentation with better text wrapping
-const DetailRenderer = ({ details }: { details: any }) => {
+const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
   if (!details || typeof details !== 'object') {
     return <p className="text-sm break-words whitespace-normal leading-relaxed">{details || '-'}</p>;
   }
@@ -54,12 +58,12 @@ const DetailRenderer = ({ details }: { details: any }) => {
 };
 
 // Helper function to extract benefit information from coverage data
-const extractBenefitData = (coverages: any[], benefitField: string): Record<string, any> => {
-  const benefitData: Record<string, any> = {};
+const extractBenefitData = (coverages: Coverage[], benefitField: string): Record<string, Record<string, BenefitDetail>> => {
+  const benefitData: Record<string, Record<string, BenefitDetail>> = {};
   
   if (!Array.isArray(coverages)) return benefitData;
   
-  coverages.forEach(coverage => {
+  for (const coverage of coverages) {
     if (coverage.coverageType && coverage.benefitDetails) {
       const coverageType = coverage.coverageType;
       
@@ -68,11 +72,14 @@ const extractBenefitData = (coverages: any[], benefitField: string): Record<stri
       }
       
       // Map benefit details to the appropriate field
-      Object.entries(coverage.benefitDetails).forEach(([key, value]) => {
-        benefitData[coverageType][key] = value;
-      });
+      if (coverage.benefitDetails) {
+        for (const [key, value] of Object.entries(coverage.benefitDetails)) {
+          // Type assert value as BenefitDetail since we've defined our structure to match this format
+          benefitData[coverageType][key] = value as BenefitDetail;
+        }
+      }
     }
-  });
+  }
   
   return benefitData;
 };
@@ -152,7 +159,7 @@ const benefitCategories = [
   }
 ];
 
-const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) => {
+const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -196,8 +203,10 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
   });
 
   // Search filter function
-  const filterBySearch = (category: any) => {
-    if (!searchQuery) return true;
+  const filterBySearch = (category: { name: string }) => {
+    if (!searchQuery) {
+      return true;
+    }
     
     const query = searchQuery.toLowerCase();
     
@@ -289,7 +298,7 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                             <div className="font-semibold">Benefit</div>
                           </TableHead>
                           {carriers.map((carrier, index) => (
-                            <TableHead key={carrier.id} className="min-w-[250px] max-w-[350px]">
+                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
                               <div className="flex flex-col items-center justify-center gap-1.5 p-2">
                                 <div className="font-semibold text-sm text-center">{carrier.name}</div>
                                 <Badge variant="secondary">{results[index]?.metadata?.planOptions?.[0]?.planOptionName || 'Details'}</Badge>
@@ -301,7 +310,7 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                       <TableBody>
                         {category.fields.map((field) => (
                           <TableRow key={field.id}>
-                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[180px] min-w-[180px] p-4">
+                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[220px] min-w-[220px] p-4">
                               <div className="text-sm break-words whitespace-normal leading-relaxed">
                                 {field.label}
                               </div>
@@ -318,7 +327,7 @@ const PlanComparisonTab: React.FC<PlanComparisonTabProps> = ({ results = [] }) =
                                 data[coverageType][field.id] : null;
 
                               return (
-                                <TableCell key={index} className="align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden">
+                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
                                   <div className="break-words whitespace-normal">
                                     <DetailRenderer 
                                       details={fieldValue === true ? 'Yes' :
