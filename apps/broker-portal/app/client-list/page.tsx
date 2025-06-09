@@ -23,8 +23,9 @@ import {
   ChevronUp,
   Plus,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageLayout } from '../page-layout';
+import { ClientWizard } from '../../components/client-wizard';
 
 interface Client {
   id: string;
@@ -37,89 +38,10 @@ interface Client {
   industry: string;
 }
 
-// Expanded mock data generation (example)
-const industries = [
-  'Technology',
-  'Agriculture',
-  'Construction',
-  'Healthcare',
-  'Retail',
-  'Finance',
-  'Manufacturing',
-  'Education',
-  'Hospitality',
-  'Logistics',
-];
-const companyNamePrefixes = [
-  'Innovate',
-  'Green',
-  'Build',
-  'Health',
-  'Retail',
-  'Fin',
-  'Alpha',
-  'Beta',
-  'Omega',
-  'Future',
-  'Global',
-  'National',
-  'United',
-];
-const companyNameSuffixes = [
-  'Solutions',
-  'Organics',
-  'Corp',
-  'Clinics',
-  'Stores',
-  'Group',
-  'Dynamics',
-  'Systems',
-  'Enterprises',
-  'LLC',
-  'Inc',
-  'Worldwide',
-];
-
-const generateMockClients = (count: number): Client[] => {
-  const mockClients: Client[] = [];
-  const usedPolicyNumbers = new Set<string>();
-
-  for (let i = 0; i < count; i++) {
-    let policyNumber: string;
-    do {
-      policyNumber = `POL${Math.floor(10000 + Math.random() * 90000)}`;
-    } while (usedPolicyNumbers.has(policyNumber));
-    usedPolicyNumbers.add(policyNumber);
-
-    const headcount = Math.floor(20 + Math.random() * 480); // 20 to 500
-    const premiumPerHead = Math.floor(300 + Math.random() * 700); // $300 to $1000 per head
-    const premium = headcount * premiumPerHead;
-    const commissionRate = 0.1 + Math.random() * 0.05; // 10% to 15%
-    const revenue = Math.floor(premium * commissionRate);
-    const renewalYear = 2025 + Math.floor(Math.random() * 3); // 2025-2027
-    const renewalMonth = Math.floor(1 + Math.random() * 12);
-    const renewalDay = Math.floor(1 + Math.random() * 28);
-
-    mockClients.push({
-      id: `CL${String(i + 1).padStart(3, '0')}`,
-      companyName: `${companyNamePrefixes[Math.floor(Math.random() * companyNamePrefixes.length)]} ${companyNameSuffixes[Math.floor(Math.random() * companyNameSuffixes.length)]}`,
-      policyNumber,
-      renewalDate: `${renewalYear}-${String(renewalMonth).padStart(2, '0')}-${String(renewalDay).padStart(2, '0')}`,
-      headcount,
-      premium,
-      revenue,
-      industry: industries[Math.floor(Math.random() * industries.length)],
-    });
-  }
-  return mockClients;
-};
-
-const allClientsData = generateMockClients(120); // Generate 120 mock clients
-
 export default function ClientListPage() {
-  // State for the raw data - we won't modify this directly for display
-  // const [allClients, setAllClients] = useState<Client[]>(allClientsData);
-
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showWizard, setShowWizard] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Client | null;
     direction: 'ascending' | 'descending';
@@ -127,8 +49,39 @@ export default function ClientListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15); // Default to 15
 
+  // Fetch clients from API
+  const fetchClients = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/clients');
+      const data = await response.json();
+      
+      // Transform data to match our interface
+      const transformedClients = data.map((client: any) => ({
+        id: client.id,
+        companyName: client.companyName,
+        policyNumber: client.policyNumber,
+        renewalDate: new Date(client.renewalDate).toISOString().split('T')[0],
+        headcount: client.headcount,
+        premium: Number(client.premium),
+        revenue: Number(client.revenue),
+        industry: client.industry,
+      }));
+      
+      setClients(transformedClients);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
   const sortedClients = useMemo(() => {
-    const sortableClients = [...allClientsData]; // Use the full dataset
+    const sortableClients = [...clients];
     const { key, direction } = sortConfig;
     if (key) {
       sortableClients.sort((a, b) => {
@@ -144,7 +97,7 @@ export default function ClientListPage() {
       });
     }
     return sortableClients;
-  }, [sortConfig]); // Removed allClientsData from deps as it's constant for now
+  }, [clients, sortConfig]);
 
   const paginatedClients = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
@@ -196,76 +149,89 @@ export default function ClientListPage() {
       <div className="container mx-auto pt-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Client List</h1>
-          <Button>
+          <Button onClick={() => setShowWizard(true)}>
             <Plus className="mr-2 h-4 w-4" /> Add Client
           </Button>
         </div>
 
         <Card className="mb-6">
           <div className="p-6">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSortRequest('companyName')}
-                  >
-                    <div className="flex items-center">
-                      Company Name {getSortIcon('companyName')}
-                    </div>
-                  </TableHead>
-                  <TableHead>Policy #</TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSortRequest('renewalDate')}
-                  >
-                    <div className="flex items-center">
-                      Renewal Date {getSortIcon('renewalDate')}
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSortRequest('headcount')}
-                  >
-                    <div className="flex items-center">
-                      Headcount {getSortIcon('headcount')}
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSortRequest('premium')}
-                  >
-                    <div className="flex items-center justify-end">
-                      Premium {getSortIcon('premium')}
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSortRequest('revenue')}
-                  >
-                    <div className="flex items-center justify-end">
-                      Revenue {getSortIcon('revenue')}
-                    </div>
-                  </TableHead>
-                  <TableHead>Industry</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell className="font-medium">
-                      {client.companyName}
-                    </TableCell>
-                    <TableCell>{client.policyNumber}</TableCell>
-                    <TableCell>{client.renewalDate}</TableCell>
-                    <TableCell>{client.headcount}</TableCell>
-                    <TableCell className="text-right">{`$${client.premium.toLocaleString()}`}</TableCell>
-                    <TableCell className="text-right">{`$${client.revenue.toLocaleString()}`}</TableCell>
-                    <TableCell>{client.industry}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <p className="text-muted-foreground">Loading clients...</p>
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <p className="text-muted-foreground">No clients found</p>
+                <Button onClick={() => setShowWizard(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Your First Client
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSortRequest('companyName')}
+                      >
+                        <div className="flex items-center">
+                          Company Name {getSortIcon('companyName')}
+                        </div>
+                      </TableHead>
+                      <TableHead>Policy #</TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSortRequest('renewalDate')}
+                      >
+                        <div className="flex items-center">
+                          Renewal Date {getSortIcon('renewalDate')}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSortRequest('headcount')}
+                      >
+                        <div className="flex items-center">
+                          Headcount {getSortIcon('headcount')}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="text-right cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSortRequest('premium')}
+                      >
+                        <div className="flex items-center justify-end">
+                          Premium {getSortIcon('premium')}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="text-right cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSortRequest('revenue')}
+                      >
+                        <div className="flex items-center justify-end">
+                          Revenue {getSortIcon('revenue')}
+                        </div>
+                      </TableHead>
+                      <TableHead>Industry</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedClients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-medium">
+                          {client.companyName}
+                        </TableCell>
+                        <TableCell>{client.policyNumber}</TableCell>
+                        <TableCell>{client.renewalDate}</TableCell>
+                        <TableCell>{client.headcount}</TableCell>
+                        <TableCell className="text-right">{`$${client.premium.toLocaleString()}`}</TableCell>
+                        <TableCell className="text-right">{`$${client.revenue.toLocaleString()}`}</TableCell>
+                        <TableCell>{client.industry}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center space-x-4">
                 <Select
@@ -305,9 +271,20 @@ export default function ClientListPage() {
                 </Button>
               </div>
             </div>
+            </>
+            )}
           </div>
         </Card>
       </div>
+
+      <ClientWizard
+        open={showWizard}
+        onClose={() => setShowWizard(false)}
+        onSuccess={() => {
+          setShowWizard(false);
+          fetchClients();
+        }}
+      />
     </PageLayout>
   );
 }

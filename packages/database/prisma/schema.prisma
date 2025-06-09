@@ -27,3 +27,36 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model BrokerClient {
+  id           String                    @id @default(cuid())
+  companyName  String
+  policyNumber String                    @unique
+  renewalDate  DateTime
+  headcount    Int
+  premium      Decimal                   @db.Decimal(10, 2)
+  revenue      Decimal                   @db.Decimal(10, 2)
+  industry     String
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  documents    BrokerClientDocument[]
+
+  @@index([policyNumber])
+  @@index([renewalDate])
+}
+
+model BrokerClientDocument {
+  id           String       @id @default(cuid())
+  clientId     String
+  client       BrokerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileType     String
+  fileUrl      String
+  uploadDate   DateTime     @default(now())
+  documentType String
+  description  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([clientId])
+}
