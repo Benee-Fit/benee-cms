@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Tabs, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
+import { Tabs, TabsList } from '@repo/design-system/components/ui/tabs';
+import { cn } from '@repo/design-system/lib/utils';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
@@ -28,15 +29,19 @@ export default function RevenueBreakdownLayout({
         <h1 className="text-3xl font-bold">Revenue Breakdown</h1>
         
         <Tabs value={currentTab} className="w-full">
-          <TabsList className="w-full justify-start h-auto flex-wrap">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6">
             {tabs.map(tab => (
-              <Link href={tab.href} key={tab.value} passHref>
-                <TabsTrigger 
-                  value={tab.value}
-                  className="data-[state=active]:bg-primary data-[state=active]:text-white"
-                >
-                  {tab.label}
-                </TabsTrigger>
+              <Link 
+                href={tab.href} 
+                key={tab.value} 
+                className={cn(
+                  'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+                  pathname === tab.href
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                {tab.label}
               </Link>
             ))}
           </TabsList>
