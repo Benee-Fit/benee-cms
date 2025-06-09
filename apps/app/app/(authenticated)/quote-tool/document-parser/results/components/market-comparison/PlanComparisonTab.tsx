@@ -58,26 +58,31 @@ const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
 };
 
 // Helper function to extract benefit information from coverage data
-const extractBenefitData = (coverages: Coverage[], benefitField: string): Record<string, Record<string, BenefitDetail>> => {
-  const benefitData: Record<string, Record<string, BenefitDetail>> = {};
+const extractBenefitData = (coverages: Coverage[], benefitField: string): Record<string, any> => {
+  const benefitData: Record<string, any> = {};
   
-  if (!Array.isArray(coverages)) return benefitData;
+  if (!Array.isArray(coverages)) {
+    console.warn('Coverages is not an array:', coverages);
+    return benefitData;
+  }
   
   for (const coverage of coverages) {
     if (coverage.coverageType && coverage.benefitDetails) {
       const coverageType = coverage.coverageType;
       
-      if (!benefitData[coverageType]) {
-        benefitData[coverageType] = {};
-      }
-      
-      // Map benefit details to the appropriate field
-      if (coverage.benefitDetails) {
-        for (const [key, value] of Object.entries(coverage.benefitDetails)) {
-          // Type assert value as BenefitDetail since we've defined our structure to match this format
-          benefitData[coverageType][key] = value as BenefitDetail;
-        }
-      }
+      // Store the entire benefitDetails object for this coverage type
+      benefitData[coverageType] = {
+        ...coverage.benefitDetails,
+        // Also include key coverage properties
+        monthlyPremium: coverage.monthlyPremium,
+        unitRate: coverage.unitRate,
+        volume: coverage.volume,
+        lives: coverage.lives,
+        livesSingle: coverage.livesSingle,
+        livesFamily: coverage.livesFamily,
+        premiumPerSingle: coverage.premiumPerSingle,
+        premiumPerFamily: coverage.premiumPerFamily
+      };
     }
   }
   
@@ -89,10 +94,11 @@ const benefitCategories = [
   {
     name: 'LIFE INSURANCE & AD&D',
     fields: [
+      { id: 'formula', label: 'Formula' },
       { id: 'schedule', label: 'Schedule' },
       { id: 'benefitAmount', label: 'Benefit Amount' },
       { id: 'reduction', label: 'Age Reduction Schedule' },
-      { id: 'nonEvidenceMaximum', label: 'Non-Evidence Maximum' },
+      { id: 'nonEvidenceMax', label: 'Non-Evidence Maximum' },
       { id: 'overallMaximum', label: 'Overall Maximum' },
       { id: 'terminationAge', label: 'Termination Age' },
       { id: 'waiver', label: 'Waiver of Premium' },
@@ -102,14 +108,16 @@ const benefitCategories = [
   {
     name: 'DEPENDENT LIFE',
     fields: [
-      { id: 'spouse', label: 'Spouse' },
-      { id: 'child', label: 'Child' },
+      { id: 'dependentBenefits', label: 'Dependent Benefits', customRenderer: true },
+      { id: 'spouseBenefit', label: 'Spouse Benefit' },
+      { id: 'childBenefit', label: 'Child Benefit' },
       { id: 'terminationAge', label: 'Termination Age' }
     ]
   },
   {
     name: 'LONG TERM DISABILITY',
     fields: [
+      { id: 'formula', label: 'Formula' },
       { id: 'schedule', label: 'Schedule' },
       { id: 'monthlyMaximum', label: 'Monthly Maximum' },
       { id: 'taxStatus', label: 'Tax Status' },
@@ -316,18 +324,105 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                               </div>
                             </TableCell>
                             {benefitData.map((data, index) => {
-                              // Find the corresponding coverage type in the data
-                              const coverageType = Object.keys(data).find(key => 
-                                key.toUpperCase().includes(category.name.split(' ')[0]) ||
-                                category.name.includes(key.toUpperCase())
+                              // Improved coverage type matching with multiple strategies
+                              let coverageType = null;
+                              let fieldValue = null;
+                              
+                              // Strategy 1: Direct match
+                              coverageType = Object.keys(data).find(key => 
+                                key.toLowerCase() === category.name.toLowerCase()
                               );
                               
-                              // Get the field value if it exists
-                              const fieldValue = coverageType && data[coverageType] ? 
-                                data[coverageType][field.id] : null;
+                              // Strategy 2: Partial match with category name parts
+                              if (!coverageType) {
+                                const categoryWords = category.name.split(' ');
+                                coverageType = Object.keys(data).find(key => 
+                                  categoryWords.some(word => 
+                                    key.toUpperCase().includes(word.toUpperCase()) ||
+                                    word.toUpperCase().includes(key.toUpperCase())
+                                  )
+                                );
+                              }
+                              
+                              // Strategy 3: Common aliases and variations
+                              if (!coverageType) {
+                                const aliases = {
+                                  'LIFE INSURANCE & AD&D': ['Basic Life', 'Life Insurance', 'AD&D', 'Accidental Death'],
+                                  'DEPENDENT LIFE': ['Dependent Life', 'Dep Life', 'Spouse Life', 'Child Life'],
+                                  'LONG TERM DISABILITY': ['Long Term Disability', 'LTD', 'Disability'],
+                                  'EXTENDED HEALTHCARE': ['Extended Healthcare', 'Extended Health', 'EHC', 'Health Care', 'Medical'],
+                                  'DENTAL CARE': ['Dental Care', 'Dental', 'Dentistry']
+                                };
+                                
+                                const categoryAliases = aliases[category.name] || [];
+                                coverageType = Object.keys(data).find(key => 
+                                  categoryAliases.some(alias => 
+                                    key.toLowerCase().includes(alias.toLowerCase()) ||
+                                    alias.toLowerCase().includes(key.toLowerCase())
+                                  )
+                                );
+                              }
+                              
+                              // Handle custom renderers
+                              if (field.customRenderer && field.id === 'dependentBenefits') {
+                                // Combine spouse and child benefits into a single description
+                                if (coverageType && data[coverageType]) {
+                                  let spouse = data[coverageType]['spouse'];
+                                  let child = data[coverageType]['child'];
+                                  
+                                  // Also check for alternative field names
+                                  if (!spouse) {
+                                    spouse = data[coverageType]['spouseBenefit'] || data[coverageType]['spouseAmount'];
+                                  }
+                                  if (!child) {
+                                    child = data[coverageType]['childBenefit'] || data[coverageType]['childAmount'] || data[coverageType]['children'];
+                                  }
+                                  
+                                  // Check if there's already a combined description
+                                  const combined = data[coverageType]['dependentLife'] || data[coverageType]['dependentBenefits'] || data[coverageType]['benefits'];
+                                  
+                                  if (combined && typeof combined === 'string' && combined.includes('Spouse') && combined.includes('Child')) {
+                                    fieldValue = combined;
+                                  } else if (spouse || child) {
+                                    const parts = [];
+                                    if (spouse && spouse !== '-' && spouse !== '') {
+                                      // Handle cases where spouse value already includes currency formatting
+                                      const spouseText = spouse.toString().includes('$') ? spouse : `$${spouse}`;
+                                      parts.push(`${spouseText} Spouse`);
+                                    }
+                                    if (child && child !== '-' && child !== '') {
+                                      // Handle cases where child value already includes currency formatting
+                                      const childText = child.toString().includes('$') ? child : `$${child}`;
+                                      parts.push(`${childText} per Child`);
+                                    }
+                                    if (parts.length > 0) {
+                                      fieldValue = parts.join('; ');
+                                      // Add common suffix if it looks like dependent life benefits
+                                      if (spouse && child && !fieldValue.includes('from birth') && !fieldValue.includes('to age')) {
+                                        fieldValue += ' (from birth)';
+                                      }
+                                    }
+                                  }
+                                }
+                              } else {
+                                // Get the field value if coverage type is found
+                                if (coverageType && data[coverageType]) {
+                                  fieldValue = data[coverageType][field.id];
+                                }
+                                
+                                // Fallback: search across all coverage types for this field
+                                if (fieldValue === null || fieldValue === undefined) {
+                                  for (const [type, typeData] of Object.entries(data)) {
+                                    if (typeData && typeof typeData === 'object' && field.id in typeData) {
+                                      fieldValue = typeData[field.id];
+                                      break;
+                                    }
+                                  }
+                                }
+                              }
 
                               return (
-                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'}`}>
                                   <div className="break-words whitespace-normal">
                                     <DetailRenderer 
                                       details={fieldValue === true ? 'Yes' :
