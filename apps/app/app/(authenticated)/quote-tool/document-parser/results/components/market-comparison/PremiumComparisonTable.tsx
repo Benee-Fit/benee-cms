@@ -844,14 +844,14 @@ export function PremiumComparisonTable({
               return (
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
                   {row.label === 'Sub-total - Pooled Coverage' || row.label === 'Sub-total - Experience Rated Benefits' || row.label === 'TOTAL MONTHLY PREMIUM*' ? (
-                    <TableCell className={`w-[445px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6 text-muted-foreground' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
+                    <TableCell className={`w-[445px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
                       <div className="text-sm break-words leading-relaxed">
                         {row.label}
                       </div>
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell className={`w-[375px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6 text-muted-foreground' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`}>
+                      <TableCell className={`w-[375px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.label}
                         </div>
