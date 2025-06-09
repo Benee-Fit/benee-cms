@@ -54,6 +54,9 @@ interface RevenueBreakdownProps {
 }
 
 export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps) {
+  const bluePalette = ['#0D47A1', '#1976D2', '#2196F3', '#64B5F6', '#90CAF9', '#BBDEFB'];
+  const extendedBluePalette = ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB', '#E3F2FD'];
+
   const [timeframe, setTimeframe] = useState('ytd');
 
   // Mock revenue data for different timeframes
@@ -79,22 +82,22 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
 
   // Mock product type split data
   const productTypeSplits = [
-    { name: 'Health', value: 62, fill: '#000000' }, // Black
-    { name: 'Dental', value: 24, fill: '#444444' }, // Dark grey
-    { name: 'Vision', value: 14, fill: '#888888' }, // Medium grey
+    { name: 'Health', value: 62, fill: bluePalette[0] }, 
+    { name: 'Dental', value: 24, fill: bluePalette[1] }, 
+    { name: 'Vision', value: 14, fill: bluePalette[2] }, 
   ];
 
   // Mock carrier split data
   const carrierSplits = [
-    { name: 'Manulife', value: 28, fill: '#1a1a1a' }, // Very dark grey
-    { name: 'Sun Life', value: 22, fill: '#4d4d4d' }, // Dark grey
-    { name: 'Others', value: 50, fill: '#808080' }, // Medium grey
+    { name: 'Manulife', value: 28, fill: bluePalette[3] }, 
+    { name: 'Sun Life', value: 22, fill: bluePalette[4] }, 
+    { name: 'Others', value: 50, fill: bluePalette[5] }, 
   ];
 
   // Mock business type split data
   const businessTypeSplits = [
-    { name: 'New Business', value: 45, fill: '#333333' }, // Dark grey
-    { name: 'Renewals', value: 55, fill: '#666666' }, // Medium grey
+    { name: 'New Business', value: 45, fill: bluePalette[0] }, 
+    { name: 'Renewals', value: 55, fill: bluePalette[1] }, 
   ];
 
   // Mock data for Team Performance
@@ -184,13 +187,6 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
     },
   ];
 
-  const revenueSources = [
-    { source: 'New Business', amount: 124500, percentage: 45 },
-    { source: 'Renewals', amount: 89700, percentage: 32 },
-    { source: 'Plan Adjustments', amount: 41800, percentage: 15 },
-    { source: 'Special Commissions', amount: 22400, percentage: 8 },
-  ];
-
   // Revenue by source data
   const revenueSourceData = [
     { source: 'Cold outreach', value: 62500, percentage: 22 },
@@ -222,9 +218,7 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
   const commissionPieData = commissionSplits.map((item, index) => ({
     name: item.partner,
     value: item.percentSplit,
-    fill: ['#333333', '#555555', '#777777', '#999999', '#BBBBBB'][
-      index % commissionSplits.length
-    ],
+    fill: bluePalette[index % bluePalette.length],
   }));
 
   // Bar chart data for commission by carrier
@@ -235,8 +229,10 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
 
   // Helper function to determine if a section should be rendered
   const shouldRenderSection = (id: string): boolean => {
-    if (!sectionId) return true; // If no sectionId is provided, render all sections
-    return id === sectionId;
+    if (!sectionId) {
+      return true; // If no sectionId prop, render all
+    }
+    return sectionId === id;
   };
 
   return (
@@ -346,16 +342,14 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
                     name="Current Year"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 6 }}
                   />
                   <Line
                     type="monotone"
                     dataKey="previous"
-                    name="Previous Year"
+                    stroke={bluePalette[1]}
+                    strokeDasharray="5 5"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 6 }}
-                    stroke="black"
                   />
                   <ChartTooltip
                     content={({ active, payload }) => {
@@ -618,7 +612,7 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
                 config={{
                   value: {
                     label: 'Revenue',
-                    color: 'hsl(var(--primary) / 0.7)',
+                    // color property removed to allow Cell fills to take precedence
                   },
                 }}
               >
@@ -638,11 +632,11 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
                     className="text-xs text-muted-foreground"
                     tickFormatter={(value) => `$${value.toLocaleString()}`}
                   />
-                  <Bar
-                    dataKey="value"
-                    radius={[4, 4, 0, 0]}
-                    className="fill-primary/70"
-                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {carrierCommissionData.map((_entry, index) => (
+                      <Cell key={`cell-${index}`} fill={extendedBluePalette[index % extendedBluePalette.length]} />
+                    ))}
+                  </Bar>
                   <ChartTooltip
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
@@ -708,11 +702,11 @@ export function RevenueBreakdown({ className, sectionId }: RevenueBreakdownProps
                   className="text-xs text-muted-foreground"
                   tickFormatter={(value) => `$${value.toLocaleString()}`}
                 />
-                <Bar
-                  dataKey="value"
-                  radius={[4, 4, 0, 0]}
-                  className="fill-primary/70"
-                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {revenueSourceData.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={extendedBluePalette[index % extendedBluePalette.length]} />
+                  ))}
+                </Bar>
                 <ChartTooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
