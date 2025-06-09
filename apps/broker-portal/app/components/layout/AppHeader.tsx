@@ -15,6 +15,7 @@ const navItems = [
   { href: 'https://google.ca', label: 'Quoting' },
   { href: '/upload-documents', label: 'Upload Documents' },
   { href: '/client-list', label: 'Client List' },
+  { href: '/industry-insight', label: 'Industry Insight' },
 ];
 
 export function AppHeader() {

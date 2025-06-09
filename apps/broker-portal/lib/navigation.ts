@@ -35,7 +35,12 @@ export const mainNavItems: NavItem[] = [
     label: 'Industry Insight',
     href: '/industry-insight',
     // icon: LineChartIcon, // Example
-    subItems: [], // Placeholder for future sub-items
+    subItems: [
+      { label: 'Industry Performance', href: '/industry-insight/performance' },
+      { label: 'Benchmarks', href: '/industry-insight/benchmarks' },
+      { label: 'Size Tiers', href: '/industry-insight/size-tiers' },
+      { label: 'Analytics', href: '/industry-insight/analytics' },
+    ],
   },
   {
     label: 'Outstanding Quotes',
