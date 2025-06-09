@@ -23,7 +23,7 @@ import { Badge } from '@repo/design-system/components/ui/badge';
 import React, { useMemo, useState, useCallback } from 'react';
 
 // Import ParsedDocumentResult and Coverage types
-import type { ParsedDocumentResult, Coverage } from '../../../types';
+import type { ParsedDocumentResult, Coverage, HighLevelOverview } from '../../../types';
 
 /**
  * Define coverage types that are experience rated (vs pooled)
@@ -166,6 +166,7 @@ const coverageVariantOrder: Record<string, string[]> = {
 
 interface PremiumComparisonTableProps {
   results: ParsedDocumentResult[];
+  highLevelOverview?: HighLevelOverview[];
 }
 
 // We're using the imported ParsedDocumentResult interface - commenting this out to avoid duplicate declaration
@@ -181,6 +182,7 @@ interface ParsedDocumentResult {
  */
 export function PremiumComparisonTable({
   results,
+  highLevelOverview,
 }: PremiumComparisonTableProps): React.ReactElement {
 
   // State for per-carrier plan option selection
@@ -692,12 +694,88 @@ export function PremiumComparisonTable({
   }, [carriers, results, selectedPlanOptions, filterCoveragesByCarrierPlan, getNormalizedCoverageType, isExperienceRatedCoverage, parseNumericValue]);
   
 
+  // High-level overview component
+  const HighLevelOverviewSection = () => {
+    if (!highLevelOverview || highLevelOverview.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">Plan Overview</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {highLevelOverview.map((overview, index) => (
+            <Card key={`${overview.carrierName}-${index}`} className="border-l-4 border-l-teal-500 hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold text-teal-700">
+                    {overview.carrierName}
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-xs">
+                    {overview.planOption}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Total Premium - Most prominent */}
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <div className="text-sm text-gray-600 font-medium">Total Monthly Premium</div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(overview.totalMonthlyPremium)}
+                  </div>
+                </div>
+                
+                {/* Breakdown */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Pooled Benefits:</span>
+                    <span className="font-medium text-gray-900">
+                      {formatCurrency(overview.pooledBenefitsSubtotal)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Experience Rated:</span>
+                    <span className="font-medium text-gray-900">
+                      {formatCurrency(overview.experienceRatedSubtotal)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rate Guarantee */}
+                {overview.rateGuarantee && (
+                  <div className="bg-blue-50 rounded p-2">
+                    <div className="text-xs font-medium text-blue-800 mb-1">Rate Guarantee</div>
+                    <div className="text-xs text-blue-700">{overview.rateGuarantee}</div>
+                  </div>
+                )}
+
+                {/* Key Highlights */}
+                {overview.keyHighlights && (
+                  <div className="bg-amber-50 rounded p-2">
+                    <div className="text-xs font-medium text-amber-800 mb-1">Key Highlights</div>
+                    <div className="text-xs text-amber-700">{overview.keyHighlights}</div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Premium Comparison</CardTitle>
       </CardHeader>
       <CardContent>
+        <HighLevelOverviewSection />
+        {highLevelOverview && highLevelOverview.length > 0 && (
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">Detailed Breakdown</h3>
+          </div>
+        )}
         {Object.keys(carrierPlanOptions).length > 0 && (
           <div className="mb-4">
             <div className="text-sm text-muted-foreground mb-2">
@@ -739,11 +817,11 @@ export function PremiumComparisonTable({
             </div>
           </div>
         )}
-        <div className="overflow-x-auto border rounded-lg shadow-sm">
-          <Table className="table-auto text-sm w-full">
+        <div className="overflow-x-auto border rounded-lg shadow-sm w-full">
+          <Table className="table-fixed text-sm w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[445px] sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500 px-3 py-3" colSpan={2}>
+                <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500 px-3 py-3`} colSpan={2}>
                   <div className="font-semibold text-base text-teal-600">Carrier</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
@@ -774,10 +852,10 @@ export function PremiumComparisonTable({
                 })}
               </TableRow>
               <TableRow>
-                <TableHead className="w-[375px] sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500 px-3 py-3">
+                <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500 px-3 py-3`}>
                   <div className="font-semibold text-sm">Benefit</div>
                 </TableHead>
-                <TableHead className="border-b-2 border-b-teal-500 text-center px-3 py-3">
+                <TableHead className="border-b-2 border-b-teal-500 text-center px-3 py-3 bg-slate-100">
                   <div className="font-semibold text-sm">Volume</div>
                 </TableHead>
                 {carriers.map((_, index) => (
@@ -823,7 +901,7 @@ export function PremiumComparisonTable({
                 // Special rendering for Rate Guarantees row with proper spanning
                 return (
                   <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                    <TableCell className={`w-[445px] sticky left-0 bg-background border-r z-10 px-3 py-3 align-top ${row.isBold ? 'font-bold' : 'font-medium'}`} colSpan={2}>
+                    <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-10 px-3 py-3 align-top ${row.isBold ? 'font-bold' : 'font-medium'}`} colSpan={2}>
                       <div className="text-sm break-words leading-relaxed">{row.label}</div>
                     </TableCell>
                     {carriers.map((_, carrierIndex) => (
@@ -846,14 +924,14 @@ export function PremiumComparisonTable({
               return (
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
                   {row.label === 'Sub-total - Pooled Coverage' || row.label === 'Sub-total - Experience Rated Benefits' || row.label === 'TOTAL MONTHLY PREMIUM*' ? (
-                    <TableCell className={`w-[445px] sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
+                    <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
                       <div className="text-sm break-words leading-relaxed">
                         {row.label}
                       </div>
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell className={`w-[375px] sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
+                      <TableCell className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 hover:bg-teal-100/80' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.label}
                         </div>

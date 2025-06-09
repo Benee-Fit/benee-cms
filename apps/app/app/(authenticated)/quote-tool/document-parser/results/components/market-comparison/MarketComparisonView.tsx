@@ -226,7 +226,10 @@ const MarketComparisonView = ({
         </TabsList>
 
         <TabsContent value="premium" className="mt-0">
-          <PremiumComparisonTable results={premiumDocuments} />
+          <PremiumComparisonTable 
+            results={premiumDocuments} 
+            highLevelOverview={enhancedData?.highLevelOverview}
+          />
         </TabsContent>
 
         <TabsContent value="plan" className="mt-0">
