@@ -4,29 +4,20 @@ import {
   Alert,
   AlertDescription,
 } from '@repo/design-system/components/ui/alert';
-import { Badge } from '@repo/design-system/components/ui/badge';
+// Badge import removed - was only used in document uploads section
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@repo/design-system/components/ui/card';
-import { Input } from '@repo/design-system/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@repo/design-system/components/ui/select';
+import {} from '@repo/design-system/components/ui/select';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   CalendarDays as CalendarIcon,
   FileIcon,
   FlameIcon,
-  SearchIcon,
   TrendingDownIcon,
-  Upload,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -77,17 +68,31 @@ export function ClientInsights({ className }: ClientInsightsProps) {
   ];
 
   return (
-    <div className={cn('space-y-6 p-6', className)}>
-      <div>
-        <h2 className="text-2xl font-semibold mb-1">Client Insights</h2>
-        <p className="text-muted-foreground">
-          Everything tied to your client block in one place.
-        </p>
-      </div>
+    <div className={cn('space-y-6', className)}>
+      {/* Client Flags */}
+      <section aria-labelledby="client-flags-title">
+        <h3 id="client-flags-title" className="text-xl font-medium mb-2">
+          Flags
+        </h3>
+        <div className="space-y-2">
+          {clientFlags.map((flag) => (
+            <Alert
+              key={flag.id}
+              variant={flag.type === 'warning' ? 'default' : 'destructive'}
+            >
+              <flag.icon className="h-4 w-4" />
+              <AlertDescription>{flag.message}</AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      </section>
 
       {/* Client Overview */}
       <section aria-labelledby="client-overview-title">
-        <h3 id="client-overview-title" className="text-xl font-medium mb-2">
+        <h3
+          id="client-overview-title"
+          className="text-xl font-medium mb-2 sr-only"
+        >
           Client Overview
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -158,7 +163,8 @@ export function ClientInsights({ className }: ClientInsightsProps) {
               </p>
               <p className="text-xs text-muted-foreground">
                 {Math.round(
-                  (clientOverview.totalClients * clientOverview.percentFlagged) /
+                  (clientOverview.totalClients *
+                    clientOverview.percentFlagged) /
                     100
                 )}{' '}
                 clients with alerts
@@ -168,9 +174,12 @@ export function ClientInsights({ className }: ClientInsightsProps) {
         </div>
       </section>
 
-      {/* Client Search & Filter */}
+      {/* Client Search & Filter 
       <section aria-labelledby="client-search-filter-title">
-        <h3 id="client-search-filter-title" className="text-xl font-medium mb-2">
+        <h3
+          id="client-search-filter-title"
+          className="text-xl font-medium mb-2"
+        >
           Client Search & Filter
         </h3>
 
@@ -223,77 +232,7 @@ export function ClientInsights({ className }: ClientInsightsProps) {
           </Card>
         )}
       </section>
-
-      {/* Document Uploads */}
-      <section aria-labelledby="doc-upload-title">
-        <h3 id="doc-upload-title" className="text-xl font-medium mb-2">
-          Document Uploads
-        </h3>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground mb-2">
-              Drag/drop claims experience, renewals, forms, and any client
-              documents.
-            </p>
-
-            <div className="mt-2 p-6 border-2 border-dashed rounded-md text-center">
-              <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm font-medium">
-                Drag files here or click to upload
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Supports PDF, Excel, Word, and image files up to 10MB
-              </p>
-              <Input type="file" className="hidden" id="file-upload" multiple />
-              <label
-                htmlFor="file-upload"
-                className="mt-4 inline-flex h-8 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 cursor-pointer"
-              >
-                Select Files
-              </label>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <p className="text-xs text-muted-foreground w-full mb-1">
-                Tag by type/date/client:
-              </p>
-              <Badge variant="outline" className="bg-background">
-                Claims Experience
-              </Badge>
-              <Badge variant="outline" className="bg-background">
-                Renewal
-              </Badge>
-              <Badge variant="outline" className="bg-background">
-                Forms
-              </Badge>
-              <Badge variant="outline" className="bg-background">
-                Census
-              </Badge>
-              <Badge variant="outline" className="bg-background">
-                + Add Custom Tag
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Client Flags */}
-      <section aria-labelledby="client-flags-title">
-        <h3 id="client-flags-title" className="text-xl font-medium mb-2">
-          Client Flags
-        </h3>
-        <div className="space-y-2">
-          {clientFlags.map((flag) => (
-            <Alert
-              key={flag.id}
-              variant={flag.type === 'warning' ? 'default' : 'destructive'}
-            >
-              <flag.icon className="h-4 w-4" />
-              <AlertDescription>{flag.message}</AlertDescription>
-            </Alert>
-          ))}
-        </div>
-      </section>
+      */}
     </div>
   );
 }

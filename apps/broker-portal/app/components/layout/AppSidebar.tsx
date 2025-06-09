@@ -6,7 +6,7 @@ import { mainNavItems } from '../../../lib/navigation';
 import type { NavItem } from '../../../lib/navigation';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/design-system/components/ui/collapsible';
 import { Button } from '@repo/design-system/components/ui/button';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Home } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
 export function AppSidebar() {
@@ -52,8 +52,9 @@ export function AppSidebar() {
         <Link href="/" className="mb-4">
           <Button 
             variant="outline" 
-            className="w-full justify-start"
+            className="w-full justify-start gap-2"
           >
+            <Home className="h-4 w-4" />
             Back to Home
           </Button>
         </Link>
