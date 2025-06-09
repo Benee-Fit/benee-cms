@@ -548,9 +548,9 @@ export function PremiumComparisonTable({
               // If familyLives > 1 and familyPremium seems like a total (much larger than single rate)
               const singleRate = (coverage as any).premiumPerSingle || 0;
               
-              // More conservative heuristic: if familyPremium is more than 5x the singleRate AND familyPremium > 1000, it's likely a total
+              // Heuristic: if familyPremium is more than 3x the singleRate, it's likely a total
               // Otherwise, treat it as per-unit rate
-              if (familyLives > 1 && singleRate > 0 && familyPremium > (singleRate * 5) && familyPremium > 1000) {
+              if (familyLives > 1 && singleRate > 0 && familyPremium > (singleRate * 3)) {
                 // familyPremium appears to be total family premium, calculate per-unit rate
                 rate = familyPremium / familyLives;
                 premium = familyPremium;  // Use the total as-is
