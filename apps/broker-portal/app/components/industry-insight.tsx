@@ -17,6 +17,10 @@ import {
 } from '@repo/design-system/components/ui/table';
 import { cn } from '@repo/design-system/lib/utils';
 // import { useState } from 'react'; // No longer needed as mock data is static for now
+
+const bluePaletteConst = ['#0D47A1', '#1976D2', '#2196F3', '#64B5F6', '#90CAF9', '#BBDEFB'];
+const extendedBluePaletteConst = ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB', '#E3F2FD'];
+
 import {
   Bar,
   BarChart,
@@ -123,11 +127,24 @@ const ChartComponent = ({
           )}
           <Bar
             dataKey="value"
-            fill={
-              (data.datasets[0].backgroundColor as string) ||
-              'hsl(var(--primary) / 0.7)'
+            fill={ // Default fill if not an array or if Cells are not used
+              !Array.isArray(data.datasets[0].backgroundColor)
+                ? (data.datasets[0].backgroundColor as string) || 'hsl(var(--primary) / 0.7)'
+                : undefined // Let Cells handle fill if backgroundColor is an array
             }
-          />
+          >
+            {Array.isArray(data.datasets[0].backgroundColor) &&
+              chartDataProcessed.map((_entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={
+                    (data.datasets[0].backgroundColor as string[])[
+                      index % (data.datasets[0].backgroundColor as string[]).length
+                    ]
+                  }
+                />
+              ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     );
@@ -265,7 +282,7 @@ export function IndustryInsight({
       {
         label: 'Quotes Submitted',
         data: [48, 37, 29, 22, 19, 14, 8],
-        backgroundColor: 'hsl(var(--primary) / 0.7)',
+        backgroundColor: ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6'], // extendedBluePalette (7 needed)
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
@@ -278,7 +295,7 @@ export function IndustryInsight({
       {
         label: 'Conversion Rate (%)',
         data: [72, 65, 59, 68, 55, 42, 63],
-        backgroundColor: 'hsl(var(--primary) / 0.7)',
+        backgroundColor: ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6'], // extendedBluePalette (7 needed)
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
@@ -291,13 +308,8 @@ export function IndustryInsight({
       {
         label: 'Source Breakdown',
         data: [42, 23, 15, 12, 8],
-        backgroundColor: [
-          'hsl(var(--primary) / 0.9)',
-          'hsl(var(--primary) / 0.7)',
-          'hsl(var(--primary) / 0.5)',
-          'hsl(var(--primary) / 0.3)',
-          'hsl(var(--primary) / 0.2)',
-        ],
+        backgroundColor: bluePaletteConst.slice(0, 5), // bluePalette (5 needed)
+
         borderWidth: 1,
         borderColor: 'hsl(var(--background))',
       },
@@ -310,14 +322,14 @@ export function IndustryInsight({
       {
         label: 'Conversion Rate (%)',
         data: [68, 22, 34, 51, 47],
-        backgroundColor: 'hsl(var(--primary) / 0.7)',
+        backgroundColor: bluePaletteConst[0],
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
       {
         label: 'Avg. Client Value ($K)',
         data: [28.4, 22.7, 19.5, 26.2, 24.8],
-        backgroundColor: 'hsl(var(--muted-foreground) / 0.5)',
+        backgroundColor: bluePaletteConst[1],
         borderColor: 'hsl(var(--muted-foreground))',
         borderWidth: 1,
       },
