@@ -294,13 +294,13 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                     <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="sticky left-0 bg-background z-10 border-r">
+                          <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-teal-500">
                             <div className="font-semibold">Benefit</div>
                           </TableHead>
                           {carriers.map((carrier, index) => (
-                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
                               <div className="flex flex-col items-center justify-center gap-1.5 p-2">
-                                <div className="font-semibold text-sm text-center">{carrier.name}</div>
+                                <div className="font-semibold text-sm text-center text-teal-600">{carrier.name}</div>
                                 <Badge variant="secondary">{results[index]?.metadata?.planOptions?.[0]?.planOptionName || 'Details'}</Badge>
                               </div>
                             </TableHead>
@@ -310,7 +310,7 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                       <TableBody>
                         {category.fields.map((field) => (
                           <TableRow key={field.id}>
-                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[220px] min-w-[220px] p-4">
+                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[330px] min-w-[330px] p-4">
                               <div className="text-sm break-words whitespace-normal leading-relaxed">
                                 {field.label}
                               </div>
