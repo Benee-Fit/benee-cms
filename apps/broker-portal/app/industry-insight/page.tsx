@@ -1,15 +1,12 @@
 'use client';
 
-import { IndustryInsight } from '../components/industry-insight';
-import { PageLayout } from '../page-layout';
+import { redirect } from 'next/navigation';
 
 export default function IndustryInsightPage() {
-  return (
-    <PageLayout>
-      <div className="container mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Industry Insight</h1>
-        <IndustryInsight />
-      </div>
-    </PageLayout>
-  );
+  // Redirect to the first tab by default
+  redirect('/industry-insight/performance');
+
+  // This part will not be reached due to the redirect, but Next.js requires a return for components.
+  // It can be null or an empty fragment if the redirect is guaranteed.
+  return null;
 }
