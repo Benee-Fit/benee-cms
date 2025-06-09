@@ -298,7 +298,7 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                             <div className="font-semibold">Benefit</div>
                           </TableHead>
                           {carriers.map((carrier, index) => (
-                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                               <div className="flex flex-col items-center justify-center gap-1.5 p-2">
                                 <div className="font-semibold text-sm text-center text-teal-600">{carrier.name}</div>
                                 <Badge variant="secondary">{results[index]?.metadata?.planOptions?.[0]?.planOptionName || 'Details'}</Badge>
@@ -327,7 +327,7 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                                 data[coverageType][field.id] : null;
 
                               return (
-                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                                   <div className="break-words whitespace-normal">
                                     <DetailRenderer 
                                       details={fieldValue === true ? 'Yes' :

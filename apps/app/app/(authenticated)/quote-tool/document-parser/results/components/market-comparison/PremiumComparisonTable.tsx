@@ -637,6 +637,7 @@ export function PremiumComparisonTable({
           type: 'subtotal',
           label: 'Sub-total - Pooled Coverage',
           volume: '',
+          isBold: true,
           values: pooledTotal.map(total => ({ 
             unitRate: '', 
             monthlyPremium: formatCurrency(total) 
@@ -654,6 +655,7 @@ export function PremiumComparisonTable({
             type: 'subtotal',
             label: 'Sub-total - Experience Rated Benefits',
             volume: '',
+            isBold: true,
             values: experienceTotal.map(total => ({ 
               unitRate: '', 
               monthlyPremium: formatCurrency(total) 
@@ -679,6 +681,7 @@ export function PremiumComparisonTable({
       type: 'rateGuarantee',
       label: 'Rate Guarantees',
       volume: '',
+      isBold: true,
       values: carriers.map(carrier => ({ 
         unitRate: '', 
         monthlyPremium: carrier.rateGuarantee || '-' 
@@ -740,11 +743,8 @@ export function PremiumComparisonTable({
           <Table className="table-fixed text-sm w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[300px] sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500">
-                  <div className="font-semibold text-sm">Benefit</div>
-                </TableHead>
-                <TableHead className="w-[70px] text-center bg-slate-100 border-b-2 border-b-teal-500">
-                  <div className="font-semibold text-xs">Volume</div>
+                <TableHead className="w-[445px] sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500" colSpan={2}>
+                  <div className="font-semibold text-base text-teal-600">Carrier</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
                   const selectedPlan = selectedPlanOptions[carrier.name];
@@ -753,7 +753,7 @@ export function PremiumComparisonTable({
                   return (
                     <TableHead
                       key={`header-carrier-${index}`}
-                      className={`text-center p-2 border-l border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
+                      className={`text-center p-2 border-l border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}
                       colSpan={2}
                     >
                       <div className="flex flex-col items-center gap-1">
@@ -774,12 +774,16 @@ export function PremiumComparisonTable({
                 })}
               </TableRow>
               <TableRow>
-                <TableHead className="sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500" />
-                <TableHead className="border-b-2 border-b-teal-500" />
+                <TableHead className="w-[375px] sticky left-0 bg-background border-r z-20 border-b-2 border-b-teal-500">
+                  <div className="font-semibold text-sm">Benefit</div>
+                </TableHead>
+                <TableHead className="border-b-2 border-b-teal-500 text-center">
+                  <div className="font-semibold text-sm">Volume</div>
+                </TableHead>
                 {carriers.map((_, index) => (
                   <React.Fragment key={`subheader-${index}`}>
-                    <TableHead className={`text-center border-l border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Unit Rate</TableHead>
-                    <TableHead className={`text-center border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Monthly Premium</TableHead>
+                    <TableHead className={`text-center border-l border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>Unit Rate</TableHead>
+                    <TableHead className={`text-center border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>Monthly Premium</TableHead>
                   </React.Fragment>
                 ))}
               </TableRow>
@@ -795,9 +799,9 @@ export function PremiumComparisonTable({
               } else if (row.type === 'total') {
                 rowClassName = 'font-bold bg-muted';
               } else if (row.type === 'rateGuarantee') {
-                rowClassName = 'font-medium bg-muted/20';
+                rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-muted/20`;
               } else if (row.type === 'subtotal') {
-                rowClassName = 'font-medium bg-teal-50';
+                rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-teal-50`;
               } else if (row.type === 'subBenefit') {
                 rowClassName = 'hover:bg-muted/30';
               } else {
@@ -819,19 +823,16 @@ export function PremiumComparisonTable({
                 // Special rendering for Rate Guarantees row with proper spanning
                 return (
                   <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                    <TableCell className="w-[300px] sticky left-0 bg-background border-r font-medium z-10 py-3 align-top">
+                    <TableCell className={`w-[445px] sticky left-0 bg-background border-r z-10 py-3 align-top ${row.isBold ? 'font-bold' : 'font-medium'}`} colSpan={2}>
                       <div className="text-sm break-words leading-relaxed">{row.label}</div>
-                    </TableCell>
-                    <TableCell className="text-center py-3 align-top bg-slate-100">
-                      <div className="text-sm">-</div>
                     </TableCell>
                     {carriers.map((_, carrierIndex) => (
                       <TableCell
                         key={`rate-guarantee-${carrierIndex}`}
                         colSpan={2}
-                        className={`text-center px-2 border-l py-3 align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100' : ''}`}
+                        className={`text-center px-2 border-l py-3 align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100/50' : ''}`}
                       >
-                        <div className="text-sm break-words leading-relaxed">
+                        <div className={`break-words leading-relaxed ${row.isBold ? 'text-sm font-bold' : 'text-sm'}`}>
                           {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
                         </div>
                       </TableCell>
@@ -842,24 +843,34 @@ export function PremiumComparisonTable({
               
               return (
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                  <TableCell className={`w-[300px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50 font-medium' : row.type === 'total' ? 'bg-muted font-bold' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6 text-muted-foreground' : row.type === 'total' ? 'font-bold' : 'font-medium'}`}>
-                    <div className="text-sm break-words leading-relaxed">
-                      {row.label}
-                    </div>
-                  </TableCell>
-                  <TableCell className={`text-center px-2 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-slate-100'}`}>
-                    <div className="text-sm break-words leading-relaxed">
-                      {row.type !== 'subtotal' && 
-                       row.type !== 'total' && 
-                       row.type !== 'rateGuarantee' && 
-                       row.type !== 'header'
-                        ? row.volume || '-'
-                        : "-"}
-                    </div>
-                  </TableCell>
+                  {row.label === 'Sub-total - Pooled Coverage' || row.label === 'Sub-total - Experience Rated Benefits' || row.label === 'TOTAL MONTHLY PREMIUM*' ? (
+                    <TableCell className={`w-[445px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6 text-muted-foreground' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
+                      <div className="text-sm break-words leading-relaxed">
+                        {row.label}
+                      </div>
+                    </TableCell>
+                  ) : (
+                    <>
+                      <TableCell className={`w-[375px] sticky left-0 border-r z-10 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6 text-muted-foreground' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`}>
+                        <div className="text-sm break-words leading-relaxed">
+                          {row.label}
+                        </div>
+                      </TableCell>
+                      <TableCell className={`text-center px-2 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : 'bg-slate-100/50'}`}>
+                        <div className="text-sm break-words leading-relaxed">
+                          {row.type !== 'subtotal' && 
+                           row.type !== 'total' && 
+                           row.type !== 'rateGuarantee' && 
+                           row.type !== 'header'
+                            ? row.volume || '-'
+                            : "-"}
+                        </div>
+                      </TableCell>
+                    </>
+                  )}
                   {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className={`text-center px-2 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                      <TableCell className={`text-center px-2 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.type !== 'subtotal' && 
                            row.type !== 'total' && 
@@ -869,8 +880,8 @@ export function PremiumComparisonTable({
                             : "-"}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-2 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100' : ''}`}>
-                        <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : 'text-sm font-medium'}`}>
+                      <TableCell className={`text-center px-2 py-3 align-top ${row.type === 'subtotal' ? 'bg-teal-50' : row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                        <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
                           {row.type !== 'header'
                             ? cell?.monthlyPremium || '-'
                             : "-"}
@@ -881,10 +892,10 @@ export function PremiumComparisonTable({
                     // Fallback for rows without values array
                     carriers.map((_, cellIdx) => (
                       <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className={`text-center px-2 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                        <TableCell className={`text-center px-2 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                           <div className="text-sm">-</div>
                         </TableCell>
-                        <TableCell className={`text-center px-2 py-3 align-top ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                        <TableCell className={`text-center px-2 py-3 align-top ${row.type === 'total' ? 'bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
                           <div className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}>-</div>
                         </TableCell>
                       </React.Fragment>
