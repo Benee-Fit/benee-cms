@@ -33,10 +33,8 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <body className={inter.className}>
           <div className="flex min-h-screen flex-col">
             <AppHeader />
-            <div className="flex-grow pt-16"> {/* Added pt-16 to account for fixed header */}
-              <PageLayout>
-                {children}
-              </PageLayout>
+            <div className="flex-grow">
+              <PageLayout>{children}</PageLayout>
             </div>
           </div>
         </body>

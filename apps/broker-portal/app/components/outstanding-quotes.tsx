@@ -134,17 +134,22 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
   };
 
   return (
-    <div className={cn('space-y-6 p-6', className)}>
-      <div>
-        <h2 className="text-2xl font-semibold mb-1">Outstanding Quotes</h2>
-        <p className="text-muted-foreground">
-          All your in-progress quotes in one place.
-        </p>
-      </div>
-
+    <div className={cn('space-y-6', className)}>
+      {oldQuotes > 0 && (
+        <Alert className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Attention!</AlertTitle>
+          <AlertDescription>
+            {oldQuotes} quote{oldQuotes > 1 ? 's' : ''} waiting 10+ days.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Quote Tracker Table */}
       <section aria-labelledby="quote-tracker-title">
-        <h3 id="quote-tracker-title" className="text-xl font-medium mb-2">
+        <h3
+          id="quote-tracker-title"
+          className="text-xl font-medium mb-2 sr-only"
+        >
           Quote Tracker Table
         </h3>
         <div className="relative mb-4">
@@ -240,16 +245,6 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
             </Table>
           </CardContent>
         </Card>
-
-        {oldQuotes > 0 && (
-          <Alert className="mt-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Attention!</AlertTitle>
-            <AlertDescription>
-              {oldQuotes} quote{oldQuotes > 1 ? 's' : ''} waiting 10+ days.
-            </AlertDescription>
-          </Alert>
-        )}
       </section>
     </div>
   );

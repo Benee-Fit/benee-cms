@@ -29,7 +29,7 @@ export const mainNavItems: NavItem[] = [
     label: 'Client Insights',
     href: '/client-insights',
     // icon: UsersIcon, // Example
-    subItems: [], // Placeholder for future sub-items
+    // No sub-items as this is now a single page
   },
   {
     label: 'Industry Insight',
@@ -41,6 +41,6 @@ export const mainNavItems: NavItem[] = [
     label: 'Outstanding Quotes',
     href: '/outstanding-quotes',
     // icon: FileSpreadsheetIcon, // Example
-    subItems: [], // Placeholder for future sub-items
+    // No sub-items as this is now a single page
   },
 ];
