@@ -276,17 +276,6 @@ export default function DocumentParserResultsPage() {
     router.push('/quote-tool/document-parser');
   };
 
-  // Copy raw JSON data to clipboard
-  const handleCopyJson = () => {
-    try {
-      const jsonData = JSON.stringify(parsedDocuments, null, 2);
-      navigator.clipboard.writeText(jsonData);
-      alert('JSON data copied to clipboard');
-    } catch (_e) {
-      // Handle error safely
-      alert('Failed to copy JSON data');
-    }
-  };
 
   // Toggle raw data view
   const toggleRawData = () => {
@@ -367,9 +356,6 @@ export default function DocumentParserResultsPage() {
                         <span>Show Raw JSON</span>
                       </>
                     )}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleCopyJson}>
-                    Copy JSON
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleReturnToParser}>
                     Upload More
