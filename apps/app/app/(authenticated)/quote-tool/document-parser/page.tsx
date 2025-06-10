@@ -8,6 +8,8 @@ import { Card, CardContent } from '@repo/design-system/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
 import { Info, Upload, AlertCircle, FileText, UploadCloud } from 'lucide-react';
+import QuoteQuestionnaireModal from './components/quote-questionnaire/QuoteQuestionnaireModal';
+import type { QuoteQuestionnaireData } from './components/quote-questionnaire/types';
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -21,6 +23,13 @@ export default function DocumentParserPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<'Current' | 'Renegotiated' | 'Alternative'>('Current');
   const [dragActive, setDragActive] = useState(false);
+  
+  // Questionnaire modal state
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [isProcessingComplete, setIsProcessingComplete] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
+  const [questionnaireData, setQuestionnaireData] = useState<QuoteQuestionnaireData | null>(null);
+  const [processedResults, setProcessedResults] = useState<Record<string, unknown>[]>([]);
 
   // Handle drag events
   const handleDrag = useCallback((e: DragEvent) => {
@@ -138,6 +147,11 @@ export default function DocumentParserPage() {
     
     setIsLoading(true);
     setError(null);
+    setIsProcessingComplete(false);
+    setProcessingError(null);
+    
+    // Open questionnaire modal immediately when processing starts
+    setShowQuestionnaire(true);
     
     try {
       const results: Record<string, unknown>[] = [];
@@ -207,19 +221,60 @@ export default function DocumentParserPage() {
         coveragesCount: Array.isArray(doc.coverages) ? doc.coverages.length : 0
       })));
       
-      // Store results in localStorage for the results page
-      localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(results));
+      // Store processed results temporarily
+      setProcessedResults(results);
+      setIsProcessingComplete(true);
       
-      // Navigate to results page
-      router.push('/quote-tool/document-parser/results');
+      // If questionnaire is already complete, proceed immediately
+      if (questionnaireData) {
+        proceedToResults(results, questionnaireData);
+      }
       
     } catch (err: unknown) {
       // Log error safely without using console directly in production
       const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMsg || 'An error occurred while processing the documents.');
+      setProcessingError(errorMsg);
+      setIsProcessingComplete(true);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle questionnaire completion
+  const handleQuestionnaireComplete = (data: QuoteQuestionnaireData) => {
+    setQuestionnaireData(data);
+    setShowQuestionnaire(false);
+    
+    // If processing is also complete, proceed to results
+    if (isProcessingComplete) {
+      proceedToResults(processedResults, data);
+    }
+  };
+
+  // Handle questionnaire modal close
+  const handleQuestionnaireClose = () => {
+    setShowQuestionnaire(false);
+    // Reset processing state if user closes modal before completion
+    if (!isProcessingComplete) {
+      setIsLoading(false);
+    }
+  };
+
+  // Proceed to results page with combined data
+  const proceedToResults = (results: Record<string, unknown>[], questionnaire: QuoteQuestionnaireData) => {
+    // Combine processed documents with questionnaire data
+    const combinedData = {
+      processedDocuments: results,
+      questionnaireData: questionnaire
+    };
+    
+    // Store combined results in localStorage for the results page
+    localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(results));
+    localStorage.setItem('quoteQuestionnaireResults', JSON.stringify(questionnaire));
+    
+    // Navigate to results page
+    router.push('/quote-tool/document-parser/results');
   };
 
   return (
@@ -380,6 +435,15 @@ export default function DocumentParserPage() {
               {isLoading ? 'Processing...' : 'Process Documents'}
             </Button>
           </div>
+
+      {/* Quote Questionnaire Modal */}
+      <QuoteQuestionnaireModal
+        isOpen={showQuestionnaire}
+        onClose={handleQuestionnaireClose}
+        onComplete={handleQuestionnaireComplete}
+        isProcessingComplete={isProcessingComplete}
+        processingError={processingError}
+      />
     </>
   );
 }
