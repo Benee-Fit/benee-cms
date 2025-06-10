@@ -553,29 +553,17 @@ export function PremiumComparisonTable({
             let premium, rate;
             
             if (variant === 'Single') {
-              // For Single: total premium for all single enrollees
-              premium = (coverage as any).premiumPerSingle || 0;
-              rate = (coverage as any).premiumPerSingle || coverage.unitRate;
-            } else {
-              // For Family: need to normalize premiumPerFamily data
-              const familyLives = (coverage as any).livesFamily || 1;
-              const familyPremium = (coverage as any).premiumPerFamily || 0;
-              
-              // Check if premiumPerFamily is already the per-unit rate or total premium
-              // If familyLives > 1 and familyPremium seems like a total (much larger than single rate)
+              // For Single: calculate total premium for all single enrollees
+              const singleLives = (coverage as any).livesSingle || 0;
               const singleRate = (coverage as any).premiumPerSingle || 0;
-              
-              // Heuristic: if familyPremium is more than 3x the singleRate, it's likely a total
-              // Otherwise, treat it as per-unit rate
-              if (familyLives > 1 && singleRate > 0 && familyPremium > (singleRate * 3)) {
-                // familyPremium appears to be total family premium, calculate per-unit rate
-                rate = familyPremium / familyLives;
-                premium = familyPremium;  // Use the total as-is
-              } else {
-                // familyPremium appears to be per-unit rate
-                rate = familyPremium;
-                premium = rate * familyLives;  // Calculate total: rate × volume
-              }
+              rate = singleRate;
+              premium = singleRate * singleLives;
+            } else {
+              // For Family: calculate total premium for all family enrollees
+              const familyLives = (coverage as any).livesFamily || 0;
+              const familyRate = (coverage as any).premiumPerFamily || 0;
+              rate = familyRate;
+              premium = familyRate * familyLives;
             }
             
             rowData.values[idx] = {
@@ -797,8 +785,8 @@ export function PremiumComparisonTable({
           <Table className="table-fixed text-sm w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-indigo-500 px-3 py-3`} colSpan={2}>
-                  <div className="font-semibold text-base text-indigo-600">Carrier</div>
+                <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`} colSpan={2}>
+                  <div className="font-semibold text-base text-sky-600">Carrier</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
                   const selectedPlan = selectedPlanOptions[carrier.name];
@@ -807,18 +795,18 @@ export function PremiumComparisonTable({
                   return (
                     <TableHead
                       key={`header-carrier-${index}`}
-                      className={`text-center px-3 py-3 border-l border-b-2 border-b-indigo-500 transition-colors duration-200 hover:bg-indigo-50/50 cursor-default ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
+                      className={`text-center px-3 py-3 border-l border-b-2 border-b-sky-500 transition-colors duration-200 hover:bg-sky-50/50 cursor-default ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
                       colSpan={2}
                     >
                       <div className="flex flex-col items-center gap-2">
-                        <span className="font-semibold text-base text-indigo-600 text-center leading-tight">{carrier.name || 'Unknown Carrier'}</span>
+                        <span className="font-semibold text-base text-sky-600 text-center leading-tight">{carrier.name || 'Unknown Carrier'}</span>
                         {availableOptions.length > 0 && (
                           <div className="w-full max-w-[180px]">
                             <Select
                               value={selectedPlan || ''}
                               onValueChange={(value: string) => updateCarrierPlanOption(carrier.name, value)}
                             >
-                              <SelectTrigger className="w-full h-8 text-xs bg-white border-gray-300 hover:border-gray-400 focus:border-indigo-500">
+                              <SelectTrigger className="w-full h-8 text-xs bg-white border-gray-300 hover:border-gray-400 focus:border-sky-500">
                                 <SelectValue 
                                   placeholder="Select plan" 
                                   className="text-xs truncate"
@@ -842,16 +830,16 @@ export function PremiumComparisonTable({
                 })}
               </TableRow>
               <TableRow>
-                <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-indigo-500 px-3 py-3`}>
+                <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`}>
                   <div className="font-semibold text-sm">Benefit</div>
                 </TableHead>
-                <TableHead className="border-b-2 border-b-indigo-500 text-center px-3 py-3 bg-slate-100">
+                <TableHead className="border-b-2 border-b-sky-500 text-center px-3 py-3 bg-slate-100">
                   <div className="font-semibold text-sm">Volume</div>
                 </TableHead>
                 {carriers.map((_, index) => (
                   <React.Fragment key={`subheader-${index}`}>
-                    <TableHead className={`text-center border-l border-b-2 border-b-indigo-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Unit Rate</TableHead>
-                    <TableHead className={`text-center border-b-2 border-b-indigo-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Monthly Premium</TableHead>
+                    <TableHead className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Unit Rate</TableHead>
+                    <TableHead className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Monthly Premium</TableHead>
                   </React.Fragment>
                 ))}
               </TableRow>

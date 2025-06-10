@@ -302,13 +302,13 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                     <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-teal-500">
+                          <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-sky-500">
                             <div className="font-semibold">Benefit</div>
                           </TableHead>
                           {carriers.map((carrier, index) => (
-                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-teal-500 ${index % 2 === 1 ? 'bg-slate-100/50' : ''}`}>
+                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-sky-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
                               <div className="flex flex-col items-center justify-center gap-1.5 p-2">
-                                <div className="font-semibold text-sm text-center text-teal-600">{carrier.name}</div>
+                                <div className="font-semibold text-sm text-center text-sky-600">{carrier.name}</div>
                                 <Badge variant="secondary">{results[index]?.metadata?.planOptions?.[0]?.planOptionName || 'Details'}</Badge>
                               </div>
                             </TableHead>
@@ -422,7 +422,7 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                               }
 
                               return (
-                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100/50 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'}`}>
+                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
                                   <div className="break-words whitespace-normal">
                                     <DetailRenderer 
                                       details={fieldValue === true ? 'Yes' :
