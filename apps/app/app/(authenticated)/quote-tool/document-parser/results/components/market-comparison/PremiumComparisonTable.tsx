@@ -484,29 +484,61 @@ export function PremiumComparisonTable({
     
     const carriersArray = Array.from(carriersMap.values());
     
-    // Sort carriers according to preferred order, with unknown carriers at the end
-    return carriersArray.sort((a, b) => {
-      const indexA = preferredOrder.findIndex(preferred => 
-        a.name.toLowerCase().includes(preferred.toLowerCase()) || 
-        preferred.toLowerCase().includes(a.name.toLowerCase())
-      );
-      const indexB = preferredOrder.findIndex(preferred => 
-        b.name.toLowerCase().includes(preferred.toLowerCase()) || 
-        preferred.toLowerCase().includes(b.name.toLowerCase())
-      );
+    // Calculate total premium for each carrier to sort by cheapest first
+    const carriersWithPremiums = carriersArray.map(carrier => {
+      let totalPremium = 0;
       
-      // If both carriers are in preferred order, sort by their position
-      if (indexA !== -1 && indexB !== -1) {
-        return indexA - indexB;
+      // Find all results for this carrier and sum their premiums
+      for (const result of results) {
+        const resultCarrierName = result.metadata?.carrierName || 
+                                 (result as any).processedData?.metadata?.carrierName ||
+                                 result.allCoverages?.[0]?.carrierName;
+        
+        if (resultCarrierName === carrier.name) {
+          // Try multiple sources for total premium
+          let premium = 0;
+          
+          // First check planOptions for totalMonthlyPremium (most accurate)
+          if ((result as any).processedData?.planOptions?.[0]?.carrierProposals?.[0]?.totalMonthlyPremium) {
+            premium = (result as any).processedData.planOptions[0].carrierProposals[0].totalMonthlyPremium;
+          }
+          // Then check processedData metadata
+          else if ((result as any).processedData?.metadata?.totalProposedMonthlyPlanPremium) {
+            premium = (result as any).processedData.metadata.totalProposedMonthlyPlanPremium;
+          }
+          // Then check root metadata
+          else if (result.metadata?.totalProposedMonthlyPlanPremium) {
+            premium = result.metadata.totalProposedMonthlyPlanPremium;
+          }
+          // Finally sum up coverage premiums as fallback
+          else {
+            premium = result.allCoverages?.reduce((sum, cov) => sum + (cov.monthlyPremium || 0), 0) || 0;
+          }
+          
+          totalPremium += premium;
+        }
       }
       
-      // If only one is in preferred order, it comes first
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      
-      // If neither is in preferred order, sort alphabetically
-      return a.name.localeCompare(b.name);
+      return {
+        ...carrier,
+        totalPremium
+      };
     });
+    
+    // Sort carriers by total premium (cheapest first)
+    return carriersWithPremiums.sort((a, b) => {
+      // If both have premiums, sort by premium amount
+      if (a.totalPremium > 0 && b.totalPremium > 0) {
+        return a.totalPremium - b.totalPremium;
+      }
+      
+      // If only one has premium data, put it first
+      if (a.totalPremium > 0) return -1;
+      if (b.totalPremium > 0) return 1;
+      
+      // If neither has premium data, sort alphabetically
+      return a.name.localeCompare(b.name);
+    }).map(carrier => ({ name: carrier.name, rateGuarantee: carrier.rateGuarantee }));
   }, [results, processResultForCarriers]);
 
   // Set default selected plan options when carriers change
