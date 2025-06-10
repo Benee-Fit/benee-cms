@@ -39,7 +39,7 @@ type BenefitDetail = string | number | boolean | null | { [key: string]: Benefit
 // DetailRenderer component for clean data presentation with better text wrapping
 const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
   if (!details || typeof details !== 'object') {
-    return <p className="text-sm break-words whitespace-normal leading-relaxed">{details || '-'}</p>;
+    return <p className="text-sm break-words whitespace-normal leading-relaxed">{String(details) || '-'}</p>;
   }
   return (
     <ul className="space-y-2">
@@ -49,7 +49,11 @@ const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
             {key.replace(/([A-Z])/g, ' $1')}:
           </span>
           <span className="ml-2 text-muted-foreground break-words">
-            {value || '-'}
+            {typeof value === 'object' && value !== null ? (
+              <DetailRenderer details={value} />
+            ) : (
+              String(value) || '-'
+            )}
           </span>
         </li>
       ))}

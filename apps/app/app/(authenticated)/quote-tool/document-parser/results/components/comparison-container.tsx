@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/compone
 import { Info, AlertCircle } from 'lucide-react';
 import MarketComparisonView from './market-comparison/MarketComparisonView';
 import CarrierOverviewCards from './CarrierOverviewCards';
+import SummaryStats from './SummaryStats';
 
 // Define the parsed document type
 interface ParsedDocument {
@@ -110,12 +111,11 @@ export default function ComparisonContainer() {
 
   return (
     <div className="space-y-8">
-      {/* Carrier Overview Cards */}
-      <CarrierOverviewCards parsedDocuments={parsedDocuments} />
+      {/* Summary Statistics */}
+      <SummaryStats parsedDocuments={parsedDocuments} />
       
       {/* Detailed Market Comparison */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Comparison</h3>
         <MarketComparisonView 
           parsedDocuments={parsedDocuments}
           carriersMap={Object.fromEntries(availableCarriers.map(carrier => [
@@ -125,6 +125,12 @@ export default function ComparisonContainer() {
               .map(doc => doc.originalFileName)
           ]))}
         />
+      </div>
+      
+      {/* Carrier Overview Cards */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
+        <CarrierOverviewCards parsedDocuments={parsedDocuments} />
       </div>
     </div>
   );

@@ -32,7 +32,28 @@ interface ParsedDocument {
       }>;
       rateGuarantees?: string;
     };
-    coverages: Array<{
+    planOptions?: Array<{
+      planOptionName: string;
+      carrierProposals: Array<{
+        carrierName: string;
+        totalMonthlyPremium: number;
+        subtotals?: Record<string, unknown>;
+        rateGuaranteeText?: string;
+      }>;
+    }>;
+    allCoverages?: Array<{
+      coverageType: string;
+      carrierName: string;
+      planOptionName: string;
+      premium: number;
+      monthlyPremium: number;
+      unitRate: number;
+      unitRateBasis: string;
+      volume: number;
+      lives: number;
+      benefitDetails: Record<string, unknown>;
+    }>;
+    coverages?: Array<{
       coverageType: string;
       carrierName: string;
       planOptionName: string;
@@ -76,6 +97,7 @@ interface ParsedDocument {
     benefitDetails: Record<string, unknown>;
   }>;
   planNotes: Array<{ note: string }>;
+  documentNotes?: string[];
 }
 
 interface CarrierOverviewCardsProps {
@@ -111,26 +133,43 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
   // Calculate summary metrics for each carrier
   const calculateCarrierMetrics = (docs: ParsedDocument[]) => {
     const totalMonthlyPremium = docs.reduce((sum, doc) => {
-      // Check processedData first, then root metadata
-      const premium = doc.processedData?.metadata?.totalProposedMonthlyPlanPremium ||
-                     doc.metadata?.totalProposedMonthlyPlanPremium || 
-                     doc.processedData?.coverages?.reduce((covSum, cov) => covSum + (cov.monthlyPremium || 0), 0) ||
-                     doc.coverages?.reduce((covSum, cov) => covSum + (cov.monthlyPremium || 0), 0) || 
-                     0;
+      // Priority order: planOptions total, then metadata, then sum of coverages
+      let premium = 0;
+      
+      // First check planOptions for totalMonthlyPremium (most accurate)
+      if (doc.processedData?.planOptions?.[0]?.carrierProposals?.[0]?.totalMonthlyPremium) {
+        premium = doc.processedData.planOptions[0].carrierProposals[0].totalMonthlyPremium;
+      }
+      // Then check processedData metadata
+      else if (doc.processedData?.metadata?.totalProposedMonthlyPlanPremium) {
+        premium = doc.processedData.metadata.totalProposedMonthlyPlanPremium;
+      }
+      // Then check root metadata
+      else if (doc.metadata?.totalProposedMonthlyPlanPremium) {
+        premium = doc.metadata.totalProposedMonthlyPlanPremium;
+      }
+      // Finally sum up coverage premiums as fallback
+      else {
+        premium = doc.processedData?.allCoverages?.reduce((covSum, cov) => covSum + (cov.monthlyPremium || 0), 0) ||
+                 doc.processedData?.coverages?.reduce((covSum, cov) => covSum + (cov.monthlyPremium || 0), 0) ||
+                 doc.coverages?.reduce((covSum, cov) => covSum + (cov.monthlyPremium || 0), 0) || 
+                 0;
+      }
+      
       return sum + premium;
     }, 0);
 
     const uniqueCoverageTypes = new Set<string>();
     docs.forEach(doc => {
-      // Check both processedData and root coverages
-      const coverages = doc.processedData?.coverages || doc.coverages || [];
+      // Check allCoverages first, then coverages, then root coverages
+      const coverages = doc.processedData?.allCoverages || doc.processedData?.coverages || doc.coverages || [];
       coverages.forEach(cov => {
         if (cov.coverageType) uniqueCoverageTypes.add(cov.coverageType);
       });
     });
 
     const totalLives = docs.reduce((sum, doc) => {
-      const coverages = doc.processedData?.coverages || doc.coverages || [];
+      const coverages = doc.processedData?.allCoverages || doc.processedData?.coverages || doc.coverages || [];
       const lives = coverages.reduce((covSum, cov) => 
         Math.max(covSum, cov.lives || 0), 0) || 0;
       return Math.max(sum, lives);
@@ -226,13 +265,35 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
                   </div>
                 </div>
 
+                {/* Document Notes */}
+                {docs.some(doc => {
+                  const notes = doc.processedData?.documentNotes || (doc as any).documentNotes || 
+                               doc.planNotes?.map(n => n.note) || [];
+                  return notes && notes.length > 0;
+                }) && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-500 mb-2">Carrier Notes</p>
+                    <div className="space-y-1">
+                      {docs.flatMap(doc => {
+                        const notes = doc.processedData?.documentNotes || (doc as any).documentNotes || 
+                                     doc.planNotes?.map(n => n.note) || [];
+                        return Array.isArray(notes) ? notes : typeof notes === 'string' ? [notes] : [];
+                      }).filter(Boolean).slice(0, 2).map((note, idx) => (
+                        <div key={idx} className="text-xs text-gray-700 bg-yellow-50 border-l-2 border-yellow-200 pl-2 py-1">
+                          {note}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Coverage Types */}
                 <div className="mt-4">
                   <p className="text-xs text-gray-500 mb-2">Coverage Includes</p>
                   <div className="flex flex-wrap gap-1.5">
                     {Array.from(new Set(
                       docs.flatMap(doc => {
-                        const coverages = doc.processedData?.coverages || doc.coverages || [];
+                        const coverages = doc.processedData?.allCoverages || doc.processedData?.coverages || doc.coverages || [];
                         return coverages.map(cov => cov.coverageType).filter(Boolean);
                       })
                     )).map((coverage, idx) => (
@@ -260,26 +321,6 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
         })}
       </div>
 
-      {/* Summary Statistics */}
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-sm text-gray-600">Total Carriers</p>
-            <p className="text-2xl font-bold text-gray-900">{Object.keys(carrierGroups).length}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Total Documents</p>
-            <p className="text-2xl font-bold text-gray-900">{parsedDocuments.length}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600">Premium Range</p>
-            <p className="text-2xl font-bold text-gray-900">
-              ${Math.min(...Object.values(carrierGroups).map(docs => calculateCarrierMetrics(docs).totalMonthlyPremium)).toLocaleString()} - 
-              ${Math.max(...Object.values(carrierGroups).map(docs => calculateCarrierMetrics(docs).totalMonthlyPremium)).toLocaleString()}
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
