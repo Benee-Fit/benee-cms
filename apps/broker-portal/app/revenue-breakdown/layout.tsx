@@ -5,6 +5,8 @@ import { Tabs, TabsList } from '@repo/design-system/components/ui/tabs';
 import { cn } from '@repo/design-system/lib/utils';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { usePageTitle } from '@/app/components/layout/PageTitleContext';
+import { useEffect } from 'react';
 
 export default function RevenueBreakdownLayout({
   children,
@@ -12,6 +14,11 @@ export default function RevenueBreakdownLayout({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const { setTitle } = usePageTitle();
+  
+  useEffect(() => {
+    setTitle('Revenue Breakdown');
+  }, [setTitle]);
   
   const tabs = [
     { value: 'overview', label: 'Revenue Overview', href: '/revenue-breakdown/overview', sectionId: 'revenue-overview-title' },
@@ -26,8 +33,6 @@ export default function RevenueBreakdownLayout({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold">Revenue Breakdown</h1>
-        
         <Tabs value={currentTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6">
             {tabs.map(tab => (

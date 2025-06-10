@@ -8,11 +8,14 @@ export function SidebarController() {
   const { setOpen } = useSidebar();
   const pathname = usePathname();
   const isHomePage = pathname === '/';
+  const shouldShowSidebar = !isHomePage && 
+    !pathname.includes('/client-list') && 
+    !pathname.includes('/upload-documents');
   
-  // Hide sidebar on home page, show it on subpages
+  // Hide sidebar on home page and certain pages, show it on subpages
   useEffect(() => {
-    setOpen(!isHomePage);
-  }, [setOpen, isHomePage]);
+    setOpen(shouldShowSidebar);
+  }, [setOpen, shouldShowSidebar]);
   
   return null; // This is a utility component that doesn't render anything
 }
