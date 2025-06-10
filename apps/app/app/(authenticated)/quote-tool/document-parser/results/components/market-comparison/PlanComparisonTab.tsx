@@ -62,10 +62,29 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
   const benefitData: Record<string, Record<string, any>> = {};
   
   for (const doc of documents) {
-    // Try to get carrier name from multiple sources
-    const carrierName = doc.metadata?.carrierName || 
-                       (doc as any).processedData?.metadata?.carrierName || 
-                       'Unknown Carrier';
+    // Try to get carrier name from multiple sources, prioritizing the most reliable
+    let carrierName = 'Unknown Carrier';
+    
+    // Check processedData.metadata first (most reliable for new format)
+    if ((doc as any).processedData?.metadata?.carrierName) {
+      carrierName = (doc as any).processedData.metadata.carrierName;
+    }
+    // Check root metadata second
+    else if (doc.metadata?.carrierName) {
+      carrierName = doc.metadata.carrierName;
+    }
+    // Check first coverage in processedData.allCoverages
+    else if ((doc as any).processedData?.allCoverages?.[0]?.carrierName) {
+      carrierName = (doc as any).processedData.allCoverages[0].carrierName;
+    }
+    // Check first coverage in root allCoverages
+    else if ((doc as any).allCoverages?.[0]?.carrierName) {
+      carrierName = (doc as any).allCoverages[0].carrierName;
+    }
+    // Check first coverage in old format
+    else if (doc.coverages?.[0]?.carrierName) {
+      carrierName = doc.coverages[0].carrierName;
+    }
     
     // Check for new format data in processedData.allCoverages
     if ((doc as any).processedData?.allCoverages) {
@@ -215,9 +234,29 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   
   // Get unique carriers and their plan options
   const carriersWithPlans = results.reduce((acc, result) => {
-    const carrierName = result.metadata?.carrierName || 
-                       (result as any).processedData?.metadata?.carrierName || 
-                       'Unknown Carrier';
+    // Try to get carrier name from multiple sources, prioritizing the most reliable
+    let carrierName = 'Unknown Carrier';
+    
+    // Check processedData.metadata first (most reliable for new format)
+    if ((result as any).processedData?.metadata?.carrierName) {
+      carrierName = (result as any).processedData.metadata.carrierName;
+    }
+    // Check root metadata second
+    else if (result.metadata?.carrierName) {
+      carrierName = result.metadata.carrierName;
+    }
+    // Check first coverage in processedData.allCoverages
+    else if ((result as any).processedData?.allCoverages?.[0]?.carrierName) {
+      carrierName = (result as any).processedData.allCoverages[0].carrierName;
+    }
+    // Check first coverage in root allCoverages
+    else if ((result as any).allCoverages?.[0]?.carrierName) {
+      carrierName = (result as any).allCoverages[0].carrierName;
+    }
+    // Check first coverage in old format
+    else if (result.coverages?.[0]?.carrierName) {
+      carrierName = result.coverages[0].carrierName;
+    }
     if (!acc[carrierName]) {
       acc[carrierName] = new Set();
     }
