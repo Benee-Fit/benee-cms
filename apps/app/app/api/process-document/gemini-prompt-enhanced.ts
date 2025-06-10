@@ -37,11 +37,11 @@ When you find the financial summary table, apply these rules:
 You MUST output a SINGLE root JSON object with exactly these four top-level properties: "metadata", "planOptions", "allCoverages", and "documentNotes".
 
 # DOCUMENT NOTES ("documentNotes")
-- (String, CRITICAL) Extract any rate guarantee information found in the document. Look specifically for text containing "Rate Guarantee", "guaranteed", "renewal", or similar terms. This should include the complete context about rate guarantees, renewal terms, and any related conditions.
+- (String, CRITICAL) Extract any important document notes, including rate guarantee DURATION ONLY (e.g., "Rate Guarantee: 28/16 months"). For rate guarantees, extract ONLY the time period, not the full terms and conditions.
 
 # METADATA OBJECT ("metadata")
 - "clientName", "primaryCarrierName", "reportPreparedBy", "documentType", "effectiveDate", "quoteDate", "policyNumber".
-- "rateGuarantees": (String, CRITICAL) Extract rate guarantee information from anywhere in the document. Look for phrases like "Rate Guarantee:", "Guaranteed for", "rates guaranteed", or similar. This should be a descriptive string about the rate guarantee period and terms.
+- "rateGuarantees": (String, CRITICAL) Extract ONLY the rate guarantee period/duration from anywhere in the document. Look for phrases like "Rate Guarantee:", "Guaranteed for", "rates guaranteed", or similar. Extract ONLY the time period (e.g., "12 months", "24/18 months", "15 months") NOT the full terms and conditions. Keep it concise - just the duration.
 
 # PLAN OPTIONS ARRAY ("planOptions")
 - "planOptionName": (String, CRITICAL) e.g., "Renewal Plan", "Proposed Plan".
@@ -49,7 +49,7 @@ You MUST output a SINGLE root JSON object with exactly these four top-level prop
   - "carrierName": (String, CRITICAL).
   - "totalMonthlyPremium": (Number, CRITICAL) MUST match the grand total from the financial table.
   - "subtotals": (Object, Optional) Numeric subtotals (e.g., "pooledBenefits", "experienceRatedBenefits") if they are present in the table.
-  - "rateGuaranteeText": (String, Optional) Carrier-specific rate guarantee information if mentioned in the document.
+  - "rateGuaranteeText": (String, Optional) Carrier-specific rate guarantee DURATION ONLY (e.g., "12 months", "24/18 months") if mentioned in the document. Do NOT include full terms and conditions.
 
 # ALL COVERAGES ARRAY ("allCoverages")
 A flat list of every benefit line item derived directly from the rows of the financial summary table.
@@ -76,7 +76,8 @@ A flat list of every benefit line item derived directly from the rows of the fin
 Before providing the final JSON, you MUST validate your own work:
 1.  **FINANCIAL ACCURACY:** Is the 'totalMonthlyPremium' in 'carrierProposals' exactly equal to the "Total Monthly Premium" or "Grand Total" shown in the source document's main financial table? Does the sum of 'monthlyPremium' in 'allCoverages' add up to this total? This check is your highest priority.
 2.  **FAMILY PREMIUM VALIDATION:** For Extended Healthcare and Dental Care with family breakdown, verify that (premiumPerSingle × livesSingle) + (premiumPerFamily × livesFamily) = monthlyPremium for that coverage. If this doesn't match, recalculate using the correct premium amounts (not unit rates).
-3.  **RENEWAL DATA CHECK:** If the 'documentType' is "Renewal", did you correctly extract data from the "RENEWAL" or "REQUIRED" columns and NOT the "CURRENT" columns for the primary premium fields?
-4.  **NORMALIZATION CHECK:** Have you successfully normalized the benefit names in 'coverageType' according to the provided list?
+3.  **RATE GUARANTEE VALIDATION:** If you extracted rate guarantee information, ensure it contains ONLY the duration (e.g., "28/16 months", "12 months", "24 months") and NOT the full terms. Example: If document says "Rate Guarantee: 28 months (Life, AD&D, Dependent Life), 16 months (EHC, Dental). With the 28/16 Rate guarantee, this quote includes a 15% cap..." then extract ONLY "28/16 months".
+4.  **RENEWAL DATA CHECK:** If the 'documentType' is "Renewal", did you correctly extract data from the "RENEWAL" or "REQUIRED" columns and NOT the "CURRENT" columns for the primary premium fields?
+5.  **NORMALIZATION CHECK:** Have you successfully normalized the benefit names in 'coverageType' according to the provided list?
 
 Your performance is measured by the accuracy of the extracted financial data for the comparison table.`;
