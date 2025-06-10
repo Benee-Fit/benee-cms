@@ -245,24 +245,15 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
                   </div>
                 )}
 
-                {/* Key Metrics Bar */}
-                <div className="flex items-center justify-between py-3 px-4 -mx-5 bg-gray-50 border-y border-gray-100">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-0.5">Rate Guarantee</p>
-                    <p className="text-sm font-semibold text-gray-900">{metrics.rateGuarantee}</p>
-                  </div>
-                  <div className="w-px h-8 bg-gray-300"></div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-0.5">Lives</p>
-                    <p className="text-sm font-semibold text-gray-900">{metrics.totalLives || 'N/A'}</p>
-                  </div>
-                  <div className="w-px h-8 bg-gray-300"></div>
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-0.5">Effective</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {metadata?.effectiveDate ? new Date(metadata.effectiveDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'}
-                    </p>
-                  </div>
+                {/* Summary Textarea */}
+                <div className="mb-4">
+                  <textarea
+                    className="w-full min-h-[120px] p-3 text-sm border border-gray-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter carrier summary..."
+                    defaultValue={`Rate Guarantee: ${metrics.rateGuarantee}
+Lives: ${metrics.totalLives || 'N/A'}
+Effective: ${metadata?.effectiveDate ? new Date(metadata.effectiveDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'}`}
+                  />
                 </div>
 
                 {/* Document Notes */}
@@ -287,22 +278,6 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
                   </div>
                 )}
 
-                {/* Coverage Types */}
-                <div className="mt-4">
-                  <p className="text-xs text-gray-500 mb-2">Coverage Includes</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {Array.from(new Set(
-                      docs.flatMap(doc => {
-                        const coverages = doc.processedData?.allCoverages || doc.processedData?.coverages || doc.coverages || [];
-                        return coverages.map(cov => cov.coverageType).filter(Boolean);
-                      })
-                    )).map((coverage, idx) => (
-                      <span key={idx} className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-xs font-medium text-blue-700">
-                        {coverage}
-                      </span>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Footer Info - Subtle */}
                 <div className="mt-4 pt-3 border-t border-gray-100">
