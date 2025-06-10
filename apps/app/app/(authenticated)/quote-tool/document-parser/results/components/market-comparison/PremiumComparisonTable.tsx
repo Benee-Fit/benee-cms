@@ -20,6 +20,8 @@ import {
   TableRow,
 } from '@repo/design-system/components/ui/table';
 import { Badge } from '@repo/design-system/components/ui/badge';
+import { Input } from '@repo/design-system/components/ui/input';
+import { Edit2 } from 'lucide-react';
 import React, { useMemo, useState, useCallback } from 'react';
 
 // Import ParsedDocumentResult and Coverage types
@@ -169,6 +171,72 @@ interface PremiumComparisonTableProps {
   highLevelOverview?: HighLevelOverview[];
 }
 
+// Editable Table Cell Component
+interface EditableTableCellProps {
+  value: string;
+  onUpdate: (value: string) => void;
+  isNumeric?: boolean;
+  className?: string;
+  isCurrency?: boolean;
+}
+
+const EditableTableCell: React.FC<EditableTableCellProps> = ({ 
+  value, 
+  onUpdate, 
+  isNumeric = false,
+  className = '',
+  isCurrency = false
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempValue, setTempValue] = useState(value);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    onUpdate(tempValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setIsEditing(false);
+      onUpdate(tempValue);
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setTempValue(value);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        type="text"
+        value={tempValue}
+        onChange={(e) => {
+          if (isNumeric) {
+            const val = e.target.value.replace(/[^0-9.,\-]/g, '');
+            setTempValue(val);
+          } else {
+            setTempValue(e.target.value);
+          }
+        }}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className={`w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <div 
+      className="group relative cursor-pointer hover:bg-blue-50 rounded px-2 py-1"
+      onClick={() => setIsEditing(true)}
+    >
+      <span className={className}>{value}</span>
+      <Edit2 className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+};
+
 // We're using the imported ParsedDocumentResult interface - commenting this out to avoid duplicate declaration
 /* Interface already defined via import:
 interface ParsedDocumentResult {
@@ -187,6 +255,9 @@ export function PremiumComparisonTable({
 
   // State for per-carrier plan option selection
   const [selectedPlanOptions, setSelectedPlanOptions] = useState<Record<string, string>>({});
+  
+  // State for edited cell values
+  const [editedValues, setEditedValues] = useState<Record<string, any>>({});
 
   // Extract plan options per carrier
   const carrierPlanOptions = useMemo(() => {
@@ -438,6 +509,16 @@ export function PremiumComparisonTable({
       ...prev,
       [carrierName]: planOption
     }));
+  }, []);
+
+  // Helper function to get edited value or default
+  const getEditedValue = useCallback((key: string, defaultValue: any) => {
+    return editedValues[key] !== undefined ? editedValues[key] : defaultValue;
+  }, [editedValues]);
+
+  // Helper function to update edited value
+  const updateEditedValue = useCallback((key: string, value: any) => {
+    setEditedValues(prev => ({ ...prev, [key]: value }));
   }, []);
 
   // Helper function to parse a value to a numeric value for calculations
@@ -951,37 +1032,65 @@ export function PremiumComparisonTable({
                         </div>
                       </TableCell>
                       <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-slate-100 hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        <div className="text-sm break-words leading-relaxed">
-                          {row.type !== 'subtotal' && 
-                           row.type !== 'total' && 
-                           row.type !== 'rateGuarantee' && 
-                           row.type !== 'header'
-                            ? row.volume || '-'
-                            : "-"}
-                        </div>
+                        {(row.type === 'benefit' || row.type === 'subBenefit') && row.volume && row.volume !== '-' ? (
+                          <EditableTableCell
+                            value={getEditedValue(`${row.key}-volume`, row.volume || '-')}
+                            onUpdate={(value) => updateEditedValue(`${row.key}-volume`, value)}
+                            isNumeric={true}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <div className="text-sm break-words leading-relaxed">
+                            {row.type !== 'subtotal' && 
+                             row.type !== 'total' && 
+                             row.type !== 'rateGuarantee' && 
+                             row.type !== 'header'
+                              ? row.volume || '-'
+                              : "-"}
+                          </div>
+                        )}
                       </TableCell>
                     </>
                   )}
                   {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
                       <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        <div className="text-sm break-words leading-relaxed">
-                          {row.type !== 'subtotal' && 
-                           row.type !== 'total' && 
-                           row.type !== 'rateGuarantee' && 
-                           row.type !== 'header'
-                            ? cell?.unitRate || '-'
-                            : ""}
-                        </div>
+                        {(row.type === 'benefit' || row.type === 'subBenefit') && cell?.unitRate && cell.unitRate !== '-' ? (
+                          <EditableTableCell
+                            value={getEditedValue(`${row.key}-${cellIdx}-unitRate`, cell?.unitRate || '-')}
+                            onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-unitRate`, value)}
+                            isNumeric={true}
+                            className="text-sm"
+                          />
+                        ) : (
+                          <div className="text-sm break-words leading-relaxed">
+                            {row.type !== 'subtotal' && 
+                             row.type !== 'total' && 
+                             row.type !== 'rateGuarantee' && 
+                             row.type !== 'header'
+                              ? cell?.unitRate || '-'
+                              : ""}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
-                          {row.type !== 'header' ? (
-                            <span className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}>
-                              {cell?.monthlyPremium || '-'}
-                            </span>
-                          ) : "-"}
-                        </div>
+                        {(row.type === 'benefit' || row.type === 'subBenefit') && cell?.monthlyPremium && cell.monthlyPremium !== '-' ? (
+                          <EditableTableCell
+                            value={getEditedValue(`${row.key}-${cellIdx}-premium`, cell?.monthlyPremium || '-')}
+                            onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-premium`, value)}
+                            isNumeric={true}
+                            isCurrency={true}
+                            className={`${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'} ${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
+                          />
+                        ) : (
+                          <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
+                            {row.type !== 'header' ? (
+                              <span className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}>
+                                {cell?.monthlyPremium || '-'}
+                              </span>
+                            ) : "-"}
+                          </div>
+                        )}
                       </TableCell>
                     </React.Fragment>
                   )) : (

@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Badge } from '@repo/design-system/components/ui/badge';
+import { Input } from '@repo/design-system/components/ui/input';
+import { useState } from 'react';
 import { 
   Building2, 
   Calendar, 
@@ -8,7 +10,8 @@ import {
   DollarSign,
   Users,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Edit2
 } from 'lucide-react';
 // Use the local interface definition to match comparison-container
 interface ParsedDocument {
@@ -105,6 +108,21 @@ interface CarrierOverviewCardsProps {
 }
 
 export default function CarrierOverviewCards({ parsedDocuments }: CarrierOverviewCardsProps) {
+  // State for edited values
+  const [editedValues, setEditedValues] = useState<Record<string, any>>({});
+
+  // Helper function to get edited value or default
+  const getValue = (carrierName: string, field: string, defaultValue: any) => {
+    const key = `${carrierName}-${field}`;
+    return editedValues[key] !== undefined ? editedValues[key] : defaultValue;
+  };
+
+  // Helper function to update edited value
+  const updateValue = (carrierName: string, field: string, value: any) => {
+    const key = `${carrierName}-${field}`;
+    setEditedValues(prev => ({ ...prev, [key]: value }));
+  };
+
   // Group documents by carrier - check multiple sources for carrier name
   const carrierGroups = parsedDocuments.reduce((acc, doc) => {
     // Try multiple sources for carrier name
@@ -215,18 +233,44 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
               <CardContent className="p-5">
                 {/* Header Row - Carrier, Client, and Premium */}
                 <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">{carrierName}</h3>
+                  <div className="flex-1">
+                    <div className="group relative">
+                      <input
+                        type="text"
+                        value={getValue(carrierName, 'carrierName', carrierName)}
+                        onChange={(e) => updateValue(carrierName, 'carrierName', e.target.value)}
+                        className="text-lg font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors duration-200 pr-6"
+                      />
+                      <Edit2 className="absolute right-0 top-1 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                     {metadata?.clientName && (
-                      <p className="text-sm text-gray-600">{metadata.clientName}</p>
+                      <div className="group relative mt-1">
+                        <input
+                          type="text"
+                          value={getValue(carrierName, 'clientName', metadata.clientName)}
+                          onChange={(e) => updateValue(carrierName, 'clientName', e.target.value)}
+                          className="text-sm text-gray-600 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors duration-200 pr-6"
+                        />
+                        <Edit2 className="absolute right-0 top-0.5 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">
-                      ${metrics.totalMonthlyPremium.toLocaleString('en-US', { 
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2 
-                      })}
+                  <div className="text-right ml-4">
+                    <div className="group relative inline-block">
+                      <span className="text-2xl font-bold text-gray-900">$</span>
+                      <input
+                        type="text"
+                        value={getValue(carrierName, 'premium', metrics.totalMonthlyPremium.toLocaleString('en-US', { 
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2 
+                        }))}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9.,]/g, '');
+                          updateValue(carrierName, 'premium', value);
+                        }}
+                        className="text-2xl font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors duration-200 w-32 text-right"
+                      />
+                      <Edit2 className="absolute right-0 top-1 h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <p className="text-xs text-gray-500">per month</p>
                   </div>
@@ -234,14 +278,15 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
 
                 {/* Date Prepared */}
                 {metadata?.quoteDate && (
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-500">
-                      Prepared: {new Date(metadata.quoteDate).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </p>
+                  <div className="mb-4 group relative">
+                    <span className="text-xs text-gray-500">Prepared: </span>
+                    <input
+                      type="date"
+                      value={getValue(carrierName, 'quoteDate', metadata.quoteDate.split('T')[0])}
+                      onChange={(e) => updateValue(carrierName, 'quoteDate', e.target.value)}
+                      className="text-xs text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors duration-200"
+                    />
+                    <Edit2 className="inline-block ml-1 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 )}
 
@@ -250,9 +295,10 @@ export default function CarrierOverviewCards({ parsedDocuments }: CarrierOvervie
                   <textarea
                     className="w-full min-h-[120px] p-3 text-sm border border-gray-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Enter carrier summary..."
-                    defaultValue={`Rate Guarantee: ${metrics.rateGuarantee}
+                    value={getValue(carrierName, 'summary', `Rate Guarantee: ${metrics.rateGuarantee}
 Lives: ${metrics.totalLives || 'N/A'}
-Effective: ${metadata?.effectiveDate ? new Date(metadata.effectiveDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'}`}
+Effective: ${metadata?.effectiveDate ? new Date(metadata.effectiveDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'TBD'}`)}
+                    onChange={(e) => updateValue(carrierName, 'summary', e.target.value)}
                   />
                 </div>
 
@@ -282,7 +328,15 @@ Effective: ${metadata?.effectiveDate ? new Date(metadata.effectiveDate).toLocale
                 {/* Footer Info - Subtle */}
                 <div className="mt-4 pt-3 border-t border-gray-100">
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{metadata?.documentType || 'Quote'}</span>
+                    <div className="group relative">
+                      <input
+                        type="text"
+                        value={getValue(carrierName, 'documentType', metadata?.documentType || 'Quote')}
+                        onChange={(e) => updateValue(carrierName, 'documentType', e.target.value)}
+                        className="text-xs text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none transition-colors duration-200 pr-4"
+                      />
+                      <Edit2 className="absolute right-0 top-0 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                     {metadata?.reportPreparedBy && (
                       <span className="truncate max-w-[150px]" title={metadata.reportPreparedBy}>
                         by {metadata.reportPreparedBy.split(',')[0]}
