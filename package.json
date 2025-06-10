@@ -4,7 +4,9 @@
   "bin": {
     "next-forge": "dist/index.js"
   },
-  "files": ["dist/index.js"],
+  "files": [
+    "dist/index.js"
+  ],
   "scripts": {
     "build": "turbo build --filter=./apps/* --filter=./packages/* --filter=!./apps/hr-portal",
     "dev": "turbo dev --filter=./apps/* --filter=./packages/*",
@@ -40,6 +42,7 @@
     "@clack/prompts": "^0.11.0",
     "@types/recharts": "^2.0.1",
     "commander": "^14.0.0",
+    "node-fetch": "^3.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "recharts": "^2.15.3"
