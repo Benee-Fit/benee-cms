@@ -13,6 +13,45 @@ datasource db {
   relationMode = "prisma"
 }
 
+// Enums
+enum UserType {
+  ADMIN
+  CLIENT
+  BROKER
+  MANAGER
+  USER
+  INTERNAL
+}
+
+enum AccessLevel {
+  ADMIN
+  MANAGER
+  USER
+}
+
+// User model
+model User {
+  id                String       @id @default(cuid())
+  clerkId           String       @unique
+  email             String       @unique
+  userType          UserType
+  accessLevel       AccessLevel
+  emailVerified     Boolean      @default(false)
+  isActive          Boolean      @default(true)
+  avatarUrl         String?
+  lastLoginAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  deletedAt         DateTime?
+  
+  // Relationships
+  managedClients    BrokerClient[]  @relation("BrokerToClients")
+  uploadedDocuments ClientDocument[] @relation("DocumentUploader")
+  
+  @@index([clerkId])
+  @@index([email])
+}
+
 // This is a stub model.
 // Delete it and add your own Prisma models.
 model Page {
@@ -37,18 +76,23 @@ model BrokerClient {
   premium      Decimal                   @db.Decimal(10, 2)
   revenue      Decimal                   @db.Decimal(10, 2)
   industry     String
+  brokerId     String?                   // Reference to the broker managing this client
+  broker       User?                     @relation("BrokerToClients", fields: [brokerId], references: [id])
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
-  documents    BrokerClientDocument[]
+  documents    ClientDocument[]
 
   @@index([policyNumber])
   @@index([renewalDate])
+  @@index([brokerId])
 }
 
-model BrokerClientDocument {
+model ClientDocument {
   id           String       @id @default(cuid())
   clientId     String
   client       BrokerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedById String?      // Reference to the user who uploaded the document
+  uploadedBy   User?        @relation("DocumentUploader", fields: [uploadedById], references: [id])
   fileName     String
   fileType     String
   fileUrl      String
@@ -59,4 +103,5 @@ model BrokerClientDocument {
   updatedAt    DateTime     @updatedAt
 
   @@index([clientId])
+  @@index([uploadedById])
 }
