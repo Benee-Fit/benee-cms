@@ -87,6 +87,7 @@ export default function DocumentParserResultsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRawData, setShowRawData] = useState(false);
+  const [companyName, setCompanyName] = useState<string>('');
 
   useEffect(() => {
     console.log('[DEBUG] ===== Document Parser Results Page =====');
@@ -94,7 +95,21 @@ export default function DocumentParserResultsPage() {
     
     try {
       const storedData = localStorage.getItem('parsedBenefitsDocuments');
+      const questionnaireData = localStorage.getItem('quoteQuestionnaireResults');
       console.log('[DEBUG] Found stored data, attempting to parse JSON');
+      
+      // Load company name from questionnaire data
+      if (questionnaireData) {
+        try {
+          const questionnaire = JSON.parse(questionnaireData);
+          if (questionnaire.companyName) {
+            setCompanyName(questionnaire.companyName);
+            console.log('[DEBUG] Loaded company name:', questionnaire.companyName);
+          }
+        } catch (e) {
+          console.log('[DEBUG] Error parsing questionnaire data:', e);
+        }
+      }
       
       if (storedData) {
         const parsedDocuments = JSON.parse(storedData) as ParsedDocument[];
@@ -337,7 +352,7 @@ export default function DocumentParserResultsPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <div>
                   <h2 className="text-2xl font-bold">
-                    Market Comparison
+                    {companyName || 'Market Comparison'}
                   </h2>
                   <p className="text-muted-foreground">
                     {parsedDocuments.length} document{parsedDocuments.length !== 1 ? 's' : ''} analyzed
