@@ -188,41 +188,71 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
   isCurrency = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
+  
+  // For currency values, strip the $ for editing but keep the number
+  const getEditValue = (val: string) => {
+    if (isCurrency && val.startsWith('$')) {
+      return val.replace(/[$,]/g, '');
+    }
+    return val;
+  };
+  
+  // For currency values, ensure $ is prepended when saving
+  const getSaveValue = (val: string) => {
+    if (isCurrency && val !== '-' && val !== '') {
+      const numericValue = val.replace(/[^0-9.-]/g, '');
+      if (numericValue && !isNaN(Number(numericValue))) {
+        return formatCurrency(Number(numericValue));
+      }
+    }
+    return val;
+  };
+
+  const [tempValue, setTempValue] = useState(getEditValue(value));
 
   const handleBlur = () => {
     setIsEditing(false);
-    onUpdate(tempValue);
+    const savedValue = getSaveValue(tempValue);
+    onUpdate(savedValue);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       setIsEditing(false);
-      onUpdate(tempValue);
+      const savedValue = getSaveValue(tempValue);
+      onUpdate(savedValue);
     } else if (e.key === 'Escape') {
       setIsEditing(false);
-      setTempValue(value);
+      setTempValue(getEditValue(value));
     }
   };
 
+  // Update tempValue when value prop changes
+  React.useEffect(() => {
+    setTempValue(getEditValue(value));
+  }, [value, isCurrency]);
+
   if (isEditing) {
     return (
-      <input
-        type="text"
-        value={tempValue}
-        onChange={(e) => {
-          if (isNumeric) {
-            const val = e.target.value.replace(/[^0-9.,\-]/g, '');
-            setTempValue(val);
-          } else {
-            setTempValue(e.target.value);
-          }
-        }}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className={`w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
-        autoFocus
-      />
+      <div className="relative">
+        {isCurrency && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>}
+        <input
+          type="text"
+          value={tempValue}
+          onChange={(e) => {
+            if (isNumeric) {
+              const val = e.target.value.replace(/[^0-9.,\-]/g, '');
+              setTempValue(val);
+            } else {
+              setTempValue(e.target.value);
+            }
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={`w-full ${isCurrency ? 'pl-6' : 'pl-2'} pr-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+          autoFocus
+        />
+      </div>
     );
   }
 
@@ -698,16 +728,26 @@ export function PremiumComparisonTable({
         rows.push(rowData);
       } else {
         // Handle standard benefit rows
-        // Find first coverage with volume for the consolidated volume column
-        const firstCoverageWithVolume = carriers
+        // Find first coverage with data for the consolidated volume column
+        const firstCoverage = carriers
           .map(c => processedCoverages.get(`${c.name}-${key}`))
-          .find(cov => cov?.volume);
+          .find(cov => cov);
+        
+        // For Dependent Life, use lives field; for others, use volume field
+        let volumeValue = '-';
+        if (firstCoverage) {
+          if (key === 'Dependent Life' && firstCoverage.lives) {
+            volumeValue = formatVolume(firstCoverage.lives);
+          } else if (firstCoverage.volume) {
+            volumeValue = formatVolume(firstCoverage.volume);
+          }
+        }
           
         const rowData = {
           key,
           type: 'benefit',
           label: key,
-          volume: firstCoverageWithVolume ? formatVolume(firstCoverageWithVolume.volume) : '-',
+          volume: volumeValue,
           values: new Array(carriersLength).fill({ unitRate: '-', monthlyPremium: '$0.00' })
         };
 
@@ -1074,7 +1114,7 @@ export function PremiumComparisonTable({
                         )}
                       </TableCell>
                       <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        {(row.type === 'benefit' || row.type === 'subBenefit') && cell?.monthlyPremium && cell.monthlyPremium !== '-' ? (
+                        {(row.type === 'benefit' || row.type === 'subBenefit' || row.type === 'subtotal' || row.type === 'total') && cell?.monthlyPremium && cell.monthlyPremium !== '-' ? (
                           <EditableTableCell
                             value={getEditedValue(`${row.key}-${cellIdx}-premium`, cell?.monthlyPremium || '-')}
                             onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-premium`, value)}
