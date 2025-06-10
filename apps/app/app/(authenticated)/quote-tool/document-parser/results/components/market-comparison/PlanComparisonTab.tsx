@@ -48,8 +48,8 @@ const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
           <span className="font-semibold text-foreground capitalize break-words">
             {key.replace(/([A-Z])/g, ' $1')}:
           </span>
-          <span className="ml-2 text-muted-foreground break-words whitespace-normal leading-relaxed">
-            {String(value)}
+          <span className="ml-2 text-muted-foreground break-words">
+            {value || '-'}
           </span>
         </li>
       ))}
@@ -57,136 +57,146 @@ const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
   );
 };
 
-// Helper function to extract benefit information from coverage data
-const extractBenefitData = (coverages: Coverage[], benefitField: string): Record<string, any> => {
-  const benefitData: Record<string, any> = {};
+// Helper function to extract and organize benefit data from both old and new formats
+const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string, Record<string, any>> => {
+  const benefitData: Record<string, Record<string, any>> = {};
   
-  if (!Array.isArray(coverages)) {
-    console.warn('Coverages is not an array:', coverages);
-    return benefitData;
-  }
-  
-  for (const coverage of coverages) {
-    if (coverage.coverageType && coverage.benefitDetails) {
-      const coverageType = coverage.coverageType;
+  for (const doc of documents) {
+    // Try to get carrier name from multiple sources
+    const carrierName = doc.metadata?.carrierName || 
+                       (doc as any).processedData?.metadata?.carrierName || 
+                       'Unknown Carrier';
+    
+    // Check for new format data in processedData.allCoverages
+    if ((doc as any).processedData?.allCoverages) {
+      const coverages = (doc as any).processedData.allCoverages;
       
-      // Store the entire benefitDetails object for this coverage type
-      benefitData[coverageType] = {
-        ...coverage.benefitDetails,
-        // Also include key coverage properties
-        monthlyPremium: coverage.monthlyPremium,
-        unitRate: coverage.unitRate,
-        volume: coverage.volume,
-        lives: coverage.lives,
-        livesSingle: coverage.livesSingle,
-        livesFamily: coverage.livesFamily,
-        premiumPerSingle: coverage.premiumPerSingle,
-        premiumPerFamily: coverage.premiumPerFamily
-      };
+      for (const coverage of coverages) {
+        if (!coverage.coverageType) continue;
+        
+        const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        benefitData[key] = {
+          carrierName: coverage.carrierName || carrierName,
+          planOptionName: coverage.planOptionName || 'Default',
+          coverageType: coverage.coverageType,
+          monthlyPremium: coverage.monthlyPremium,
+          unitRate: coverage.unitRate,
+          unitRateBasis: coverage.unitRateBasis,
+          volume: coverage.volume,
+          lives: coverage.lives,
+          livesSingle: coverage.livesSingle,
+          livesFamily: coverage.livesFamily,
+          premiumPerSingle: coverage.premiumPerSingle,
+          premiumPerFamily: coverage.premiumPerFamily,
+          ...coverage.benefitDetails
+        };
+      }
+    }
+    // Check for new format data directly in allCoverages (at root level)
+    else if ((doc as any).allCoverages) {
+      const coverages = (doc as any).allCoverages;
+      
+      for (const coverage of coverages) {
+        if (!coverage.coverageType) continue;
+        
+        const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        benefitData[key] = {
+          carrierName: coverage.carrierName || carrierName,
+          planOptionName: coverage.planOptionName || 'Default',
+          coverageType: coverage.coverageType,
+          monthlyPremium: coverage.monthlyPremium,
+          unitRate: coverage.unitRate,
+          unitRateBasis: coverage.unitRateBasis,
+          volume: coverage.volume,
+          lives: coverage.lives,
+          livesSingle: coverage.livesSingle,
+          livesFamily: coverage.livesFamily,
+          premiumPerSingle: coverage.premiumPerSingle,
+          premiumPerFamily: coverage.premiumPerFamily,
+          ...coverage.benefitDetails
+        };
+      }
+    }
+    // Fallback to old format
+    else if (doc.coverages && doc.coverages.length > 0) {
+      for (const coverage of doc.coverages) {
+        if (!coverage.coverageType) continue;
+        
+        const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        benefitData[key] = {
+          carrierName,
+          planOptionName: coverage.planOptionName || 'Default',
+          coverageType: coverage.coverageType,
+          monthlyPremium: coverage.monthlyPremium,
+          unitRate: coverage.unitRate,
+          unitRateBasis: coverage.unitRateBasis,
+          volume: coverage.volume,
+          lives: coverage.lives,
+          ...coverage.benefitDetails
+        };
+      }
     }
   }
   
   return benefitData;
 };
 
-// Define benefit categories and their fields
-const benefitCategories = [
-  {
-    name: 'LIFE INSURANCE & AD&D',
-    fields: [
-      { id: 'formula', label: 'Formula' },
-      { id: 'schedule', label: 'Schedule' },
-      { id: 'benefitAmount', label: 'Benefit Amount' },
-      { id: 'reduction', label: 'Age Reduction Schedule' },
-      { id: 'nonEvidenceMax', label: 'Non-Evidence Maximum' },
-      { id: 'overallMaximum', label: 'Overall Maximum' },
-      { id: 'terminationAge', label: 'Termination Age' },
-      { id: 'waiver', label: 'Waiver of Premium' },
-      { id: 'conversion', label: 'Conversion' }
-    ]
-  },
-  {
-    name: 'DEPENDENT LIFE',
-    fields: [
-      { id: 'dependentBenefits', label: 'Dependent Benefits', customRenderer: true },
-      { id: 'spouseBenefit', label: 'Spouse Benefit' },
-      { id: 'childBenefit', label: 'Child Benefit' },
-      { id: 'terminationAge', label: 'Termination Age' }
-    ]
-  },
-  {
-    name: 'LONG TERM DISABILITY',
-    fields: [
-      { id: 'formula', label: 'Formula' },
-      { id: 'schedule', label: 'Schedule' },
-      { id: 'monthlyMaximum', label: 'Monthly Maximum' },
-      { id: 'taxStatus', label: 'Tax Status' },
-      { id: 'eliminationPeriod', label: 'Elimination Period' },
-      { id: 'benefitPeriod', label: 'Benefit Period' },
-      { id: 'ownOccupationPeriod', label: 'Own Occupation Period' },
-      { id: 'definition', label: 'Definition of Disability' },
-      { id: 'offsets', label: 'Offsets' },
-      { id: 'costOfLivingAdjustment', label: 'Cost of Living Adjustment' },
-      { id: 'preExisting', label: 'Pre-Existing Condition' },
-      { id: 'survivorBenefit', label: 'Survivor Benefit' },
-      { id: 'terminationAge', label: 'Termination Age' }
-    ]
-  },
-  {
-    name: 'EXTENDED HEALTHCARE',
-    fields: [
-      { id: 'deductible', label: 'Deductible' },
-      { id: 'coinsurance', label: 'Coinsurance' },
-      { id: 'hospitalCoverage', label: 'Hospital Coverage' },
-      { id: 'prescriptionDrugs', label: 'Prescription Drugs' },
-      { id: 'drugCard', label: 'Drug Card' },
-      { id: 'dispensingFee', label: 'Dispensing Fee' },
-      { id: 'paramedicalPractitioners', label: 'Paramedical Practitioners' },
-      { id: 'visionCare', label: 'Vision Care' },
-      { id: 'hearingAids', label: 'Hearing Aids' },
-      { id: 'medicalEquipment', label: 'Medical Equipment' },
-      { id: 'privateNursing', label: 'Private Nursing' },
-      { id: 'ambulance', label: 'Ambulance' },
-      { id: 'travelInsurance', label: 'Travel Insurance' },
-      { id: 'maximums', label: 'Maximums' },
-      { id: 'terminationAge', label: 'Termination Age' }
-    ]
-  },
-  {
-    name: 'DENTAL CARE',
-    fields: [
-      { id: 'deductible', label: 'Deductible' },
-      { id: 'basicServices', label: 'Basic Services' },
-      { id: 'majorServices', label: 'Major Services' },
-      { id: 'orthodontics', label: 'Orthodontics' },
-      { id: 'recallExam', label: 'Recall Exam' },
-      { id: 'feeGuide', label: 'Fee Guide' },
-      { id: 'maximums', label: 'Maximums' },
-      { id: 'terminationAge', label: 'Termination Age' }
-    ]
-  }
-];
+// Helper function to get all unique benefit fields across all coverages
+const getAllBenefitFields = (benefitData: Record<string, Record<string, any>>): string[] => {
+  const allFields = new Set<string>();
+  const excludeFields = new Set(['carrierName', 'planOptionName', 'coverageType']);
+  
+  Object.values(benefitData).forEach(coverage => {
+    Object.keys(coverage).forEach(key => {
+      if (!excludeFields.has(key) && coverage[key] !== null && coverage[key] !== undefined && coverage[key] !== '') {
+        allFields.add(key);
+      }
+    });
+  });
+  
+  return Array.from(allFields).sort();
+};
+
+// Helper function to format field names for display
+const formatFieldName = (fieldName: string): string => {
+  const fieldMappings: Record<string, string> = {
+    'monthlyPremium': 'Monthly Premium',
+    'unitRate': 'Unit Rate',
+    'unitRateBasis': 'Rate Basis',
+    'volume': 'Volume',
+    'lives': 'Lives',
+    'livesSingle': 'Single Lives',
+    'livesFamily': 'Family Lives',
+    'premiumPerSingle': 'Premium Per Single',
+    'premiumPerFamily': 'Premium Per Family',
+    'benefitAmount': 'Benefit Amount',
+    'nonEvidenceMax': 'Non-Evidence Max',
+    'reductionFormula': 'Reduction Formula',
+    'terminationAge': 'Termination Age',
+    'spouseAmount': 'Spouse Amount',
+    'childAmount': 'Child Amount',
+    'deductible': 'Deductible',
+    'coinsurance': 'Coinsurance',
+    'lifetimeMaximum': 'Lifetime Maximum',
+    'drugPlan': 'Drug Plan',
+    'paramedicalCoverage': 'Paramedical Coverage',
+    'hospital': 'Hospital Coverage',
+    'annualMaximum': 'Annual Maximum',
+    'feeGuide': 'Fee Guide',
+    'recallFrequency': 'Recall Frequency',
+    'basicCoinsurance': 'Basic Coinsurance',
+    'majorCoinsurance': 'Major Coinsurance',
+    'orthoCoinsurance': 'Ortho Coinsurance'
+  };
+  
+  return fieldMappings[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+};
 
 const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedPlanOptions, setSelectedPlanOptions] = useState<Record<string, string>>({});
   
-  // Default expanded accordion items
-  const [expandedItems, setExpandedItems] = useState<string[]>([
-    'LIFE INSURANCE & AD&D',
-    'DEPENDENT LIFE', 
-    'LONG TERM DISABILITY',
-    'EXTENDED HEALTHCARE',
-    'DENTAL CARE'
-  ]);
-
-  // Clean up carrier name
-  const getProperCarrierName = (result: ParsedDocument): string => {
-    return result.metadata?.carrierName || 
-           result.coverages?.[0]?.carrierName || 
-           'Unknown Carrier';
-  };
-
   if (!results || results.length === 0) {
     return (
       <div className="text-center py-8">
@@ -195,53 +205,76 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
     );
   }
 
-  // Extract carrier names
-  const carriers = results.map(result => {
-    const carrierName = getProperCarrierName(result);
+  // Extract all benefit data using flexible approach
+  const allBenefitData = extractFlexibleBenefitData(results);
+  
+  // Get unique coverage types
+  const coverageTypes = Array.from(new Set(
+    Object.values(allBenefitData).map(item => item.coverageType)
+  )).sort();
+  
+  // Get unique carriers and their plan options
+  const carriersWithPlans = results.reduce((acc, result) => {
+    const carrierName = result.metadata?.carrierName || 
+                       (result as any).processedData?.metadata?.carrierName || 
+                       'Unknown Carrier';
+    if (!acc[carrierName]) {
+      acc[carrierName] = new Set();
+    }
+    
+    // Check for new format plan options in processedData.allCoverages
+    if ((result as any).processedData?.allCoverages) {
+      (result as any).processedData.allCoverages.forEach((coverage: any) => {
+        if (coverage.planOptionName) {
+          acc[carrierName].add(coverage.planOptionName);
+        }
+      });
+    }
+    // Check for new format plan options at root level
+    else if ((result as any).allCoverages) {
+      (result as any).allCoverages.forEach((coverage: any) => {
+        if (coverage.planOptionName) {
+          acc[carrierName].add(coverage.planOptionName);
+        }
+      });
+    }
+    // Fallback to old format
+    else if (result.coverages && result.coverages.length > 0) {
+      result.coverages.forEach(coverage => {
+        if (coverage.planOptionName) {
+          acc[carrierName].add(coverage.planOptionName);
+        }
+      });
+    }
+    
+    return acc;
+  }, {} as Record<string, Set<string>>);
+  
+  // Convert to array format and set defaults
+  const carriers = Object.entries(carriersWithPlans).map(([carrierName, planOptionsSet]) => {
+    const planOptions = Array.from(planOptionsSet);
+    const defaultPlan = planOptions[0] || 'Default';
+    
+    // Set default plan option if not already set
+    if (!selectedPlanOptions[carrierName] && planOptions.length > 0) {
+      setSelectedPlanOptions(prev => ({ ...prev, [carrierName]: defaultPlan }));
+    }
     
     return {
       id: Math.random().toString(36).substring(2, 9),
-      name: carrierName
+      name: carrierName,
+      planOptions
     };
   });
-
-  // Extract benefit data from coverages
-  const benefitData = results.map(result => {
-    return extractBenefitData(result.coverages, 'benefitDetails');
-  });
-
-  // Search filter function
-  const filterBySearch = (category: { name: string }) => {
-    if (!searchQuery) {
-      return true;
-    }
-    
-    const query = searchQuery.toLowerCase();
-    
-    // Check if category name matches
-    if (category.name.toLowerCase().includes(query)) return true;
-    
-    // Check if any field label matches
-    const hasMatchingField = category.fields.some((field: any) => 
-      field.label.toLowerCase().includes(query)
-    );
-    
-    if (hasMatchingField) return true;
-    
-    // Check if any benefit data matches
-    const hasMatchingData = category.fields.some((field: any) => {
-      return benefitData.some((data) => {
-        const categoryData = Object.values(data).flat();
-        return categoryData.some((item: any) => 
-          item && typeof item === 'object' && 
-          field.id in item && 
-          String(item[field.id]).toLowerCase().includes(query)
-        );
-      });
-    });
-    
-    return hasMatchingData;
+  
+  // Function to get benefit data for a specific carrier and plan option
+  const getBenefitDataForCarrierPlan = (carrierName: string, planOption: string, coverageType: string) => {
+    const key = `${carrierName}-${planOption}-${coverageType}`;
+    return allBenefitData[key] || {};
   };
+  
+  // Get all unique benefit fields across all data
+  const allBenefitFields = getAllBenefitFields(allBenefitData);
 
   return (
     <Card className="shadow-sm overflow-hidden">
@@ -268,181 +301,122 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                 </Button>
               )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setExpandedItems(expandedItems.length === benefitCategories.length ? [] : benefitCategories.map(cat => cat.name))}
-            >
-              {expandedItems.length === benefitCategories.length ? (
-                <>
-                  <ChevronUp className="h-4 w-4 mr-1" />
-                  Collapse All
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4 mr-1" />
-                  Expand All
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="p-4">
-        <Accordion type="multiple" value={expandedItems} onValueChange={setExpandedItems}>
-          {benefitCategories
-            .filter(filterBySearch)
-            .map((category) => (
-              <AccordionItem key={category.name} value={category.name}>
-                <AccordionTrigger className="hover:no-underline text-base font-semibold hover:bg-muted/50 rounded-md px-4">
-                  <span className="font-semibold text-left">{category.name}</span>
-                </AccordionTrigger>
-                <AccordionContent className="p-2">
-                  <div className="overflow-x-auto">
-                    <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-sky-500">
-                            <div className="font-semibold">Benefit</div>
-                          </TableHead>
-                          {carriers.map((carrier, index) => (
-                            <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-sky-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
-                              <div className="flex flex-col items-center justify-center gap-1.5 p-2">
-                                <div className="font-semibold text-sm text-center text-sky-600">{carrier.name}</div>
-                                <Badge variant="secondary">{results[index]?.metadata?.planOptions?.[0]?.planOptionName || 'Details'}</Badge>
-                              </div>
-                            </TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {category.fields.map((field) => (
-                          <TableRow key={field.id}>
-                            <TableCell className="font-medium sticky left-0 bg-background z-10 border-r w-[330px] min-w-[330px] p-4">
-                              <div className="text-sm break-words whitespace-normal leading-relaxed">
-                                {field.label}
+        {/* Display by Coverage Type */}
+        {coverageTypes.map((coverageType) => (
+          <div key={coverageType} className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">
+              {coverageType}
+            </h3>
+            
+            {/* Plan Option Selectors */}
+            {carriers.some(carrier => carrier.planOptions.length > 1) && (
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {carriers.map((carrier) => {
+                  if (carrier.planOptions.length <= 1) return null;
+                  
+                  return (
+                    <div key={carrier.name} className="flex flex-col space-y-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        {carrier.name} Plan Option
+                      </label>
+                      <select
+                        value={selectedPlanOptions[carrier.name] || carrier.planOptions[0]}
+                        onChange={(e) => setSelectedPlanOptions(prev => ({ ...prev, [carrier.name]: e.target.value }))}
+                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        {carrier.planOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Benefit Comparison Table */}
+            <div className="overflow-x-auto">
+              <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-sky-500">
+                      <div className="font-semibold">Benefit Detail</div>
+                    </TableHead>
+                    {carriers.map((carrier, index) => (
+                      <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-sky-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                        <div className="flex flex-col items-center justify-center gap-1.5 p-2">
+                          <div className="font-semibold text-sm text-center text-sky-600">{carrier.name}</div>
+                          {carrier.planOptions.length > 0 && (
+                            <Badge variant="secondary" className="text-xs">
+                              {selectedPlanOptions[carrier.name] || carrier.planOptions[0]}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allBenefitFields
+                    .filter(field => {
+                      // Only show fields that have data for this coverage type
+                      return carriers.some(carrier => {
+                        const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
+                        const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
+                        return data[field] !== undefined && data[field] !== null && data[field] !== '';
+                      });
+                    })
+                    .filter(field => {
+                      // Search filter
+                      if (!searchQuery) return true;
+                      const query = searchQuery.toLowerCase();
+                      
+                      // Check field name
+                      if (formatFieldName(field).toLowerCase().includes(query)) return true;
+                      
+                      // Check field values
+                      return carriers.some(carrier => {
+                        const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
+                        const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
+                        const value = data[field];
+                        return value && String(value).toLowerCase().includes(query);
+                      });
+                    })
+                    .map((field) => (
+                      <TableRow key={field}>
+                        <TableCell className="sticky left-0 bg-background z-10 border-r font-medium">
+                          <div className="text-sm break-words whitespace-normal leading-relaxed">
+                            {formatFieldName(field)}
+                          </div>
+                        </TableCell>
+                        {carriers.map((carrier, index) => {
+                          const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
+                          const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
+                          const fieldValue = data[field];
+                          
+                          return (
+                            <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
+                              <div className="break-words whitespace-normal">
+                                <DetailRenderer 
+                                  details={fieldValue === true ? 'Yes' :
+                                         fieldValue === false ? 'No' :
+                                         fieldValue}
+                                />
                               </div>
                             </TableCell>
-                            {benefitData.map((data, index) => {
-                              // Improved coverage type matching with multiple strategies
-                              let coverageType = null;
-                              let fieldValue = null;
-                              
-                              // Strategy 1: Direct match
-                              coverageType = Object.keys(data).find(key => 
-                                key.toLowerCase() === category.name.toLowerCase()
-                              );
-                              
-                              // Strategy 2: Partial match with category name parts
-                              if (!coverageType) {
-                                const categoryWords = category.name.split(' ');
-                                coverageType = Object.keys(data).find(key => 
-                                  categoryWords.some(word => 
-                                    key.toUpperCase().includes(word.toUpperCase()) ||
-                                    word.toUpperCase().includes(key.toUpperCase())
-                                  )
-                                );
-                              }
-                              
-                              // Strategy 3: Common aliases and variations
-                              if (!coverageType) {
-                                const aliases = {
-                                  'LIFE INSURANCE & AD&D': ['Basic Life', 'Life Insurance', 'AD&D', 'Accidental Death'],
-                                  'DEPENDENT LIFE': ['Dependent Life', 'Dep Life', 'Spouse Life', 'Child Life'],
-                                  'LONG TERM DISABILITY': ['Long Term Disability', 'LTD', 'Disability'],
-                                  'EXTENDED HEALTHCARE': ['Extended Healthcare', 'Extended Health', 'EHC', 'Health Care', 'Medical'],
-                                  'DENTAL CARE': ['Dental Care', 'Dental', 'Dentistry']
-                                };
-                                
-                                const categoryAliases = aliases[category.name] || [];
-                                coverageType = Object.keys(data).find(key => 
-                                  categoryAliases.some(alias => 
-                                    key.toLowerCase().includes(alias.toLowerCase()) ||
-                                    alias.toLowerCase().includes(key.toLowerCase())
-                                  )
-                                );
-                              }
-                              
-                              // Handle custom renderers
-                              if (field.customRenderer && field.id === 'dependentBenefits') {
-                                // Combine spouse and child benefits into a single description
-                                if (coverageType && data[coverageType]) {
-                                  let spouse = data[coverageType]['spouse'];
-                                  let child = data[coverageType]['child'];
-                                  
-                                  // Also check for alternative field names
-                                  if (!spouse) {
-                                    spouse = data[coverageType]['spouseBenefit'] || data[coverageType]['spouseAmount'];
-                                  }
-                                  if (!child) {
-                                    child = data[coverageType]['childBenefit'] || data[coverageType]['childAmount'] || data[coverageType]['children'];
-                                  }
-                                  
-                                  // Check if there's already a combined description
-                                  const combined = data[coverageType]['dependentLife'] || data[coverageType]['dependentBenefits'] || data[coverageType]['benefits'];
-                                  
-                                  if (combined && typeof combined === 'string' && combined.includes('Spouse') && combined.includes('Child')) {
-                                    fieldValue = combined;
-                                  } else if (spouse || child) {
-                                    const parts = [];
-                                    if (spouse && spouse !== '-' && spouse !== '') {
-                                      // Handle cases where spouse value already includes currency formatting
-                                      const spouseText = spouse.toString().includes('$') ? spouse : `$${spouse}`;
-                                      parts.push(`${spouseText} Spouse`);
-                                    }
-                                    if (child && child !== '-' && child !== '') {
-                                      // Handle cases where child value already includes currency formatting
-                                      const childText = child.toString().includes('$') ? child : `$${child}`;
-                                      parts.push(`${childText} per Child`);
-                                    }
-                                    if (parts.length > 0) {
-                                      fieldValue = parts.join('; ');
-                                      // Add common suffix if it looks like dependent life benefits
-                                      if (spouse && child && !fieldValue.includes('from birth') && !fieldValue.includes('to age')) {
-                                        fieldValue += ' (from birth)';
-                                      }
-                                    }
-                                  }
-                                }
-                              } else {
-                                // Get the field value if coverage type is found
-                                if (coverageType && data[coverageType]) {
-                                  fieldValue = data[coverageType][field.id];
-                                }
-                                
-                                // Fallback: search across all coverage types for this field
-                                if (fieldValue === null || fieldValue === undefined) {
-                                  for (const [type, typeData] of Object.entries(data)) {
-                                    if (typeData && typeof typeData === 'object' && field.id in typeData) {
-                                      fieldValue = typeData[field.id];
-                                      break;
-                                    }
-                                  }
-                                }
-                              }
-
-                              return (
-                                <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
-                                  <div className="break-words whitespace-normal">
-                                    <DetailRenderer 
-                                      details={fieldValue === true ? 'Yes' :
-                                             fieldValue === false ? 'No' :
-                                             fieldValue === 0 ? '0' :
-                                             fieldValue} 
-                                    />
-                                  </div>
-                                </TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-        </Accordion>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

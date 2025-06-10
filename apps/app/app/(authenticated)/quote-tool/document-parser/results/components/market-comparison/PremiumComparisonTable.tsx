@@ -260,19 +260,45 @@ export function PremiumComparisonTable({
     result: ParsedDocumentResult,
     carriersMap: Map<string, { name: string; rateGuarantee: string | null }>
   ) => {
-    const metadata = result.metadata;
+    // Try to get carrier name from multiple sources
+    const carrierName = result.metadata?.carrierName || 
+                       (result as any).processedData?.metadata?.carrierName ||
+                       result.allCoverages?.[0]?.carrierName;
     
-    if (!metadata?.carrierName) {
+    if (!carrierName) {
       extractCarriersFromCoverages(result, carriersMap);
       return;
     }
     
-    const carrierName = metadata.carrierName;
+    // Try multiple sources for rate guarantee information in priority order
+    let rateGuaranteeText: string | null = null;
     
-    // Try multiple sources for rate guarantee information
-    let rateGuaranteeText = extractRateGuarantee(metadata.rateGuarantees);
+    // 1. Check new format processedData.metadata.rateGuarantees
+    if ((result as any).processedData?.metadata?.rateGuarantees) {
+      rateGuaranteeText = extractRateGuarantee((result as any).processedData.metadata.rateGuarantees);
+    }
     
-    // If no rate guarantee in metadata.rateGuarantees, check planOptions
+    // 2. Check old format metadata.rateGuarantees
+    if (!rateGuaranteeText && result.metadata?.rateGuarantees) {
+      rateGuaranteeText = extractRateGuarantee(result.metadata.rateGuarantees);
+    }
+    
+    // 3. Check new format planOptions with carrierProposals
+    if (!rateGuaranteeText && (result as any).processedData?.planOptions) {
+      for (const planOption of (result as any).processedData.planOptions) {
+        if (planOption.carrierProposals) {
+          for (const carrierProposal of planOption.carrierProposals) {
+            if (carrierProposal.carrierName === carrierName && carrierProposal.rateGuaranteeText) {
+              rateGuaranteeText = carrierProposal.rateGuaranteeText;
+              break;
+            }
+          }
+        }
+        if (rateGuaranteeText) break;
+      }
+    }
+    
+    // 4. Check old format planOptions
     if (!rateGuaranteeText && result.planOptions) {
       for (const planOption of result.planOptions) {
         if (planOption.rateGuarantees && planOption.rateGuarantees.length > 0) {
@@ -282,15 +308,25 @@ export function PremiumComparisonTable({
       }
     }
     
-    // If still no rate guarantee, check documentNotes or planNotes
-    if (!rateGuaranteeText) {
-      // Check new format documentNotes
-      const documentNotes = (result as any).processedData?.documentNotes || [];
-      // Check old format planNotes
-      const planNotes = result.planNotes || [];
-      const allNotes = [...documentNotes, ...planNotes];
-      
-      for (const note of allNotes) {
+    // 5. Check documentNotes (new format)
+    if (!rateGuaranteeText && (result as any).processedData?.documentNotes) {
+      const documentNotes = (result as any).processedData.documentNotes;
+      if (typeof documentNotes === 'string' && documentNotes.toLowerCase().includes('rate guarantee')) {
+        rateGuaranteeText = documentNotes;
+      }
+    }
+    
+    // 6. Check documentNotes (root level)
+    if (!rateGuaranteeText && (result as any).documentNotes) {
+      const documentNotes = (result as any).documentNotes;
+      if (typeof documentNotes === 'string' && documentNotes.toLowerCase().includes('rate guarantee')) {
+        rateGuaranteeText = documentNotes;
+      }
+    }
+    
+    // 7. Check old format planNotes
+    if (!rateGuaranteeText && result.planNotes) {
+      for (const note of result.planNotes) {
         const noteText = typeof note === 'string' ? note : note.note || '';
         if (noteText.toLowerCase().includes('rate guarantee')) {
           rateGuaranteeText = noteText;

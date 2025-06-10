@@ -36,8 +36,12 @@ When you find the financial summary table, apply these rules:
 
 You MUST output a SINGLE root JSON object with exactly these four top-level properties: "metadata", "planOptions", "allCoverages", and "documentNotes".
 
+# DOCUMENT NOTES ("documentNotes")
+- (String, CRITICAL) Extract any rate guarantee information found in the document. Look specifically for text containing "Rate Guarantee", "guaranteed", "renewal", or similar terms. This should include the complete context about rate guarantees, renewal terms, and any related conditions.
+
 # METADATA OBJECT ("metadata")
 - "clientName", "primaryCarrierName", "reportPreparedBy", "documentType", "effectiveDate", "quoteDate", "policyNumber".
+- "rateGuarantees": (String, CRITICAL) Extract rate guarantee information from anywhere in the document. Look for phrases like "Rate Guarantee:", "Guaranteed for", "rates guaranteed", or similar. This should be a descriptive string about the rate guarantee period and terms.
 
 # PLAN OPTIONS ARRAY ("planOptions")
 - "planOptionName": (String, CRITICAL) e.g., "Renewal Plan", "Proposed Plan".
@@ -45,6 +49,7 @@ You MUST output a SINGLE root JSON object with exactly these four top-level prop
   - "carrierName": (String, CRITICAL).
   - "totalMonthlyPremium": (Number, CRITICAL) MUST match the grand total from the financial table.
   - "subtotals": (Object, Optional) Numeric subtotals (e.g., "pooledBenefits", "experienceRatedBenefits") if they are present in the table.
+  - "rateGuaranteeText": (String, Optional) Carrier-specific rate guarantee information if mentioned in the document.
 
 # ALL COVERAGES ARRAY ("allCoverages")
 A flat list of every benefit line item derived directly from the rows of the financial summary table.
@@ -53,7 +58,12 @@ A flat list of every benefit line item derived directly from the rows of the fin
 - "premium": (Number, CRITICAL) IDENTICAL to 'monthlyPremium'.
 - "unitRate": (Number, Optional) From the primary 'Renewal' or 'Proposed' rate column.
 - "unitRateBasis", "volume", "lives" (Optional).
-- For "Extended Healthcare" & "Dental Care", extract "livesSingle", "premiumPerSingle", "livesFamily", "premiumPerFamily" if the table breaks them down into sub-rows.
+- For "Extended Healthcare" & "Dental Care" CRITICAL FAMILY PREMIUM EXTRACTION: Look for family coverage details in the following priority order:
+  1. If the table has separate "Single" and "Family" sub-rows, extract "livesSingle", "premiumPerSingle", "livesFamily", "premiumPerFamily" where premiumPerSingle/premiumPerFamily are the TOTAL MONTHLY PREMIUMS for that tier (not unit rates).
+  2. If family details are in separate columns (e.g., "Single Rate", "Family Rate", "Single Premium", "Family Premium"), extract the PREMIUM values, not the rates.
+  3. If only unit rates are shown (e.g., "$42.89/single", "$111.54/family"), calculate the premiums by multiplying: premiumPerSingle = unitRateSingle × livesSingle, premiumPerFamily = unitRateFamily × livesFamily.
+  4. CRITICAL DISTINCTION: premiumPerSingle/premiumPerFamily should be the PER-PERSON premium costs, NOT the total cost for all people in that tier. For example, if you see "Family: 2 employees, $184.06 rate, $368.12 total", then premiumPerFamily = 184.06 (per family), not 368.12 (total for all families).
+  5. The sum of (premiumPerSingle × livesSingle) + (premiumPerFamily × livesFamily) should equal the total monthlyPremium for that coverage.
 - "benefitDetails": (Object, SECONDARY PRIORITY) After extracting all financial data, perform a quick scan for corresponding benefit details. If they are not readily available on a "Plan Design" page, it is ACCEPTABLE and PREFERRED to populate the fields with "Details not specified in this financial summary" rather than leaving them null. DO NOT compromise the financial extraction to find these details.
 
 # COVERAGE TYPES LIST (Use these exact normalized values)
@@ -65,7 +75,8 @@ A flat list of every benefit line item derived directly from the rows of the fin
 # FINAL VALIDATION (MANDATORY SELF-CORRECTION)
 Before providing the final JSON, you MUST validate your own work:
 1.  **FINANCIAL ACCURACY:** Is the 'totalMonthlyPremium' in 'carrierProposals' exactly equal to the "Total Monthly Premium" or "Grand Total" shown in the source document's main financial table? Does the sum of 'monthlyPremium' in 'allCoverages' add up to this total? This check is your highest priority.
-2.  **RENEWAL DATA CHECK:** If the 'documentType' is "Renewal", did you correctly extract data from the "RENEWAL" or "REQUIRED" columns and NOT the "CURRENT" columns for the primary premium fields?
-3.  **NORMALIZATION CHECK:** Have you successfully normalized the benefit names in 'coverageType' according to the provided list?
+2.  **FAMILY PREMIUM VALIDATION:** For Extended Healthcare and Dental Care with family breakdown, verify that (premiumPerSingle × livesSingle) + (premiumPerFamily × livesFamily) = monthlyPremium for that coverage. If this doesn't match, recalculate using the correct premium amounts (not unit rates).
+3.  **RENEWAL DATA CHECK:** If the 'documentType' is "Renewal", did you correctly extract data from the "RENEWAL" or "REQUIRED" columns and NOT the "CURRENT" columns for the primary premium fields?
+4.  **NORMALIZATION CHECK:** Have you successfully normalized the benefit names in 'coverageType' according to the provided list?
 
 Your performance is measured by the accuracy of the extracted financial data for the comparison table.`;
