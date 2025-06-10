@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@repo/design-s
 import { Button } from '@repo/design-system/components/ui/button';
 import { Progress } from '@repo/design-system/components/ui/progress';
 import { Badge } from '@repo/design-system/components/ui/badge';
-import { CheckCircle, Clock, ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { CheckCircle, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 
 import ClientTypeStep from './steps/ClientTypeStep';
 import OpportunityTypeStep from './steps/OpportunityTypeStep';
@@ -208,20 +208,15 @@ export default function QuoteQuestionnaireModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] overflow-hidden">
-        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div>
-            <DialogTitle className="text-xl font-semibold">
-              Quote Information
-            </DialogTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              Please provide details while we process your documents
-            </p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleClose}>
-            <X className="h-4 w-4" />
-          </Button>
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-semibold">
+            Quote Information
+          </DialogTitle>
+          <p className="text-sm text-gray-600 mt-1">
+            Please provide details while we process your documents
+          </p>
         </DialogHeader>
 
         {/* Progress Bar */}

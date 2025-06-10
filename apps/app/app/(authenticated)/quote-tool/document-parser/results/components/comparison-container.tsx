@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
 import { Info, AlertCircle } from 'lucide-react';
 import MarketComparisonView from './market-comparison/MarketComparisonView';
+import CarrierOverviewCards from './CarrierOverviewCards';
 
 // Define the parsed document type
 interface ParsedDocument {
@@ -108,16 +109,23 @@ export default function ComparisonContainer() {
 
 
   return (
-    <div className="space-y-6">
-      <MarketComparisonView 
-        parsedDocuments={parsedDocuments}
-        carriersMap={Object.fromEntries(availableCarriers.map(carrier => [
-          carrier, 
-          parsedDocuments
-            .filter(doc => doc.metadata?.carrierName === carrier)
-            .map(doc => doc.originalFileName)
-        ]))}
-      />
+    <div className="space-y-8">
+      {/* Carrier Overview Cards */}
+      <CarrierOverviewCards parsedDocuments={parsedDocuments} />
+      
+      {/* Detailed Market Comparison */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Comparison</h3>
+        <MarketComparisonView 
+          parsedDocuments={parsedDocuments}
+          carriersMap={Object.fromEntries(availableCarriers.map(carrier => [
+            carrier, 
+            parsedDocuments
+              .filter(doc => doc.metadata?.carrierName === carrier)
+              .map(doc => doc.originalFileName)
+          ]))}
+        />
+      </div>
     </div>
   );
 }
