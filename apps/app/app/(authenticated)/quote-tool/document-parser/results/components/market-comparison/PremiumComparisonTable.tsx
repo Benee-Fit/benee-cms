@@ -449,10 +449,11 @@ export function PremiumComparisonTable({
     }
   }, [extractRateGuarantee, extractCarriersFromCoverages]);
 
+
   /**
-   * Extract unique carriers from results with preferred ordering
+   * Extract unique carriers from results - initially unsorted
    */
-  const carriers = useMemo<Array<{
+  const unsortedCarriers = useMemo<Array<{
     name: string;
     rateGuarantee: string | null;
   }>>(() => {
@@ -470,75 +471,7 @@ export function PremiumComparisonTable({
       return [{ name: 'No Carrier Data', rateGuarantee: null }];
     }
     
-    // Define preferred carrier order for consistent display
-    const preferredOrder = [
-      'Manulife',
-      'Manulife Financial', 
-      'Sun Life',
-      'Sun Life Financial',
-      'Empire Life',
-      'Canada Life',
-      'Victor',
-      'Victor Insurance'
-    ];
-    
-    const carriersArray = Array.from(carriersMap.values());
-    
-    // Calculate total premium for each carrier to sort by cheapest first
-    const carriersWithPremiums = carriersArray.map(carrier => {
-      let totalPremium = 0;
-      
-      // Find all results for this carrier and sum their premiums
-      for (const result of results) {
-        const resultCarrierName = result.metadata?.carrierName || 
-                                 (result as any).processedData?.metadata?.carrierName ||
-                                 result.allCoverages?.[0]?.carrierName;
-        
-        if (resultCarrierName === carrier.name) {
-          // Try multiple sources for total premium
-          let premium = 0;
-          
-          // First check planOptions for totalMonthlyPremium (most accurate)
-          if ((result as any).processedData?.planOptions?.[0]?.carrierProposals?.[0]?.totalMonthlyPremium) {
-            premium = (result as any).processedData.planOptions[0].carrierProposals[0].totalMonthlyPremium;
-          }
-          // Then check processedData metadata
-          else if ((result as any).processedData?.metadata?.totalProposedMonthlyPlanPremium) {
-            premium = (result as any).processedData.metadata.totalProposedMonthlyPlanPremium;
-          }
-          // Then check root metadata
-          else if (result.metadata?.totalProposedMonthlyPlanPremium) {
-            premium = result.metadata.totalProposedMonthlyPlanPremium;
-          }
-          // Finally sum up coverage premiums as fallback
-          else {
-            premium = result.allCoverages?.reduce((sum, cov) => sum + (cov.monthlyPremium || 0), 0) || 0;
-          }
-          
-          totalPremium += premium;
-        }
-      }
-      
-      return {
-        ...carrier,
-        totalPremium
-      };
-    });
-    
-    // Sort carriers by total premium (cheapest first)
-    return carriersWithPremiums.sort((a, b) => {
-      // If both have premiums, sort by premium amount
-      if (a.totalPremium > 0 && b.totalPremium > 0) {
-        return a.totalPremium - b.totalPremium;
-      }
-      
-      // If only one has premium data, put it first
-      if (a.totalPremium > 0) return -1;
-      if (b.totalPremium > 0) return 1;
-      
-      // If neither has premium data, sort alphabetically
-      return a.name.localeCompare(b.name);
-    }).map(carrier => ({ name: carrier.name, rateGuarantee: carrier.rateGuarantee }));
+    return Array.from(carriersMap.values());
   }, [results, processResultForCarriers]);
 
   // Set default selected plan options when carriers change
@@ -546,7 +479,7 @@ export function PremiumComparisonTable({
     const newSelectedOptions: Record<string, string> = {};
     let hasChanges = false;
     
-    carriers.forEach(carrier => {
+    unsortedCarriers.forEach(carrier => {
       const availableOptions = carrierPlanOptions[carrier.name] || [];
       if (availableOptions.length > 0) {
         // If not already set, use the first available option
@@ -563,7 +496,7 @@ export function PremiumComparisonTable({
     if (hasChanges) {
       setSelectedPlanOptions(newSelectedOptions);
     }
-  }, [carriers, carrierPlanOptions]);
+  }, [unsortedCarriers, carrierPlanOptions]);
 
   // Function to update plan option for a specific carrier
   const updateCarrierPlanOption = useCallback((carrierName: string, planOption: string) => {
@@ -646,6 +579,113 @@ export function PremiumComparisonTable({
     );
   }, [selectedPlanOptions]);
 
+  /**
+   * Calculate total premiums for carriers (to be used for sorting)
+   */
+  const calculateCarrierTotals = useMemo(() => {
+    if (!results || results.length === 0 || unsortedCarriers.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const carriersLength = unsortedCarriers.length;
+    const grandTotal = new Array(carriersLength).fill(0);
+
+    // Create a quick-access map of all coverages for performance.
+    const processedCoverages = new Map<string, Coverage>();
+    
+    for (const result of results) {
+      const carrierName = result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
+      if (!carrierName) continue;
+      
+      const carrierIdx = unsortedCarriers.findIndex(c => c.name === carrierName);
+      if (carrierIdx === -1) continue;
+
+      const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
+
+      for (const coverage of filteredCoverages) {
+        const normalizedType = getNormalizedCoverageType(coverage.coverageType);
+        const key = `${carrierName}-${normalizedType}`;
+        processedCoverages.set(key, coverage);
+      }
+    }
+
+    // Calculate grand totals for each carrier using the same logic as the table
+    unsortedCarriers.forEach((carrier, idx) => {
+      // Sum all coverage premiums for this carrier
+      for (const key of masterBenefitOrder) {
+        if (!key.startsWith('HEADER-') && !key.startsWith('Subtotal-') && key !== 'Grand Total' && key !== 'Rate Guarantees') {
+          if (key.includes('-Single') || key.includes('-Family')) {
+            // Handle Single/Family sub-rows
+            const [baseType, variant] = key.split('-');
+            const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
+            if (coverage) {
+              let premium = 0;
+              if (variant === 'Single') {
+                const singleLives = (coverage as any).livesSingle || 0;
+                const singleRate = (coverage as any).premiumPerSingle || 0;
+                premium = singleRate * singleLives;
+              } else {
+                const familyLives = (coverage as any).livesFamily || 0;
+                const familyRate = (coverage as any).premiumPerFamily || 0;
+                premium = familyRate * familyLives;
+              }
+              const numericPremium = parseNumericValue(premium);
+              if (numericPremium > 0) {
+                grandTotal[idx] += numericPremium;
+              }
+            }
+          } else {
+            // Handle standard benefit rows
+            const coverage = processedCoverages.get(`${carrier.name}-${key}`);
+            if (coverage) {
+              const numericPremium = parseNumericValue(coverage.monthlyPremium);
+              if (numericPremium > 0 && key !== 'Extended Healthcare' && key !== 'Dental Care') {
+                grandTotal[idx] += numericPremium;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Return map of carrier name to total premium
+    const totalsMap = new Map<string, number>();
+    unsortedCarriers.forEach((carrier, idx) => {
+      totalsMap.set(carrier.name, grandTotal[idx]);
+    });
+
+    return totalsMap;
+  }, [results, unsortedCarriers, filterCoveragesByCarrierPlan, getNormalizedCoverageType, parseNumericValue]);
+
+  /**
+   * Sort carriers by TOTAL MONTHLY PREMIUM (cheapest first)
+   */
+  const carriers = useMemo<Array<{
+    name: string;
+    rateGuarantee: string | null;
+  }>>(() => {
+    if (unsortedCarriers.length === 0) {
+      return unsortedCarriers;
+    }
+    
+    // Sort carriers by TOTAL MONTHLY PREMIUM (cheapest first)
+    return unsortedCarriers.sort((a, b) => {
+      const totalA = calculateCarrierTotals.get(a.name) || 0;
+      const totalB = calculateCarrierTotals.get(b.name) || 0;
+      
+      // If both have premiums, sort by premium amount
+      if (totalA > 0 && totalB > 0) {
+        return totalA - totalB;
+      }
+      
+      // If only one has premium data, put it first
+      if (totalA > 0) return -1;
+      if (totalB > 0) return 1;
+      
+      // If neither has premium data, sort alphabetically
+      return a.name.localeCompare(b.name);
+    });
+  }, [unsortedCarriers, calculateCarrierTotals]);
 
   /**
    * Process parsed insurance document results to create ordered rows
@@ -886,7 +926,6 @@ export function PremiumComparisonTable({
 
     return finalRows;
   }, [carriers, results, selectedPlanOptions, filterCoveragesByCarrierPlan, getNormalizedCoverageType, isExperienceRatedCoverage, parseNumericValue]);
-  
 
   // High-level overview component
   const HighLevelOverviewSection = () => {
