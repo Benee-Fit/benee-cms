@@ -324,17 +324,262 @@ export default function ReportViewPage() {
           </CardContent>
         </Card>
 
-        {/* Report Data */}
+        {/* Report Overview */}
         <Card>
           <CardHeader>
-            <CardTitle>Report Data</CardTitle>
+            <CardTitle>Report Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <pre className="text-sm overflow-auto max-h-96">
-                {JSON.stringify(report.data, null, 2)}
-              </pre>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {report.data.carriers && (
+                <div>
+                  <h4 className="font-medium text-sm text-gray-700 mb-2">Carriers</h4>
+                  <div className="space-y-1">
+                    {report.data.carriers.map((carrier: string, index: number) => (
+                      <Badge key={index} variant="outline">{carrier}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {report.data.documents && (
+                <div>
+                  <h4 className="font-medium text-sm text-gray-700 mb-2">Document Categories</h4>
+                  <div className="space-y-1">
+                    {Array.from(new Set(report.data.documents.map((doc: any) => doc.category))).map((category: string, index: number) => (
+                      <Badge key={index} variant="secondary">{category}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {report.data.documents && (
+                <div>
+                  <h4 className="font-medium text-sm text-gray-700 mb-2">Total Documents</h4>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {report.data.documents.length}
+                  </div>
+                </div>
+              )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Premium Comparison */}
+        {report.data.documents && report.data.documents.some((doc: any) => doc.processedData?.planOptions && doc.processedData.planOptions.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Premium Comparison</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Plan Option
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Carrier
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Monthly Premium
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Rate Guarantee
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {report.data.documents.flatMap((doc: any) => 
+                      (doc.processedData?.planOptions || []).flatMap((planOption: any) =>
+                        (planOption.carrierProposals || []).map((proposal: any, index: number) => (
+                          <tr key={`${doc.category}-${planOption.planOptionName}-${index}`} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
+                              {planOption.planOptionName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200">
+                              {proposal.carrierName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
+                              <Badge variant={doc.category === 'Current' ? 'default' : doc.category === 'Renegotiated' ? 'secondary' : 'outline'}>
+                                {doc.category}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r border-gray-200">
+                              <span className="font-semibold">
+                                ${proposal.totalMonthlyPremium ? proposal.totalMonthlyPremium.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {proposal.rateGuaranteeText || 'N/A'}
+                            </td>
+                          </tr>
+                        ))
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Coverage Details */}
+        {report.data.documents && report.data.documents.some((doc: any) => doc.coverages && doc.coverages.length > 0) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Coverage Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Coverage Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Carrier
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Lives
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
+                        Volume
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Unit Rate
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {report.data.documents.flatMap((doc: any) => 
+                      (doc.coverages || []).map((coverage: any, index: number) => (
+                        <tr key={`${doc.category}-${index}`} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
+                            {coverage.coverageType}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200">
+                            {coverage.carrierName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
+                            <Badge variant={doc.category === 'Current' ? 'default' : doc.category === 'Renegotiated' ? 'secondary' : 'outline'}>
+                              {doc.category}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r border-gray-200">
+                            {coverage.lives || 0}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r border-gray-200">
+                            {coverage.volume ? coverage.volume.toLocaleString() : 0}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                            ${coverage.unitRate || 0} {coverage.unitRateBasis || ''}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Document Details */}
+        {report.data.documents && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Document Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {report.data.documents.map((doc: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <h4 className="font-medium">{doc.metadata?.clientName || 'Unknown Client'}</h4>
+                        <Badge variant={doc.category === 'Current' ? 'default' : doc.category === 'Renegotiated' ? 'secondary' : 'outline'}>
+                          {doc.category}
+                        </Badge>
+                        {doc.success && <Badge variant="outline" className="text-green-600">Processed</Badge>}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {doc.metadata?.carrierName}
+                      </div>
+                    </div>
+                    
+                    {doc.metadata && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        {doc.metadata.quoteDate && (
+                          <div>
+                            <span className="font-medium text-gray-700">Quote Date:</span>
+                            <div>{doc.metadata.quoteDate}</div>
+                          </div>
+                        )}
+                        {doc.metadata.effectiveDate && (
+                          <div>
+                            <span className="font-medium text-gray-700">Effective Date:</span>
+                            <div>{doc.metadata.effectiveDate}</div>
+                          </div>
+                        )}
+                        {doc.metadata.rateGuarantees && (
+                          <div>
+                            <span className="font-medium text-gray-700">Rate Guarantees:</span>
+                            <div>{doc.metadata.rateGuarantees}</div>
+                          </div>
+                        )}
+                        {doc.metadata.reportPreparedBy && (
+                          <div>
+                            <span className="font-medium text-gray-700">Prepared By:</span>
+                            <div>{doc.metadata.reportPreparedBy}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {doc.coverages && doc.coverages.length > 0 && (
+                      <div className="mt-3">
+                        <span className="font-medium text-gray-700 text-sm">Coverages:</span>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {doc.coverages.map((coverage: any, covIndex: number) => (
+                            <Badge key={covIndex} variant="outline" className="text-xs">
+                              {coverage.coverageType}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Raw Data (Expandable) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Raw Data</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900 group-open:text-gray-900">
+                Click to view raw JSON data
+              </summary>
+              <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                <pre className="text-sm overflow-auto max-h-96">
+                  {JSON.stringify(report.data, null, 2)}
+                </pre>
+              </div>
+            </details>
           </CardContent>
         </Card>
 
