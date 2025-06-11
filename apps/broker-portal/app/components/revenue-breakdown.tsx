@@ -149,25 +149,25 @@ export function RevenueBreakdown({
     totalRevenue: 127450,
   };
 
-  // Mock product type split data
-  const productTypeSplits = [
-    { name: 'Health', value: 62, fill: bluePalette[0] },
-    { name: 'Dental', value: 24, fill: bluePalette[1] },
-    { name: 'Vision', value: 14, fill: bluePalette[2] },
-  ];
+  // Mock product type split data - TEMPORARILY UNUSED
+  // const productTypeSplits = [
+  //   { name: 'Health', value: 62, fill: bluePalette[0] },
+  //   { name: 'Dental', value: 24, fill: bluePalette[1] },
+  //   { name: 'Vision', value: 14, fill: bluePalette[2] },
+  // ];
 
-  // Mock carrier split data
-  const carrierSplits = [
-    { name: 'Manulife', value: 28, fill: bluePalette[3] },
-    { name: 'Sun Life', value: 22, fill: bluePalette[4] },
-    { name: 'Others', value: 50, fill: bluePalette[5] },
-  ];
+  // Mock carrier split data - TEMPORARILY UNUSED
+  // const carrierSplits = [
+  //   { name: 'Manulife', value: 28, fill: bluePalette[3] },
+  //   { name: 'Sun Life', value: 22, fill: bluePalette[4] },
+  //   { name: 'Others', value: 50, fill: bluePalette[5] },
+  // ];
 
-  // Mock business type split data
-  const businessTypeSplits = [
-    { name: 'New Business', value: 45, fill: bluePalette[0] },
-    { name: 'Renewals', value: 55, fill: bluePalette[1] },
-  ];
+  // Mock business type split data - TEMPORARILY UNUSED
+  // const businessTypeSplits = [
+  //   { name: 'New Business', value: 45, fill: bluePalette[0] },
+  //   { name: 'Renewals', value: 55, fill: bluePalette[1] },
+  // ];
 
   // Mock data for Team Performance
   const teamMembers = [
@@ -246,7 +246,7 @@ export function RevenueBreakdown({
   ];
 
   // Column configurations for sortable tables
-  const teamMembersColumns: ColumnConfig<any>[] = [
+  const teamMembersColumns: ColumnConfig<(typeof teamMembers)[0]>[] = [
     { key: 'name', header: 'Broker', type: 'string' },
     { key: 'clients', header: '# of Clients', type: 'number', align: 'right' },
     { key: 'members', header: '# of Members', type: 'number', align: 'right' },
@@ -265,7 +265,7 @@ export function RevenueBreakdown({
     { key: 'topIndustry', header: 'Top Industry', type: 'string' },
   ];
 
-  const salesFunnelColumns: ColumnConfig<any>[] = [
+  const salesFunnelColumns: ColumnConfig<(typeof salesFunnelData)[0]>[] = [
     { key: 'name', header: 'Broker Name', type: 'string' },
     {
       key: 'quotesSent',
