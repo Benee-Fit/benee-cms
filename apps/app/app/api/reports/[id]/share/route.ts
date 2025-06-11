@@ -40,17 +40,18 @@ export async function POST(
     }
 
     // Generate unique token
-    let shareToken: string;
+    let shareToken: string = generateUniqueToken();
     let isUnique = false;
     
     // Ensure token is unique
     while (!isUnique) {
-      shareToken = generateUniqueToken();
       const existing = await db.reportShareLink.findUnique({
         where: { shareToken },
       });
       if (!existing) {
         isUnique = true;
+      } else {
+        shareToken = generateUniqueToken();
       }
     }
 

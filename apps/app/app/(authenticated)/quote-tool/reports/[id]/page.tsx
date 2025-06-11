@@ -56,10 +56,10 @@ const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[]
           if (coverage.coverageType === 'Extended Healthcare' || coverage.coverageType === 'Dental Care') {
             // If we have lives data, assume it's all family (since single would be 0 premium typically)
             if (coverage.lives && coverage.lives > 0) {
-              enhanced.livesFamily = coverage.lives;
-              enhanced.livesSingle = 0;
-              enhanced.premiumPerFamily = coverage.monthlyPremium ? coverage.monthlyPremium / coverage.lives : 0;
-              enhanced.premiumPerSingle = 0;
+              (enhanced as any).livesFamily = coverage.lives;
+              (enhanced as any).livesSingle = 0;
+              (enhanced as any).premiumPerFamily = coverage.monthlyPremium ? coverage.monthlyPremium / coverage.lives : 0;
+              (enhanced as any).premiumPerSingle = 0;
             }
           }
 
@@ -479,7 +479,7 @@ export default function ReportViewPage() {
         {/* Summary Stats */}
         {report.data && report.data.documents && (() => {
           const transformedDocuments = transformReportDataToParsedDocuments(report.data);
-          return <SummaryStats parsedDocuments={transformedDocuments} />;
+          return <SummaryStats parsedDocuments={transformedDocuments as any} />;
         })()}
 
         {/* Comparison Tables */}
@@ -527,14 +527,14 @@ export default function ReportViewPage() {
               <div className="report-view">
                 {/* Use MarketComparisonView with transformed data */}
                 <MarketComparisonView 
-                  parsedDocuments={transformedDocuments}
+                  parsedDocuments={transformedDocuments as any}
                   carriersMap={carriersMap}
                 />
                 
                 {/* Carrier Overview Cards */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
-                  <CarrierOverviewCards parsedDocuments={transformedDocuments} />
+                  <CarrierOverviewCards parsedDocuments={transformedDocuments as any} />
                 </div>
               </div>
             </div>
