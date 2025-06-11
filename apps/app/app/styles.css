@@ -1,11 +1,41 @@
 @import "tailwindcss";
 @import "@repo/design-system/styles/globals.css";
 
-/* Custom tooltip arrow styling for white background tooltips */
-.tooltip-content-white + [data-radix-popper-arrow] > svg {
+/* Enhanced tooltip styling - targeting all possible arrow structures */
+[data-radix-tooltip-content] {
+  --tooltip-background: white;
+  --tooltip-border: rgb(229, 231, 235);
+  background-color: white !important;
+  border: 1px solid rgb(229, 231, 235) !important;
+}
+
+/* Target tooltip arrows - covers multiple Radix UI versions and structures */
+[data-radix-tooltip-arrow],
+[data-radix-popper-arrow],
+[data-tooltip-arrow] {
+  fill: white !important;
+  color: white !important;
+  background: white !important;
+}
+
+[data-radix-tooltip-arrow] svg,
+[data-radix-popper-arrow] svg,
+[data-tooltip-arrow] svg {
   fill: white !important;
 }
 
-.tooltip-content-white + [data-radix-popper-arrow] {
-  filter: drop-shadow(0 -1px 0 rgb(229, 231, 235));
+/* Specific targeting for tooltips with white backgrounds */
+[data-radix-tooltip-content] + [data-radix-tooltip-arrow],
+[data-radix-tooltip-content] ~ [data-radix-tooltip-arrow] {
+  fill: white !important;
+  stroke: rgb(229, 231, 235) !important;
+  stroke-width: 1px !important;
+}
+
+/* Fallback for any remaining arrow elements */
+[data-side="bottom"] [data-radix-tooltip-arrow] {
+  border-top-color: white !important;
+  border-bottom-color: transparent !important;
+  border-left-color: transparent !important;
+  border-right-color: transparent !important;
 }

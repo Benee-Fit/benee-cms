@@ -183,8 +183,9 @@ export default function EnhancedDocumentTypeSelector({
                 
                 <TooltipContent 
                   side="bottom" 
-                  className="max-w-md p-4 bg-white border border-gray-200 shadow-lg tooltip-content-white"
-                  sideOffset={5}
+                  className="max-w-md p-4 bg-white border border-gray-200 shadow-lg"
+                  sideOffset={8}
+                  avoidCollisions={true}
                 >
                   <div className="space-y-3">
                     <div>

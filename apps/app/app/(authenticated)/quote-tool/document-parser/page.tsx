@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, type DragEvent, type ChangeEvent } from 'react';
+import { useState, useCallback, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '../../components/header';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -46,6 +46,42 @@ export default function DocumentParserPage() {
   const [processingStages, setProcessingStages] = useState<ProcessingStage[]>([]);
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string | null>(null);
   const [showBatchUpload, setShowBatchUpload] = useState(false);
+  const [hasExistingSession, setHasExistingSession] = useState(false);
+
+  // Check for existing data on mount and reset questionnaire if no parsed documents
+  useEffect(() => {
+    const parsedDocuments = localStorage.getItem('parsedBenefitsDocuments');
+    const questionnaireResults = localStorage.getItem('quoteQuestionnaireResults');
+    const questionnaireData = localStorage.getItem('quoteQuestionnaireData');
+    
+    // Set flag for existing session data
+    setHasExistingSession(!!parsedDocuments || !!questionnaireResults || !!questionnaireData);
+    
+    // If no parsed documents exist, clear the questionnaire data
+    if (!parsedDocuments) {
+      if (questionnaireResults) {
+        localStorage.removeItem('quoteQuestionnaireResults');
+        localStorage.removeItem('quoteQuestionnaireData'); // Also clear in-progress questionnaire data
+      }
+      setQuestionnaireData(null);
+      setProcessedResults([]);
+      setIsProcessingComplete(false);
+      setProcessingError(null);
+    }
+  }, []);
+
+  // Reset questionnaire and processed data when starting fresh
+  const resetSessionData = useCallback(() => {
+    localStorage.removeItem('parsedBenefitsDocuments');
+    localStorage.removeItem('quoteQuestionnaireResults');
+    localStorage.removeItem('quoteQuestionnaireData');
+    setQuestionnaireData(null);
+    setProcessedResults([]);
+    setIsProcessingComplete(false);
+    setProcessingError(null);
+    setShowQuestionnaire(false);
+    setHasExistingSession(false);
+  }, []);
 
   // Handle drag events
   const handleDrag = useCallback((e: DragEvent) => {
@@ -257,6 +293,9 @@ export default function DocumentParserPage() {
       return;
     }
     
+    // Reset any previous session data when starting new processing
+    resetSessionData();
+    
     setIsLoading(true);
     setError(null);
     setIsProcessingComplete(false);
@@ -346,10 +385,8 @@ export default function DocumentParserPage() {
   // Handle questionnaire modal close
   const handleQuestionnaireClose = () => {
     setShowQuestionnaire(false);
-    // Reset processing state if user closes modal before completion
-    if (!isProcessingComplete) {
-      setIsLoading(false);
-    }
+    // Don't reset loading state - let processing continue in background
+    // Users can reopen the questionnaire or wait for processing to complete
   };
 
   // Proceed to plan selection page with combined data
@@ -405,6 +442,20 @@ export default function DocumentParserPage() {
             <Badge variant="secondary" className="text-xs">
               Upload multiple files across categories
             </Badge>
+          )}
+          {hasExistingSession && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetSessionData();
+                setFiles([]);
+              }}
+              className="flex items-center space-x-2 text-orange-600 hover:text-orange-800"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <span>Start Fresh</span>
+            </Button>
           )}
         </div>
         
@@ -621,6 +672,27 @@ export default function DocumentParserPage() {
               setCurrentProcessingFile(null);
             }}
           />
+        </div>
+      )}
+      
+      {/* Questionnaire Reminder - show when processing but questionnaire is closed */}
+      {isLoading && !showQuestionnaire && (
+        <div className="mb-6">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Processing in Progress</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>Documents are being processed. You can fill out the questionnaire while waiting.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQuestionnaire(true)}
+                className="ml-4"
+              >
+                Open Questionnaire
+              </Button>
+            </AlertDescription>
+          </Alert>
         </div>
       )}
       
