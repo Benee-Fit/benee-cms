@@ -4,8 +4,9 @@ import { database } from '@repo/database';
 // GET single client
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     const client = await database.brokerClient.findUnique({
       where: { id: params.id },
@@ -32,8 +33,9 @@ export async function GET(
 // PUT update client
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     const body = await request.json();
     
@@ -80,8 +82,9 @@ export async function PUT(
 // DELETE client
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     await database.brokerClient.delete({
       where: { id: params.id },

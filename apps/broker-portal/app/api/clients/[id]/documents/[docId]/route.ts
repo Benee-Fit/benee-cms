@@ -5,8 +5,9 @@ import { deleteFromSpaces } from '../../../../../../lib/do-spaces';
 // DELETE document
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; docId: string } }
+  context: { params: { id: string; docId: string } }
 ) {
+  const { params } = context;
   try {
     // Get document to find the file URL
     const document = await database.brokerClientDocument.findUnique({

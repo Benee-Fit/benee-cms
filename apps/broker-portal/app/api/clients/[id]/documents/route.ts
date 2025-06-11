@@ -5,8 +5,9 @@ import { uploadToSpaces } from '../../../../../lib/do-spaces';
 // GET all documents for a client
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     const documents = await database.brokerClientDocument.findMany({
       where: { clientId: params.id },
@@ -26,8 +27,9 @@ export async function GET(
 // POST upload new document
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
