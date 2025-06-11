@@ -261,18 +261,24 @@ export function IndustryInsight({
       clients: 18,
       avgPremium: 19200,
       totalRevenue: 345600,
+      percentOfBusiness: 41.5,
+      planMembers: 450,
     },
     {
       tier: 'Medium (50-199)',
       clients: 16,
       avgPremium: 28400,
       totalRevenue: 454400,
+      percentOfBusiness: 37.2,
+      planMembers: 1850,
     },
     {
       tier: 'Large (200+)',
       clients: 9,
       avgPremium: 34500,
       totalRevenue: 310500,
+      percentOfBusiness: 21.3,
+      planMembers: 3200,
     },
   ];
 
@@ -487,6 +493,8 @@ export function IndustryInsight({
                     <TableHead className="text-right">
                       Number of Clients
                     </TableHead>
+                    <TableHead className="text-right">% of Business</TableHead>
+                    <TableHead className="text-right"># of Plan Members</TableHead>
                     <TableHead className="text-right">
                       Avg. Premium/Client
                     </TableHead>
@@ -499,6 +507,12 @@ export function IndustryInsight({
                       <TableCell className="font-medium">{size.tier}</TableCell>
                       <TableCell className="text-right">
                         {size.clients}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {size.percentOfBusiness}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {size.planMembers.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
                         ${size.avgPremium.toLocaleString()}

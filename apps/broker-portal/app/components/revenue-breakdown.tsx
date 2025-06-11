@@ -272,13 +272,12 @@ export function RevenueBreakdown({
 
   // Revenue by source data
   const revenueSourceData = [
-    { source: 'Cold outreach', value: 62500, percentage: 22 },
-    { source: 'Warm referral', value: 84300, percentage: 30 },
-    { source: 'Events', value: 42100, percentage: 15 },
-    { source: 'Inbound website', value: 36800, percentage: 13 },
-    { source: 'Partnerships', value: 25600, percentage: 9 },
-    { source: 'Existing clients', value: 19700, percentage: 7 },
-    { source: 'Other', value: 11200, percentage: 4 },
+    { source: 'Paid Advertising', value: 36800, percentage: 13 },
+    { source: 'Organic & Inbound Marketing', value: 62500, percentage: 22 },
+    { source: 'Outbound & Direct Outreach', value: 84300, percentage: 30 },
+    { source: 'Referrals & Partnerships', value: 45300, percentage: 16 },
+    { source: 'Authority Building', value: 19700, percentage: 7 },
+    { source: 'Events & Workshops', value: 42100, percentage: 15 },
   ];
 
   // Chart data for growth trendline

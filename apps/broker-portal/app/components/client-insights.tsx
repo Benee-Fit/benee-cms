@@ -120,7 +120,7 @@ export function ClientInsights({ className }: ClientInsightsProps) {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Avg. Group Size</CardTitle>
+              <CardTitle className="text-base">Avg. Company Size</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">
