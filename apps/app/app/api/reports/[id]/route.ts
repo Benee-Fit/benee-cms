@@ -4,7 +4,7 @@ import { db } from '@repo/database';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
@@ -12,9 +12,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const report = await db.quoteReport.findFirst({
       where: {
-        id: params.id,
+        id: id,
         createdById: user.id,
       },
       include: {
@@ -63,7 +65,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
@@ -71,13 +73,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { title, clientId, data } = body;
 
     // Check if report exists and user owns it
     const existingReport = await db.quoteReport.findFirst({
       where: {
-        id: params.id,
+        id: id,
         createdById: user.id,
       },
     });
@@ -104,7 +107,7 @@ export async function PUT(
     }
 
     const updatedReport = await db.quoteReport.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         ...(title && { title }),
         ...(clientId !== undefined && { clientId: clientId || null }),
@@ -139,7 +142,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
@@ -147,10 +150,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Check if report exists and user owns it
     const existingReport = await db.quoteReport.findFirst({
       where: {
-        id: params.id,
+        id: id,
         createdById: user.id,
       },
     });
@@ -160,7 +165,7 @@ export async function DELETE(
     }
 
     await db.quoteReport.delete({
-      where: { id: params.id },
+      where: { id: id },
     });
 
     return NextResponse.json({ message: 'Report deleted successfully' });

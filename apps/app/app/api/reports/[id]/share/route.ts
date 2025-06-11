@@ -5,7 +5,7 @@ import { generateUniqueToken, hashPassword } from '../../../../../lib/security';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
@@ -13,13 +13,14 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { expiresAt, password } = body;
 
     // Check if report exists and user owns it
     const report = await db.quoteReport.findFirst({
       where: {
-        id: params.id,
+        id: id,
         createdById: user.id,
       },
     });
@@ -51,7 +52,7 @@ export async function POST(
 
     const shareLink = await db.reportShareLink.create({
       data: {
-        reportId: params.id,
+        reportId: id,
         shareToken: shareToken!,
         createdById: user.id,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
@@ -82,7 +83,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await currentUser();
@@ -90,10 +91,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Check if report exists and user owns it
     const report = await db.quoteReport.findFirst({
       where: {
-        id: params.id,
+        id: id,
         createdById: user.id,
       },
     });
@@ -104,7 +107,7 @@ export async function GET(
 
     const shareLinks = await db.reportShareLink.findMany({
       where: {
-        reportId: params.id,
+        reportId: id,
       },
       select: {
         id: true,
