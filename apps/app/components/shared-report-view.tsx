@@ -6,20 +6,97 @@ import MarketComparisonView from '../app/(authenticated)/quote-tool/document-par
 import CarrierOverviewCards from '../app/(authenticated)/quote-tool/document-parser/results/components/CarrierOverviewCards';
 import type { ParsedDocument } from '../app/(authenticated)/quote-tool/document-parser/types';
 
-interface SharedReportViewProps {
-  reportData: any;
-}
-
-// Transform saved report data to ParsedDocument format for read-only display
+// Enhanced transform function to properly map premium data
 const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[] => {
   if (!reportData.documents) return [];
   
   return reportData.documents.map((doc: any) => {
-    // Extract the full processedData if available
     const processedData = doc.processedData || {};
     
-    // Build the transformed document
-    const transformedDoc: ParsedDocument = {
+    // Extract coverages with proper premium data
+    let enhancedCoverages = doc.coverages || [];
+    
+    // If we have processedData with planOptions, create proper coverage entries
+    if (processedData.planOptions && processedData.planOptions.length > 0) {
+      const planOption = processedData.planOptions[0];
+      const carrierProposal = planOption.carrierProposals?.[0];
+      
+      if (carrierProposal && carrierProposal.coverageBreakdown) {
+        // If we have detailed coverage breakdown, use it
+        enhancedCoverages = Object.entries(carrierProposal.coverageBreakdown).map(([coverageType, details]: [string, any]) => ({
+          coverageType,
+          carrierName: carrierProposal.carrierName || doc.metadata?.carrierName,
+          planOptionName: planOption.planOptionName,
+          premium: details.monthlyPremium || details.premium || 0,
+          monthlyPremium: details.monthlyPremium || details.premium || 0,
+          unitRate: details.unitRate || null,
+          unitRateBasis: details.unitRateBasis || 'per unit',
+          volume: details.volume || null,
+          lives: details.lives || 0,
+          benefitDetails: details.benefitDetails || {}
+        }));
+      } else if (carrierProposal && carrierProposal.totalMonthlyPremium > 0) {
+        // If no breakdown, enhance existing coverages with plan data
+        enhancedCoverages = doc.coverages?.map((coverage: any) => ({
+          ...coverage,
+          planOptionName: planOption.planOptionName,
+          carrierName: carrierProposal.carrierName || coverage.carrierName || doc.metadata?.carrierName,
+          monthlyPremium: coverage.monthlyPremium || 0,
+          premium: coverage.premium || coverage.monthlyPremium || 0
+        })) || [];
+      }
+      
+      // Add subtotal rows for experience rated and pooled benefits
+      if (carrierProposal?.subtotals) {
+        if (carrierProposal.subtotals.experienceRated !== undefined) {
+          enhancedCoverages.push({
+            coverageType: 'Sub-total - Experience Rated Benefits',
+            carrierName: carrierProposal.carrierName || doc.metadata?.carrierName,
+            planOptionName: planOption.planOptionName,
+            premium: carrierProposal.subtotals.experienceRated,
+            monthlyPremium: carrierProposal.subtotals.experienceRated,
+            unitRate: null,
+            unitRateBasis: '',
+            volume: null,
+            lives: 0,
+            benefitDetails: { isSubtotal: true }
+          });
+        }
+        
+        if (carrierProposal.subtotals.pooled !== undefined) {
+          enhancedCoverages.push({
+            coverageType: 'Sub-total - Pooled Benefits',
+            carrierName: carrierProposal.carrierName || doc.metadata?.carrierName,
+            planOptionName: planOption.planOptionName,
+            premium: carrierProposal.subtotals.pooled,
+            monthlyPremium: carrierProposal.subtotals.pooled,
+            unitRate: null,
+            unitRateBasis: '',
+            volume: null,
+            lives: 0,
+            benefitDetails: { isSubtotal: true }
+          });
+        }
+      }
+      
+      // Add total row
+      if (carrierProposal?.totalMonthlyPremium) {
+        enhancedCoverages.push({
+          coverageType: 'TOTAL MONTHLY PREMIUM',
+          carrierName: carrierProposal.carrierName || doc.metadata?.carrierName,
+          planOptionName: planOption.planOptionName,
+          premium: carrierProposal.totalMonthlyPremium,
+          monthlyPremium: carrierProposal.totalMonthlyPremium,
+          unitRate: null,
+          unitRateBasis: '',
+          volume: null,
+          lives: 0,
+          benefitDetails: { isTotal: true }
+        });
+      }
+    }
+    
+    return {
       originalFileName: doc.metadata?.fileName || `${doc.metadata?.clientName} - ${doc.metadata?.carrierName}.pdf` || 'Unknown Document',
       category: doc.category || 'Current',
       metadata: {
@@ -29,7 +106,7 @@ const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[]
         effectiveDate: doc.metadata?.effectiveDate || '',
         quoteDate: doc.metadata?.quoteDate || '',
         policyNumber: doc.metadata?.policyNumber || undefined,
-        planOptionName: doc.planOptionName || 'Default Plan',
+        planOptionName: processedData.planOptions?.[0]?.planOptionName || doc.planOptionName || 'Default Plan',
         totalProposedMonthlyPlanPremium: processedData.planOptions?.[0]?.carrierProposals?.[0]?.totalMonthlyPremium || 0,
         fileName: doc.metadata?.fileName || 'unknown.pdf',
         fileCategory: doc.category || 'Current',
@@ -37,47 +114,20 @@ const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[]
           planOptionName: option.planOptionName,
           totalMonthlyPremium: option.carrierProposals?.[0]?.totalMonthlyPremium || 0
         })) || [],
-        rateGuarantees: doc.metadata?.rateGuarantees || ''
+        rateGuarantees: processedData.planOptions?.[0]?.carrierProposals?.[0]?.rateGuaranteeText || doc.metadata?.rateGuarantees || ''
       },
-      coverages: doc.coverages?.map((coverage: any) => ({
-        coverageType: coverage.coverageType || 'Unknown Coverage',
-        carrierName: coverage.carrierName || doc.metadata?.carrierName || 'Unknown Carrier',
-        planOptionName: coverage.planOptionName || 'Default Plan',
-        premium: coverage.premium || coverage.monthlyPremium || 0,
-        monthlyPremium: coverage.monthlyPremium || 0,
-        unitRate: coverage.unitRate || 0,
-        unitRateBasis: coverage.unitRateBasis || '',
-        volume: coverage.volume || 0,
-        lives: coverage.lives || 0,
-        benefitDetails: coverage.benefitDetails || {}
-      })) || [],
+      coverages: enhancedCoverages,
       planNotes: doc.planNotes || [],
-      // Pass through the full processedData structure
-      processedData: processedData
+      processedData: processedData,
+      relevantCoverages: enhancedCoverages
     };
-    
-    // If we have granularBreakdown data (new format), ensure it's included
-    if (processedData.granularBreakdown) {
-      transformedDoc.processedData = {
-        ...processedData,
-        highLevelOverview: processedData.highLevelOverview || [],
-        granularBreakdown: processedData.granularBreakdown || []
-      };
-    }
-    
-    // If we have planOptions (legacy format), ensure the full structure is preserved
-    if (processedData.planOptions) {
-      transformedDoc.processedData = {
-        ...processedData,
-        metadata: processedData.metadata || doc.metadata,
-        planOptions: processedData.planOptions,
-        allCoverages: processedData.allCoverages || doc.coverages || []
-      };
-    }
-    
-    return transformedDoc;
   });
 };
+
+interface SharedReportViewProps {
+  reportData: any;
+}
+
 
 export default function SharedReportView({ reportData }: SharedReportViewProps) {
   if (!reportData || !reportData.documents) {
