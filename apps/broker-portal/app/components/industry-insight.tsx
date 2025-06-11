@@ -6,14 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@repo/design-system/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@repo/design-system/components/ui/table';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   SortableTable,
@@ -117,6 +109,45 @@ const ChartComponent = ({
   };
 
   if (type === 'bar') {
+    // Handle multiple datasets for bar charts
+    if (data.datasets.length > 1) {
+      const multiDataProcessed = data.labels.map((label, index) => {
+        const item: Record<string, string | number> = { name: label };
+        data.datasets.forEach((dataset, dsIndex) => {
+          item[`dataset${dsIndex}`] = dataset.data[index];
+        });
+        return item;
+      });
+
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart
+            data={multiDataProcessed}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis dataKey="name" className="text-xs text-muted-foreground" />
+            <YAxis className="text-xs text-muted-foreground" />
+            <Tooltip />
+            {(options?.plugins?.legend?.display ?? true) && <Legend />}
+            {data.datasets.map((dataset, index) => (
+              <Bar
+                key={index}
+                dataKey={`dataset${index}`}
+                name={dataset.label}
+                fill={
+                  Array.isArray(dataset.backgroundColor)
+                    ? dataset.backgroundColor[0]
+                    : dataset.backgroundColor || bluePaletteConst[index]
+                }
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Single dataset bar chart
     return (
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
@@ -132,6 +163,7 @@ const ChartComponent = ({
           )}
           <Bar
             dataKey="value"
+            name={data.datasets[0].label || "Leads"}
             fill={
               Array.isArray(data.datasets[0].backgroundColor)
                 ? undefined
@@ -158,6 +190,9 @@ const ChartComponent = ({
   }
 
   if (type === 'pie') {
+    // Calculate total for percentage calculation
+    const total = chartDataProcessed.reduce((sum, entry) => sum + entry.value, 0);
+    
     return (
       <ResponsiveContainer width="100%" height={height}>
         <PieChart>
@@ -183,6 +218,31 @@ const ChartComponent = ({
               />
             ))}
           </Pie>
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0];
+                const value = typeof data.value === 'number' ? data.value : 0;
+                const percentage = ((value / total) * 100).toFixed(1);
+                return (
+                  <div className="rounded-lg border bg-background p-2 shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="text-[0.70rem] uppercase text-muted-foreground">
+                        {data.name}
+                      </span>
+                      <span className="font-bold text-muted-foreground">
+                        {value} leads
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {percentage}% of total
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
           {(options?.plugins?.legend?.display ?? true) &&
             options?.plugins?.legend?.position && <Legend {...legendProps()} />}
         </PieChart>
@@ -239,6 +299,47 @@ export function IndustryInsight({
     {
       key: 'avgPremium',
       header: 'Avg. Premium',
+      type: 'currency',
+      align: 'right',
+    },
+  ];
+
+  // Column configuration for sortable company size tiers table
+  const companySizeColumns: ColumnConfig<(typeof companySize)[0]>[] = [
+    {
+      key: 'tier',
+      header: 'Size Tier',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'clients',
+      header: 'Number of Clients',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'percentOfBusiness',
+      header: '% of Business',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value}%`,
+    },
+    {
+      key: 'planMembers',
+      header: '# of Plan Members',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'avgPremium',
+      header: 'Avg. Premium/Client',
+      type: 'currency',
+      align: 'right',
+    },
+    {
+      key: 'totalRevenue',
+      header: 'Total Revenue',
       type: 'currency',
       align: 'right',
     },
@@ -373,7 +474,6 @@ export function IndustryInsight({
         label: 'Source Breakdown',
         data: [42, 23, 15, 12, 8],
         backgroundColor: bluePaletteConst.slice(0, 5), // bluePalette (5 needed)
-
         borderWidth: 1,
         borderColor: 'hsl(var(--background))',
       },
@@ -381,18 +481,25 @@ export function IndustryInsight({
   };
 
   const efficiencyChartData: ChartData = {
-    labels: ['Referrals', 'Cold Outreach', 'Website', 'Events', 'Partners'],
+    labels: [
+      'Paid Advertising',
+      'Organic & Inbound Marketing',
+      'Outbound & Direct Outreach',
+      'Referrals & Partnerships',
+      'Authority Building',
+      'Events & Workshops'
+    ],
     datasets: [
       {
         label: 'Conversion Rate (%)',
-        data: [68, 22, 34, 51, 47],
+        data: [42, 58, 35, 72, 28, 51],
         backgroundColor: bluePaletteConst[0],
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
       {
         label: 'Avg. Client Value ($K)',
-        data: [28.4, 22.7, 19.5, 26.2, 24.8],
+        data: [22.5, 31.2, 24.8, 35.6, 18.9, 27.3],
         backgroundColor: bluePaletteConst[1],
         borderColor: 'hsl(var(--muted-foreground))',
         borderWidth: 1,
@@ -507,50 +614,12 @@ export function IndustryInsight({
           <h3 id="company-size-title" className="text-xl font-medium mb-2">
             Company Size Tiers
           </h3>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Size Tier</TableHead>
-                    <TableHead className="text-right">
-                      Number of Clients
-                    </TableHead>
-                    <TableHead className="text-right">% of Business</TableHead>
-                    <TableHead className="text-right">
-                      # of Plan Members
-                    </TableHead>
-                    <TableHead className="text-right">
-                      Avg. Premium/Client
-                    </TableHead>
-                    <TableHead className="text-right">Total Revenue</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {companySize.map((size) => (
-                    <TableRow key={size.tier}>
-                      <TableCell className="font-medium">{size.tier}</TableCell>
-                      <TableCell className="text-right">
-                        {size.clients}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {size.percentOfBusiness}%
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {size.planMembers.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${size.avgPremium.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${size.totalRevenue.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <SortableTable
+            data={companySize}
+            columns={companySizeColumns}
+            defaultSortKey="totalRevenue"
+            defaultSortDirection="desc"
+          />
         </section>
       )}
 
@@ -644,7 +713,7 @@ export function IndustryInsight({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">
-                  Lead Source Efficiency
+                  Lead Source
                 </CardTitle>
               </CardHeader>
               <CardContent>

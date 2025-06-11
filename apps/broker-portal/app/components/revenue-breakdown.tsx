@@ -24,14 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@repo/design-system/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@repo/design-system/components/ui/table';
 import { cn } from '@repo/design-system/lib/utils';
 import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
@@ -339,6 +331,15 @@ export function RevenueBreakdown({
     { key: 'avgClientSplitPercent', header: 'Avg Client Split %', type: 'number', align: 'right', render: (value) => `${value}%` },
     { key: 'avgClientSplitDollar', header: 'Avg Client Split $', type: 'currency', align: 'right' },
     { key: 'percentOfTotalBlock', header: '% of Total Block', type: 'number', align: 'right', render: (value) => `${value}%` },
+  ];
+
+  // Column configuration for carrier breakdown sortable table
+  const carrierBreakdownColumns: ColumnConfig<(typeof commissionSplits)[0]>[] = [
+    { key: 'partner', header: 'Carrier', type: 'string', align: 'left' },
+    { key: 'percentSplit', header: '% Split', type: 'number', align: 'right', render: (value) => `${value}%` },
+    { key: 'clients', header: 'Clients', type: 'number', align: 'right' },
+    { key: 'planMembers', header: '# of Plan Members', type: 'number', align: 'right' },
+    { key: 'totalCommission', header: 'Total Revenue', type: 'currency', align: 'right' },
   ];
 
   const commissionSplits = [
@@ -729,44 +730,14 @@ export function RevenueBreakdown({
           <h3 id="commission-splits-title" className="text-xl font-medium mb-2">
             Carrier Breakdown
           </h3>
-          <Card className="mb-4">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Carrier</TableHead>
-                    <TableHead className="text-right">% Split</TableHead>
-                    <TableHead className="text-right">Clients</TableHead>
-                    <TableHead className="text-right">
-                      # of Plan Members
-                    </TableHead>
-                    <TableHead className="text-right">Total Revenue</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {commissionSplits.map((commission) => (
-                    <TableRow key={commission.partner}>
-                      <TableCell className="font-medium">
-                        {commission.partner}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {commission.percentSplit}%
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {commission.clients}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {commission.planMembers?.toLocaleString() || '0'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${commission.totalCommission.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div className="mb-4">
+            <SortableTable
+              data={commissionSplits}
+              columns={carrierBreakdownColumns}
+              defaultSortKey="totalCommission"
+              defaultSortDirection="desc"
+            />
+          </div>
           <div className="grid md:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-2">

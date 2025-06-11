@@ -10,15 +10,11 @@ import {
   ChartContainer,
   ChartTooltip,
 } from '@repo/design-system/components/ui/chart';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@repo/design-system/components/ui/table';
 import { cn } from '@repo/design-system/lib/utils';
+import {
+  SortableTable,
+  type ColumnConfig,
+} from './sortable-table/sortable-table';
 import {
   Line,
   LineChart,
@@ -39,6 +35,98 @@ export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
     totalPlanMembers: 4782,
     avgGroupSize: 111,
   };
+
+  // Top clients data for sortable table
+  const topClientsData = [
+    {
+      rank: 1,
+      clientName: 'TechCorp Solutions',
+      industry: 'Technology',
+      planMembers: 380,
+      annualRevenue: 89500,
+      revenuePerMember: 236,
+    },
+    {
+      rank: 2,
+      clientName: 'Global Manufacturing',
+      industry: 'Manufacturing',
+      planMembers: 315,
+      annualRevenue: 76200,
+      revenuePerMember: 242,
+    },
+    {
+      rank: 3,
+      clientName: 'HealthCare Partners',
+      industry: 'Healthcare',
+      planMembers: 285,
+      annualRevenue: 68900,
+      revenuePerMember: 242,
+    },
+    {
+      rank: 4,
+      clientName: 'Financial Services Co.',
+      industry: 'Financial Services',
+      planMembers: 270,
+      annualRevenue: 65400,
+      revenuePerMember: 242,
+    },
+    {
+      rank: 5,
+      clientName: 'Digital Innovations',
+      industry: 'Technology',
+      planMembers: 243,
+      annualRevenue: 58750,
+      revenuePerMember: 242,
+    },
+    {
+      rank: 6,
+      clientName: 'Educational Institute',
+      industry: 'Education',
+      planMembers: 216,
+      annualRevenue: 52300,
+      revenuePerMember: 242,
+    },
+  ];
+
+  // Column configuration for top clients sortable table
+  const topClientsColumns: ColumnConfig<(typeof topClientsData)[0]>[] = [
+    {
+      key: 'rank',
+      header: 'Rank',
+      type: 'number',
+      align: 'left',
+    },
+    {
+      key: 'clientName',
+      header: 'Client Name',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'industry',
+      header: 'Industry',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'planMembers',
+      header: 'Plan Members',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'annualRevenue',
+      header: 'Annual Revenue',
+      type: 'currency',
+      align: 'right',
+    },
+    {
+      key: 'revenuePerMember',
+      header: 'Revenue per Member',
+      type: 'currency',
+      align: 'right',
+    },
+  ];
 
   // Client Growth YOY data
   const clientGrowthData = [
@@ -258,72 +346,12 @@ export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
           {/* Top Clients by Revenue */}
           <div>
             <h4 className="text-lg font-medium mb-3">Top Clients by Revenue</h4>
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Rank</TableHead>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Industry</TableHead>
-                      <TableHead className="text-right">Plan Members</TableHead>
-                      <TableHead className="text-right">Annual Revenue</TableHead>
-                      <TableHead className="text-right">Revenue per Member</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">1</TableCell>
-                      <TableCell className="font-medium">TechCorp Solutions</TableCell>
-                      <TableCell>Technology</TableCell>
-                      <TableCell className="text-right">380</TableCell>
-                      <TableCell className="text-right font-semibold">$89,500</TableCell>
-                      <TableCell className="text-right">$236</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">2</TableCell>
-                      <TableCell className="font-medium">Global Manufacturing</TableCell>
-                      <TableCell>Manufacturing</TableCell>
-                      <TableCell className="text-right">315</TableCell>
-                      <TableCell className="text-right font-semibold">$76,200</TableCell>
-                      <TableCell className="text-right">$242</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">3</TableCell>
-                      <TableCell className="font-medium">HealthCare Partners</TableCell>
-                      <TableCell>Healthcare</TableCell>
-                      <TableCell className="text-right">285</TableCell>
-                      <TableCell className="text-right font-semibold">$68,900</TableCell>
-                      <TableCell className="text-right">$242</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">4</TableCell>
-                      <TableCell className="font-medium">Financial Services Co.</TableCell>
-                      <TableCell>Financial Services</TableCell>
-                      <TableCell className="text-right">270</TableCell>
-                      <TableCell className="text-right font-semibold">$65,400</TableCell>
-                      <TableCell className="text-right">$242</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">5</TableCell>
-                      <TableCell className="font-medium">Digital Innovations</TableCell>
-                      <TableCell>Technology</TableCell>
-                      <TableCell className="text-right">243</TableCell>
-                      <TableCell className="text-right font-semibold">$58,750</TableCell>
-                      <TableCell className="text-right">$242</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">6</TableCell>
-                      <TableCell className="font-medium">Educational Institute</TableCell>
-                      <TableCell>Education</TableCell>
-                      <TableCell className="text-right">216</TableCell>
-                      <TableCell className="text-right font-semibold">$52,300</TableCell>
-                      <TableCell className="text-right">$242</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <SortableTable
+              data={topClientsData}
+              columns={topClientsColumns}
+              defaultSortKey="annualRevenue"
+              defaultSortDirection="desc"
+            />
           </div>
         </section>
       )}
