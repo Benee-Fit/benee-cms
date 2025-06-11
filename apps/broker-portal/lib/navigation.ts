@@ -20,7 +20,7 @@ export const mainNavItems: NavItem[] = [
     subItems: [
       { label: 'Revenue Overview', href: '/revenue-breakdown/overview' },
       { label: 'Team Performance', href: '/revenue-breakdown/team-performance' },
-      { label: 'Commission Splits', href: '/revenue-breakdown/commission-splits' },
+      { label: 'Carrier Breakdown', href: '/revenue-breakdown/carrier-breakdown' },
       { label: 'Revenue Sources', href: '/revenue-breakdown/revenue-sources' },
       { label: 'Forecasting', href: '/revenue-breakdown/forecasting' },
     ],

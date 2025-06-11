@@ -23,7 +23,7 @@ export default function RevenueBreakdownLayout({
   const tabs = [
     { value: 'overview', label: 'Revenue Overview', href: '/revenue-breakdown/overview', sectionId: 'revenue-overview-title' },
     { value: 'team-performance', label: 'Team Performance', href: '/revenue-breakdown/team-performance', sectionId: 'team-performance-title' },
-    { value: 'commission-splits', label: 'Commission Splits', href: '/revenue-breakdown/commission-splits', sectionId: 'commission-splits-title' },
+    { value: 'carrier-breakdown', label: 'Carrier Breakdown', href: '/revenue-breakdown/carrier-breakdown', sectionId: 'commission-splits-title' },
     { value: 'revenue-sources', label: 'Revenue Sources', href: '/revenue-breakdown/revenue-sources', sectionId: 'revenue-sources-title' },
     { value: 'forecasting', label: 'Forecasting', href: '/revenue-breakdown/forecasting', sectionId: 'forecasting-title' },
   ];

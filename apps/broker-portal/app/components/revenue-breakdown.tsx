@@ -150,9 +150,7 @@ export function RevenueBreakdown({
       members: 350,
       avgGroupSize: 25,
       totalRevenue: 342500,
-      quotesSent: 56,
-      closeRate: 68,
-      avgDaysToClose: 15,
+      topIndustry: 'Technology',
     },
     {
       name: 'Emily Davis',
@@ -160,9 +158,7 @@ export function RevenueBreakdown({
       members: 420,
       avgGroupSize: 35,
       totalRevenue: 278900,
-      quotesSent: 42,
-      closeRate: 72,
-      avgDaysToClose: 12,
+      topIndustry: 'Healthcare',
     },
     {
       name: 'Michael Johnson',
@@ -170,9 +166,7 @@ export function RevenueBreakdown({
       members: 270,
       avgGroupSize: 30,
       totalRevenue: 197600,
-      quotesSent: 38,
-      closeRate: 59,
-      avgDaysToClose: 20,
+      topIndustry: 'Manufacturing',
     },
     {
       name: 'Sarah Williams',
@@ -180,9 +174,51 @@ export function RevenueBreakdown({
       members: 320,
       avgGroupSize: 40,
       totalRevenue: 185200,
+      topIndustry: 'Finance',
+    },
+  ];
+
+  // Mock data for Sales Funnel Performance
+  const salesFunnelData = [
+    {
+      name: 'John Smith',
+      quotesSent: 56,
+      closeRate: 68,
+      avgDaysToClose: 15,
+      avgIndustryQuoted: 'Technology',
+      avgCompanySizeQuoted: 'Medium (50-199)',
+      bestPerformingSegments: 'Tech SMEs, Manufacturing 200+',
+      quoteSource: 'Warm referrals, Cold outreach',
+    },
+    {
+      name: 'Emily Davis',
+      quotesSent: 42,
+      closeRate: 72,
+      avgDaysToClose: 12,
+      avgIndustryQuoted: 'Healthcare',
+      avgCompanySizeQuoted: 'Large (200+)',
+      bestPerformingSegments: 'Healthcare 100+, Finance SMEs',
+      quoteSource: 'Existing clients, Partnerships',
+    },
+    {
+      name: 'Michael Johnson',
+      quotesSent: 38,
+      closeRate: 59,
+      avgDaysToClose: 20,
+      avgIndustryQuoted: 'Manufacturing',
+      avgCompanySizeQuoted: 'Medium (50-199)',
+      bestPerformingSegments: 'Manufacturing 50-199, Retail SMEs',
+      quoteSource: 'Events, Inbound website',
+    },
+    {
+      name: 'Sarah Williams',
       quotesSent: 31,
       closeRate: 64,
       avgDaysToClose: 18,
+      avgIndustryQuoted: 'Finance',
+      avgCompanySizeQuoted: 'Large (200+)',
+      bestPerformingSegments: 'Finance 200+, Professional Services',
+      quoteSource: 'Warm referrals, Events',
     },
   ];
 
@@ -545,11 +581,7 @@ export function RevenueBreakdown({
                       Avg. Group Size
                     </TableHead>
                     <TableHead className="text-right">Total Revenue</TableHead>
-                    <TableHead className="text-right">Quotes Sent</TableHead>
-                    <TableHead className="text-right">Close Rate</TableHead>
-                    <TableHead className="text-right">
-                      Avg. Days to Close
-                    </TableHead>
+                    <TableHead>Top Industry</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -570,14 +602,8 @@ export function RevenueBreakdown({
                       <TableCell className="text-right">
                         ${member.totalRevenue.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {member.quotesSent}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.closeRate}%
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.avgDaysToClose}
+                      <TableCell>
+                        {member.topIndustry}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -585,14 +611,67 @@ export function RevenueBreakdown({
               </Table>
             </CardContent>
           </Card>
+          
+          {/* Sales Funnel Performance */}
+          <div className="mt-6">
+            <h4 className="text-lg font-medium mb-3">Sales Funnel Performance</h4>
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Broker Name</TableHead>
+                      <TableHead className="text-right">Quotes Sent</TableHead>
+                      <TableHead className="text-right">Close Rate</TableHead>
+                      <TableHead className="text-right">Avg Days to Close</TableHead>
+                      <TableHead>Avg Industry Quoted</TableHead>
+                      <TableHead>Avg Company Size Quoted</TableHead>
+                      <TableHead>Best Performing Industries & Company Sizes</TableHead>
+                      <TableHead>Where is quote coming from</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {salesFunnelData.map((broker) => (
+                      <TableRow key={broker.name}>
+                        <TableCell className="font-medium">
+                          {broker.name}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {broker.quotesSent}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {broker.closeRate}%
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {broker.avgDaysToClose}
+                        </TableCell>
+                        <TableCell>
+                          {broker.avgIndustryQuoted}
+                        </TableCell>
+                        <TableCell>
+                          {broker.avgCompanySizeQuoted}
+                        </TableCell>
+                        <TableCell>
+                          {broker.bestPerformingSegments}
+                        </TableCell>
+                        <TableCell>
+                          {broker.quoteSource}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
         </section>
       )}
 
-      {/* Commission Splits */}
+      {/* Carrier Breakdown */}
       {shouldRenderSection('commission-splits-title') && (
         <section aria-labelledby="commission-splits-title">
           <h3 id="commission-splits-title" className="text-xl font-medium mb-2">
-            Commission Splits
+            Carrier Breakdown
           </h3>
           <Card className="mb-4">
             <CardContent className="p-0">
