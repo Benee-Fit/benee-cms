@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
     
     const user = await currentUser();
-    console.log('[DEBUG] Current user:', user ? { id: user.id, email: user.emailAddress || user.primaryEmailAddress?.emailAddress } : 'No user found');
+    console.log('[DEBUG] Current user:', user ? { id: user.id, email: user.primaryEmailAddress?.emailAddress } : 'No user found');
     
     if (!user) {
       console.log('[DEBUG] No user found, returning 401');

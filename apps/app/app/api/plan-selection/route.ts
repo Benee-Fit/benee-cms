@@ -111,7 +111,7 @@ function extractPlansFromProcessedData(processedData: any, fileName: string, car
     return {
       documentId,
       fileName,
-      carrierName: carrierName || overview.carrierName,
+      carrierName: carrierName || processedData.highLevelOverview[0]?.carrierName,
       documentType: 'Current',
       detectedPlans,
       processedData

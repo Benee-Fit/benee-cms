@@ -130,7 +130,7 @@ export default function SingleCarrierView({
   };
 
   // Format unit rate with proper handling
-  const formatUnitRate = (value: number | string | undefined, basis: string | undefined) => {
+  const formatUnitRate = (value: number | string | null | undefined, basis: string | undefined) => {
     if (value === undefined || value === null) return 'N/A';
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(numValue)) return 'N/A';
@@ -139,7 +139,7 @@ export default function SingleCarrierView({
   };
 
   // Format volume with proper number formatting
-  const formatVolume = (value: number | string | undefined) => {
+  const formatVolume = (value: number | string | null | undefined) => {
     if (value === undefined || value === null) return 'N/A';
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     if (isNaN(numValue)) return 'N/A';

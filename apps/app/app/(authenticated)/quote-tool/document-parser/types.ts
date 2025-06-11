@@ -35,10 +35,11 @@ export interface EnhancedProcessedData {
     documentType?: string;
     policyNumber?: string | null | undefined;
     rateGuarantees?: string[] | string | null;
+    totalProposedMonthlyPlanPremium?: number;
   };
   allCoverages?: Coverage[];
   planOptions?: PlanOption[];
-  planNotes?: string[];
+  planNotes?: string[] | Array<{ note: string }>;
   // New format
   highLevelOverview?: HighLevelOverview[];
   granularBreakdown?: GranularBreakdown[];
@@ -47,13 +48,13 @@ export interface EnhancedProcessedData {
 // Define types for parsed document results
 export interface Coverage {
   coverageType: string;
-  carrierName?: string;
+  carrierName: string;
   planOptionName?: string;
   premium?: number | string;
-  monthlyPremium?: number | string;
+  monthlyPremium: number | string;
   unitRate?: number | string | null;
   unitRateBasis?: string;
-  volume?: number | string;
+  volume?: number | string | null;
   lives?: number;
   benefitDetails?: Record<string, unknown>;
 }
@@ -80,7 +81,7 @@ export interface ParsedDocumentResult {
   };
   allCoverages?: Coverage[];
   planOptions: PlanOption[];
-  planNotes?: string[];
+  planNotes?: string[] | Array<{ note: string }>;
 }
 
 // Interface for the original document structure used in the app
@@ -88,6 +89,7 @@ export interface ParsedDocument {
   originalFileName: string;
   category: string;
   relevantCoverages?: Coverage[];
+  processedData?: EnhancedProcessedData;
   metadata: {
     documentType: string;
     clientName: string;
@@ -104,6 +106,7 @@ export interface ParsedDocument {
       totalMonthlyPremium: number;
     }>;
     rateGuarantees?: string;
+    reportPreparedBy?: string;
   };
   coverages: Coverage[];
   planNotes: Array<{ note: string }>;

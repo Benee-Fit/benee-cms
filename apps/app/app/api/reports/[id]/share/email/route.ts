@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@repo/auth/server';
-import { db } from '@repo/database';
+import { database as db } from '@repo/database';
 
 export async function POST(
   request: NextRequest,

@@ -34,6 +34,7 @@ interface ParsedDocument {
         totalMonthlyPremium: number;
       }>;
       rateGuarantees?: string;
+      reportPreparedBy?: string;
     };
     planOptions?: Array<{
       planOptionName: string;
@@ -68,6 +69,7 @@ interface ParsedDocument {
       lives: number;
       benefitDetails: Record<string, unknown>;
     }>;
+    documentNotes?: string[];
     planNotes: Array<{ note: string }>;
   };
   metadata: {
@@ -86,6 +88,7 @@ interface ParsedDocument {
       totalMonthlyPremium: number;
     }>;
     rateGuarantees?: string;
+    reportPreparedBy?: string;
   };
   coverages: Array<{
     coverageType: string;

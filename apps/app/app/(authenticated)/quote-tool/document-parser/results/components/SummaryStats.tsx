@@ -35,7 +35,7 @@ export default function SummaryStats({ parsedDocuments }: SummaryStatsProps) {
       carrierName = doc.processedData.metadata.carrierName;
     } else if (doc.metadata?.carrierName) {
       carrierName = doc.metadata.carrierName;
-    } else if (doc.coverages && doc.coverages.length > 0 && doc.coverages[0].carrierName) {
+    } else if (doc.coverages && doc.coverages.length > 0 && (doc.coverages[0] as any).carrierName) {
       carrierName = (doc.coverages[0] as any).carrierName;
     }
     
@@ -53,8 +53,8 @@ export default function SummaryStats({ parsedDocuments }: SummaryStatsProps) {
       
       if (doc.processedData?.planOptions?.[0]?.carrierProposals?.[0]?.totalMonthlyPremium) {
         premium = doc.processedData.planOptions[0].carrierProposals[0].totalMonthlyPremium;
-      } else if (doc.processedData?.metadata?.totalProposedMonthlyPlanPremium) {
-        premium = (doc.processedData.metadata as any).totalProposedMonthlyPlanPremium;
+      } else if ((doc.processedData?.metadata as any)?.totalProposedMonthlyPlanPremium) {
+        premium = (doc.processedData?.metadata as any)?.totalProposedMonthlyPlanPremium;
       } else if (doc.metadata?.totalProposedMonthlyPlanPremium) {
         premium = doc.metadata.totalProposedMonthlyPlanPremium;
       } else {

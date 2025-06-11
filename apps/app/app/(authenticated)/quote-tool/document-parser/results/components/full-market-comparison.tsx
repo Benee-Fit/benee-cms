@@ -96,7 +96,7 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
   }
 
   // Group coverages by type
-  const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document) => {
+  const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document, docIndex) => {
     // Skip if document is null/undefined or doesn't have coverages
     if (!document || !document.coverages || !Array.isArray(document.coverages)) {
       console.log(`[DEBUG] Skipping document ${docIndex}: No valid coverages array`);

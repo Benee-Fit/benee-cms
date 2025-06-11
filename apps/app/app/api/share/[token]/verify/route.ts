@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@repo/database';
+import { database as db } from '@repo/database';
 import { verifyPassword, isShareLinkValid } from '../../../../../lib/security';
 
 export async function POST(

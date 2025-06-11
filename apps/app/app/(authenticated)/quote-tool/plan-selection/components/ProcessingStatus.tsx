@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Progress } from '@repo/design-system/components/ui/progress';
@@ -58,7 +59,7 @@ export default function ProcessingStatus({ stages, currentStage }: ProcessingSta
   };
 
   const getStageDescription = (stageId: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactElement> = {
       authentication: <Eye className="h-3 w-3" />,
       form_validation: <FileText className="h-3 w-3" />,
       file_upload: <Database className="h-3 w-3" />,

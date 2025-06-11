@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@repo/auth/server';
-import { db } from '@repo/database';
+import { database as db } from '@repo/database';
 import { verifyPassword, isShareLinkValid } from '../../../../lib/security';
 import { trackShareLinkEvent } from '../../../../lib/analytics';
 
@@ -80,7 +80,7 @@ export async function GET(
       userAgent: request.headers.get('user-agent') || undefined,
       ipAddress: request.headers.get('x-forwarded-for') || 
                  request.headers.get('x-real-ip') || 
-                 request.ip || undefined,
+                 undefined,
       referrer: request.headers.get('referer') || undefined,
     });
 
