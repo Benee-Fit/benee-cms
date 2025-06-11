@@ -19,7 +19,6 @@ import {
 } from '@repo/design-system/components/ui/sidebar';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/design-system/components/ui/collapsible';
 import { ChevronDown, Home, Search } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
@@ -112,34 +111,30 @@ export function AppSidebar() {
             // If has subitems, render a collapsible section
             return (
               <SidebarMenuItem key={item.href}>
-                <Collapsible
-                  open={openItems[item.href]}
-                  onOpenChange={() => toggleOpen(item.href)}
+                <SidebarMenuButton 
+                  onClick={() => toggleOpen(item.href)}
+                  isActive={isActive(item)}
                 >
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton isActive={isActive(item)}>
-                      <span>{item.label}</span>
-                      <ChevronDown
-                        className={`ml-auto h-4 w-4 transition-transform duration-200 ${
-                          openItems[item.href] ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.subItems.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.href}>
-                          <SidebarMenuSubButton asChild isActive={pathname === subItem.href}>
-                            <Link href={subItem.href} onClick={handleNavClick}>
-                              {subItem.label}
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </Collapsible>
+                  <span>{item.label}</span>
+                  <ChevronDown
+                    className={`ml-auto h-4 w-4 transition-transform duration-200 ${
+                      openItems[item.href] ? 'rotate-180' : ''
+                    }`}
+                  />
+                </SidebarMenuButton>
+                {openItems[item.href] && (
+                  <SidebarMenuSub>
+                    {item.subItems.map((subItem) => (
+                      <SidebarMenuSubItem key={subItem.href}>
+                        <SidebarMenuSubButton asChild isActive={pathname === subItem.href}>
+                          <Link href={subItem.href} onClick={handleNavClick}>
+                            {subItem.label}
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
             );
           })}
