@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@repo/design-system/components/ui/alert
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Lock, AlertCircle, FileText, Download, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import SharedReportView from '../../../components/shared-report-view';
 
 interface ReportData {
   shareLink: {
@@ -229,141 +230,10 @@ export default function SharedReportPage() {
           </CardHeader>
         </Card>
 
-        {/* Report Data */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-6">
-              {/* Report Summary */}
-              {reportData.report.data && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-medium text-gray-900">Documents Analyzed</h3>
-                      <p className="text-2xl font-bold text-blue-600 mt-2">
-                        {reportData.report.data.documentCount || 0}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-medium text-gray-900">Total Coverages</h3>
-                      <p className="text-2xl font-bold text-green-600 mt-2">
-                        {reportData.report.data.totalCoverages || 0}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-4">
-                      <h3 className="font-medium text-gray-900">Carriers</h3>
-                      <p className="text-2xl font-bold text-purple-600 mt-2">
-                        {reportData.report.data.carriers?.length || 0}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-              
-              {/* Carriers List */}
-              {reportData.report.data?.carriers && reportData.report.data.carriers.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3">Insurance Carriers</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {reportData.report.data.carriers.map((carrier: string, index: number) => (
-                      <Badge key={index} variant="outline" className="text-sm">
-                        {carrier}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {/* Documents Table */}
-              {reportData.report.data?.documents && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Analyzed Documents</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border border-gray-300 px-4 py-2 text-left">Document</th>
-                          <th className="border border-gray-300 px-4 py-2 text-left">Carrier</th>
-                          <th className="border border-gray-300 px-4 py-2 text-left">Category</th>
-                          <th className="border border-gray-300 px-4 py-2 text-left">Coverages</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reportData.report.data.documents.map((doc: any, index: number) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="border border-gray-300 px-4 py-2">
-                              {doc.originalFileName || `Document ${index + 1}`}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {doc.metadata?.carrierName || 'Unknown'}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              <Badge variant="secondary">{doc.category || 'Uncategorized'}</Badge>
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {doc.coverages?.length || 0}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-              
-              {/* Coverage Details */}
-              {reportData.report.data?.documents?.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-3">Coverage Details</h3>
-                  <div className="space-y-4">
-                    {reportData.report.data.documents.map((doc: any, docIndex: number) => (
-                      <div key={docIndex} className="border rounded-lg p-4">
-                        <h4 className="font-medium mb-3">
-                          {doc.metadata?.carrierName || 'Unknown Carrier'} - {doc.originalFileName}
-                        </h4>
-                        {doc.coverages && doc.coverages.length > 0 ? (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="bg-gray-50">
-                                  <th className="border px-3 py-2 text-left">Coverage</th>
-                                  <th className="border px-3 py-2 text-left">Monthly Premium</th>
-                                  <th className="border px-3 py-2 text-left">Lives</th>
-                                  <th className="border px-3 py-2 text-left">Unit Rate</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {doc.coverages.map((coverage: any, covIndex: number) => (
-                                  <tr key={covIndex} className="hover:bg-gray-50">
-                                    <td className="border px-3 py-2">{coverage.coverageType}</td>
-                                    <td className="border px-3 py-2">
-                                      ${(coverage.monthlyPremium || 0).toLocaleString()}
-                                    </td>
-                                    <td className="border px-3 py-2">{coverage.lives || 0}</td>
-                                    <td className="border px-3 py-2">
-                                      {coverage.unitRate ? `$${coverage.unitRate} ${coverage.unitRateBasis || ''}` : 'N/A'}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <p className="text-gray-500">No coverage details available</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Professional Report Display */}
+        {reportData.report.data && reportData.report.data.documents && (
+          <SharedReportView reportData={reportData.report.data} />
+        )}
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500 print:hidden">

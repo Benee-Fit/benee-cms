@@ -16,6 +16,10 @@ import {
   RefreshCw,
   Eye
 } from 'lucide-react';
+import SummaryStats from '../../document-parser/results/components/SummaryStats';
+import MarketComparisonView from '../../document-parser/results/components/market-comparison/MarketComparisonView';
+import CarrierOverviewCards from '../../document-parser/results/components/CarrierOverviewCards';
+import type { ParsedDocument } from '../../document-parser/types';
 
 interface QuoteReport {
   id: string;
@@ -40,6 +44,75 @@ interface QuoteReport {
     createdAt: string;
   }>;
 }
+
+// Transform saved report data to ParsedDocument format
+const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[] => {
+  if (!reportData.documents) return [];
+  
+  return reportData.documents.map((doc: any) => {
+    // Extract the full processedData if available
+    const processedData = doc.processedData || {};
+    
+    // Build the transformed document
+    const transformedDoc: ParsedDocument = {
+      originalFileName: doc.metadata?.fileName || `${doc.metadata?.clientName} - ${doc.metadata?.carrierName}.pdf` || 'Unknown Document',
+      category: doc.category || 'Current',
+      metadata: {
+        documentType: doc.metadata?.documentType || 'Proposal',
+        clientName: doc.metadata?.clientName || 'Unknown Client',
+        carrierName: doc.metadata?.carrierName || 'Unknown Carrier',
+        effectiveDate: doc.metadata?.effectiveDate || '',
+        quoteDate: doc.metadata?.quoteDate || '',
+        policyNumber: doc.metadata?.policyNumber || undefined,
+        planOptionName: doc.planOptionName || 'Default Plan',
+        totalProposedMonthlyPlanPremium: processedData.planOptions?.[0]?.carrierProposals?.[0]?.totalMonthlyPremium || 0,
+        fileName: doc.metadata?.fileName || 'unknown.pdf',
+        fileCategory: doc.category || 'Current',
+        planOptionTotals: processedData.planOptions?.map((option: any) => ({
+          planOptionName: option.planOptionName,
+          totalMonthlyPremium: option.carrierProposals?.[0]?.totalMonthlyPremium || 0
+        })) || [],
+        rateGuarantees: doc.metadata?.rateGuarantees || ''
+      },
+      coverages: doc.coverages?.map((coverage: any) => ({
+        coverageType: coverage.coverageType || 'Unknown Coverage',
+        carrierName: coverage.carrierName || doc.metadata?.carrierName || 'Unknown Carrier',
+        planOptionName: coverage.planOptionName || 'Default Plan',
+        premium: coverage.premium || coverage.monthlyPremium || 0,
+        monthlyPremium: coverage.monthlyPremium || 0,
+        unitRate: coverage.unitRate || 0,
+        unitRateBasis: coverage.unitRateBasis || '',
+        volume: coverage.volume || 0,
+        lives: coverage.lives || 0,
+        benefitDetails: coverage.benefitDetails || {}
+      })) || [],
+      planNotes: doc.planNotes || [],
+      // Pass through the full processedData structure
+      processedData: processedData
+    };
+    
+    // If we have granularBreakdown data (new format), ensure it's included
+    if (processedData.granularBreakdown) {
+      transformedDoc.processedData = {
+        ...processedData,
+        highLevelOverview: processedData.highLevelOverview || [],
+        granularBreakdown: processedData.granularBreakdown || []
+      };
+    }
+    
+    // If we have planOptions (legacy format), ensure the full structure is preserved
+    if (processedData.planOptions) {
+      transformedDoc.processedData = {
+        ...processedData,
+        metadata: processedData.metadata || doc.metadata,
+        planOptions: processedData.planOptions,
+        allCoverages: processedData.allCoverages || doc.coverages || []
+      };
+    }
+    
+    return transformedDoc;
+  });
+};
 
 export default function ReportViewPage() {
   const params = useParams();
@@ -324,245 +397,38 @@ export default function ReportViewPage() {
           </CardContent>
         </Card>
 
-        {/* Report Overview */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Report Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {report.data.carriers && (
-                <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2">Carriers</h4>
-                  <div className="space-y-1">
-                    {report.data.carriers.map((carrier: string, index: number) => (
-                      <Badge key={index} variant="outline">{carrier}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/* Summary Stats */}
+        {report.data && report.data.documents && (() => {
+          const transformedDocuments = transformReportDataToParsedDocuments(report.data);
+          return <SummaryStats parsedDocuments={transformedDocuments} />;
+        })()}
+
+        {/* Comparison Tables */}
+        {report.data && report.data.documents && (() => {
+          const transformedDocuments = transformReportDataToParsedDocuments(report.data);
+          const carriersMap = Object.fromEntries((report.data.carriers || []).map((carrier: string) => [
+            carrier, 
+            transformedDocuments
+              .filter(doc => doc.metadata?.carrierName === carrier)
+              .map(doc => doc.originalFileName)
+          ]));
+          
+          return (
+            <div className="space-y-8">
+              {/* Use MarketComparisonView with transformed data */}
+              <MarketComparisonView 
+                parsedDocuments={transformedDocuments}
+                carriersMap={carriersMap}
+              />
               
-              {report.data.documents && (
-                <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2">Document Categories</h4>
-                  <div className="space-y-1">
-                    {Array.from(new Set(report.data.documents.map((doc: any) => doc.category))).map((category: string, index: number) => (
-                      <Badge key={index} variant="secondary">{category}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {report.data.documents && (
-                <div>
-                  <h4 className="font-medium text-sm text-gray-700 mb-2">Total Documents</h4>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {report.data.documents.length}
-                  </div>
-                </div>
-              )}
+              {/* Carrier Overview Cards */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
+                <CarrierOverviewCards parsedDocuments={transformedDocuments} />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Premium Comparison */}
-        {report.data.documents && report.data.documents.some((doc: any) => doc.processedData?.planOptions && doc.processedData.planOptions.length > 0) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Premium Comparison</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Plan Option
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Carrier
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Category
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Monthly Premium
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rate Guarantee
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {report.data.documents.flatMap((doc: any) => 
-                      (doc.processedData?.planOptions || []).flatMap((planOption: any) =>
-                        (planOption.carrierProposals || []).map((proposal: any, index: number) => (
-                          <tr key={`${doc.category}-${planOption.planOptionName}-${index}`} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
-                              {planOption.planOptionName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200">
-                              {proposal.carrierName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
-                              <Badge variant={doc.category === 'Current' ? 'default' : doc.category === 'Renegotiated' ? 'secondary' : 'outline'}>
-                                {doc.category}
-                              </Badge>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r border-gray-200">
-                              <span className="font-semibold">
-                                ${proposal.totalMonthlyPremium ? proposal.totalMonthlyPremium.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {proposal.rateGuaranteeText || 'N/A'}
-                            </td>
-                          </tr>
-                        ))
-                      )
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Coverage Details */}
-        {report.data.documents && report.data.documents.some((doc: any) => doc.coverages && doc.coverages.length > 0) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Coverage Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Coverage Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Carrier
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Category
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Lives
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">
-                        Volume
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Unit Rate
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {report.data.documents.flatMap((doc: any) => 
-                      (doc.coverages || []).map((coverage: any, index: number) => (
-                        <tr key={`${doc.category}-${index}`} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
-                            {coverage.coverageType}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200">
-                            {coverage.carrierName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap border-r border-gray-200">
-                            <Badge variant={doc.category === 'Current' ? 'default' : doc.category === 'Renegotiated' ? 'secondary' : 'outline'}>
-                              {doc.category}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r border-gray-200">
-                            {coverage.lives || 0}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right border-r border-gray-200">
-                            {coverage.volume ? coverage.volume.toLocaleString() : 0}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                            ${coverage.unitRate || 0} {coverage.unitRateBasis || ''}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Document Details */}
-        {report.data.documents && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Document Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {report.data.documents.map((doc: any, index: number) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-medium">{doc.metadata?.clientName || 'Unknown Client'}</h4>
-                        <Badge variant={doc.category === 'Current' ? 'default' : doc.category === 'Renegotiated' ? 'secondary' : 'outline'}>
-                          {doc.category}
-                        </Badge>
-                        {doc.success && <Badge variant="outline" className="text-green-600">Processed</Badge>}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {doc.metadata?.carrierName}
-                      </div>
-                    </div>
-                    
-                    {doc.metadata && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        {doc.metadata.quoteDate && (
-                          <div>
-                            <span className="font-medium text-gray-700">Quote Date:</span>
-                            <div>{doc.metadata.quoteDate}</div>
-                          </div>
-                        )}
-                        {doc.metadata.effectiveDate && (
-                          <div>
-                            <span className="font-medium text-gray-700">Effective Date:</span>
-                            <div>{doc.metadata.effectiveDate}</div>
-                          </div>
-                        )}
-                        {doc.metadata.rateGuarantees && (
-                          <div>
-                            <span className="font-medium text-gray-700">Rate Guarantees:</span>
-                            <div>{doc.metadata.rateGuarantees}</div>
-                          </div>
-                        )}
-                        {doc.metadata.reportPreparedBy && (
-                          <div>
-                            <span className="font-medium text-gray-700">Prepared By:</span>
-                            <div>{doc.metadata.reportPreparedBy}</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {doc.coverages && doc.coverages.length > 0 && (
-                      <div className="mt-3">
-                        <span className="font-medium text-gray-700 text-sm">Coverages:</span>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {doc.coverages.map((coverage: any, covIndex: number) => (
-                            <Badge key={covIndex} variant="outline" className="text-xs">
-                              {coverage.coverageType}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          );
+        })()}
 
         {/* Raw Data (Expandable) */}
         <Card>
