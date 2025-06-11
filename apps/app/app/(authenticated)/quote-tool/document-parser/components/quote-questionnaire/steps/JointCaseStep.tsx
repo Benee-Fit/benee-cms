@@ -112,7 +112,7 @@ export default function JointCaseStep({
                 <div className="flex-1">
                   <div className="text-lg font-medium text-gray-900">Yes</div>
                   <p className="text-sm text-gray-600 mt-1 leading-tight">
-                    Fee is split between brokers
+                    Fee is split betweeni brokers
                   </p>
                 </div>
               </div>

@@ -14,10 +14,20 @@ export async function GET(
 
     const { id } = await params;
 
+    // Get the database user ID
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: user.id },
+      select: { id: true }
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+    }
+
     const report = await db.quoteReport.findFirst({
       where: {
         id: id,
-        createdById: user.id,
+        createdById: dbUser.id,
       },
       include: {
         client: {
@@ -77,11 +87,21 @@ export async function PUT(
     const body = await request.json();
     const { title, clientId, data } = body;
 
+    // Get the database user ID
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: user.id },
+      select: { id: true }
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+    }
+
     // Check if report exists and user owns it
     const existingReport = await db.quoteReport.findFirst({
       where: {
         id: id,
-        createdById: user.id,
+        createdById: dbUser.id,
       },
     });
 
@@ -152,11 +172,21 @@ export async function DELETE(
 
     const { id } = await params;
 
+    // Get the database user ID
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: user.id },
+      select: { id: true }
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+    }
+
     // Check if report exists and user owns it
     const existingReport = await db.quoteReport.findFirst({
       where: {
         id: id,
-        createdById: user.id,
+        createdById: dbUser.id,
       },
     });
 

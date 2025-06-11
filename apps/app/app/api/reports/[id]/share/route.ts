@@ -15,13 +15,23 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { expiresAt, password } = body;
+    const { expiresAt, expiresInDays, password } = body;
+
+    // Get the database user ID
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: user.id },
+      select: { id: true }
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+    }
 
     // Check if report exists and user owns it
     const report = await db.quoteReport.findFirst({
       where: {
         id: id,
-        createdById: user.id,
+        createdById: dbUser.id,
       },
     });
 
@@ -50,12 +60,21 @@ export async function POST(
       hashedPassword = await hashPassword(password);
     }
 
+    // Calculate expiration date if expiresInDays is provided
+    let finalExpiresAt: Date | null = null;
+    if (expiresAt) {
+      finalExpiresAt = new Date(expiresAt);
+    } else if (expiresInDays) {
+      finalExpiresAt = new Date();
+      finalExpiresAt.setDate(finalExpiresAt.getDate() + expiresInDays);
+    }
+
     const shareLink = await db.reportShareLink.create({
       data: {
         reportId: id,
         shareToken: shareToken!,
-        createdById: user.id,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdById: dbUser.id,
+        expiresAt: finalExpiresAt,
         password: hashedPassword,
       },
       include: {
@@ -68,10 +87,22 @@ export async function POST(
       },
     });
 
-    // Don't return the hashed password
+    // Don't return the hashed password and generate share URL
     const { password: _, ...safeLinkData } = shareLink;
+    
+    // Generate the full share URL
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_APP_URL || 'https://app.example.com'
+      : 'http://localhost:3000';
+      
+    const shareUrl = `${baseUrl}/share/${shareToken}`;
 
-    return NextResponse.json(safeLinkData, { status: 201 });
+    return NextResponse.json({
+      ...safeLinkData,
+      shareUrl
+    }, { status: 201 });
   } catch (error) {
     console.error('Failed to create share link:', error);
     return NextResponse.json(
@@ -93,11 +124,21 @@ export async function GET(
 
     const { id } = await params;
 
+    // Get the database user ID
+    const dbUser = await db.user.findUnique({
+      where: { clerkId: user.id },
+      select: { id: true }
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+    }
+
     // Check if report exists and user owns it
     const report = await db.quoteReport.findFirst({
       where: {
         id: id,
-        createdById: user.id,
+        createdById: dbUser.id,
       },
     });
 
