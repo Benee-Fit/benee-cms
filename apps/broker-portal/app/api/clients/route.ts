@@ -4,7 +4,7 @@ import { database } from '@repo/database';
 // GET all clients
 export async function GET() {
   try {
-    const clients = await database.brokerClient.findMany({
+    const clients = await database.client.findMany({
       orderBy: { createdAt: 'desc' },
     });
     
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Check for duplicate policy number
-    const existingClient = await database.brokerClient.findUnique({
+    const existingClient = await database.client.findUnique({
       where: { policyNumber: body.policyNumber },
     });
     
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const client = await database.brokerClient.create({
+    const client = await database.client.create({
       data: {
         companyName: body.companyName,
         policyNumber: body.policyNumber,

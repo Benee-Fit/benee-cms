@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const documents = await database.brokerClientDocument.findMany({
+    const documents = await database.clientDocument.findMany({
       where: { clientId: id },
       orderBy: { uploadDate: 'desc' },
     });
@@ -44,7 +44,7 @@ export async function POST(
     }
     
     // Verify client exists
-    const client = await database.brokerClient.findUnique({
+    const client = await database.client.findUnique({
       where: { id },
     });
     
@@ -67,7 +67,7 @@ export async function POST(
     const fileUrl = await uploadToSpaces(key, buffer, file.type);
     
     // Save document metadata to database
-    const document = await database.brokerClientDocument.create({
+    const document = await database.clientDocument.create({
       data: {
         clientId: id,
         fileName: file.name,

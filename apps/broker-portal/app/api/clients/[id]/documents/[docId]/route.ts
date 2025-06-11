@@ -10,7 +10,7 @@ export async function DELETE(
   const { id, docId } = await params;
   try {
     // Get document to find the file URL
-    const document = await database.brokerClientDocument.findUnique({
+    const document = await database.clientDocument.findUnique({
       where: { id: docId },
     });
     
@@ -29,7 +29,7 @@ export async function DELETE(
     await deleteFromSpaces(key);
     
     // Delete from database
-    await database.brokerClientDocument.delete({
+    await database.clientDocument.delete({
       where: { id: docId },
     });
     

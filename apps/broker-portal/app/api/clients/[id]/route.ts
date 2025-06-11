@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const client = await database.brokerClient.findUnique({
+    const client = await database.client.findUnique({
       where: { id },
       include: { documents: true },
     });
@@ -41,7 +41,7 @@ export async function PUT(
     
     // Check if policy number is being changed and ensure it's unique
     if (body.policyNumber) {
-      const existingClient = await database.brokerClient.findFirst({
+      const existingClient = await database.client.findFirst({
         where: {
           policyNumber: body.policyNumber,
           NOT: { id },
@@ -56,7 +56,7 @@ export async function PUT(
       }
     }
     
-    const client = await database.brokerClient.update({
+    const client = await database.client.update({
       where: { id },
       data: {
         companyName: body.companyName,
@@ -86,7 +86,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    await database.brokerClient.delete({
+    await database.client.delete({
       where: { id },
     });
     
