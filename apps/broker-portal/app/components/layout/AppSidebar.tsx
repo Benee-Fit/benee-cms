@@ -111,12 +111,11 @@ export function AppSidebar() {
 
             // If has subitems, render a collapsible section
             return (
-              <Collapsible
-                key={item.href}
-                open={openItems[item.href]}
-                onOpenChange={() => toggleOpen(item.href)}
-              >
-                <SidebarMenuItem>
+              <SidebarMenuItem key={item.href}>
+                <Collapsible
+                  open={openItems[item.href]}
+                  onOpenChange={() => toggleOpen(item.href)}
+                >
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton isActive={isActive(item)}>
                       <span>{item.label}</span>
@@ -140,8 +139,8 @@ export function AppSidebar() {
                       ))}
                     </SidebarMenuSub>
                   </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+                </Collapsible>
+              </SidebarMenuItem>
             );
           })}
         </SidebarMenu>
