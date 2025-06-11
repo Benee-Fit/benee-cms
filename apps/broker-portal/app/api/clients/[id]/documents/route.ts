@@ -44,7 +44,7 @@ export async function POST(
     }
     
     // Verify client exists
-    const client = await database.client.findUnique({
+    const client = await database.brokerClient.findUnique({
       where: { id },
     });
     
