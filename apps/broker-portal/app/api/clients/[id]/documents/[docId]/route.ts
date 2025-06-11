@@ -5,16 +5,16 @@ import { deleteFromSpaces } from '../../../../../../lib/do-spaces';
 // DELETE document
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string; docId: string } }
+  { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
-  const { params } = context;
+  const { id, docId } = await params;
   try {
     // Get document to find the file URL
     const document = await database.brokerClientDocument.findUnique({
-      where: { id: params.docId },
+      where: { id: docId },
     });
     
-    if (!document || document.clientId !== params.id) {
+    if (!document || document.clientId !== id) {
       return NextResponse.json(
         { error: 'Document not found' },
         { status: 404 }
@@ -30,7 +30,7 @@ export async function DELETE(
     
     // Delete from database
     await database.brokerClientDocument.delete({
-      where: { id: params.docId },
+      where: { id: docId },
     });
     
     return NextResponse.json({ success: true });

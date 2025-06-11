@@ -4,12 +4,12 @@ import { database } from '@repo/database';
 // GET single client
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { params } = context;
+  const { id } = await params;
   try {
     const client = await database.brokerClient.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { documents: true },
     });
     
@@ -33,9 +33,9 @@ export async function GET(
 // PUT update client
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { params } = context;
+  const { id } = await params;
   try {
     const body = await request.json();
     
@@ -44,7 +44,7 @@ export async function PUT(
       const existingClient = await database.brokerClient.findFirst({
         where: {
           policyNumber: body.policyNumber,
-          NOT: { id: params.id },
+          NOT: { id },
         },
       });
       
@@ -57,7 +57,7 @@ export async function PUT(
     }
     
     const client = await database.brokerClient.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         companyName: body.companyName,
         policyNumber: body.policyNumber,
@@ -82,12 +82,12 @@ export async function PUT(
 // DELETE client
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { params } = context;
+  const { id } = await params;
   try {
     await database.brokerClient.delete({
-      where: { id: params.id },
+      where: { id },
     });
     
     return NextResponse.json({ success: true });

@@ -5,12 +5,12 @@ import { uploadToSpaces } from '../../../../../lib/do-spaces';
 // GET all documents for a client
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { params } = context;
+  const { id } = await params;
   try {
     const documents = await database.brokerClientDocument.findMany({
-      where: { clientId: params.id },
+      where: { clientId: id },
       orderBy: { uploadDate: 'desc' },
     });
     
@@ -27,9 +27,9 @@ export async function GET(
 // POST upload new document
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { params } = context;
+  const { id } = await params;
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -45,7 +45,7 @@ export async function POST(
     
     // Verify client exists
     const client = await database.brokerClient.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
     
     if (!client) {
@@ -61,7 +61,7 @@ export async function POST(
     
     // Generate unique key for file
     const timestamp = Date.now();
-    const key = `clients/${params.id}/${timestamp}-${file.name}`;
+    const key = `clients/${id}/${timestamp}-${file.name}`;
     
     // Upload to DO Spaces
     const fileUrl = await uploadToSpaces(key, buffer, file.type);
@@ -69,7 +69,7 @@ export async function POST(
     // Save document metadata to database
     const document = await database.brokerClientDocument.create({
       data: {
-        clientId: params.id,
+        clientId: id,
         fileName: file.name,
         fileType: file.type,
         fileUrl,
