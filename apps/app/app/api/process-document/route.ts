@@ -532,8 +532,6 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
     }
 
     // First upload the file to DigitalOcean Spaces
-    console.log('[INFO] Starting PDF text extraction...');
-    console.log('[DEBUG] Uploading PDF to DigitalOcean Spaces first...');
 
     // Generate a unique filename for this upload
     const timestamp = new Date().getTime();
@@ -549,12 +547,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       type: 'upload',
     });
 
-    console.log(
-      `[DEBUG] File uploaded to DigitalOcean Spaces: ${uploadResult.url}`
-    );
-
     // Now send the URL to PDF.co for text extraction
-    console.log('[DEBUG] Sending URL to PDF.co for text extraction...');
 
     const extractTextOptions: HttpsRequestOptions = {
       hostname: PDF_CO_HOSTNAME,
@@ -577,15 +570,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       })
     );
 
-    console.log(
-      `[DEBUG] PDF.co extraction response status: ${extractionResponse.statusCode}`
-    );
     if (extractionResponse.error || !extractionResponse.data) {
-      console.error('[ERROR] PDF.co extraction request failed:', {
-        error: extractionResponse.error,
-        statusCode: extractionResponse.statusCode,
-        rawResponse: extractionResponse.rawResponse || '(No raw response)',
-      });
 
       if (extractionResponse.statusCode === 402) {
         throw new Error(
@@ -598,19 +583,11 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       );
     }
 
-    // Log the full response to inspect its structure
-    console.log(
-      '[DEBUG] PDF.co extraction complete response:',
-      extractionResponse.data
-    );
-
     // Parse the response
     let responseData;
     try {
       responseData = JSON.parse(extractionResponse.data);
-      console.log('[DEBUG] Parsed extraction response:', responseData);
     } catch (parseError) {
-      console.error('[ERROR] Failed to parse PDF.co response:', parseError);
       throw new Error(
         `Failed to parse PDF.co response: ${parseError instanceof Error ? parseError.message : String(parseError)}`
       );
@@ -621,7 +598,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       responseData.error === true ||
       (typeof responseData.error === 'string' && responseData.error.length > 0)
     ) {
-      console.error('[ERROR] PDF.co returned an error:', responseData.error);
+      // PDF.co returned an error
       if (
         String(responseData.error).includes('Payment Required') ||
         responseData.status === 402
@@ -635,10 +612,6 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
 
     // Handle the asynchronous job response
     if (responseData.jobId) {
-      console.log(
-        `[DEBUG] PDF.co started async job with ID: ${responseData.jobId}`
-      );
-
       // Poll the job status until it completes or fails
       const jobCheckOptions: HttpsRequestOptions = {
         hostname: PDF_CO_HOSTNAME,
@@ -657,10 +630,6 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
 
       // Poll the job status
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        console.log(
-          `[DEBUG] Checking job status (attempt ${attempt}/${MAX_ATTEMPTS})...`
-        );
-
         // Wait before checking status
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
@@ -668,20 +637,13 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
         const jobStatusResponse = await makeHttpsRequest(jobCheckOptions);
 
         if (jobStatusResponse.error || !jobStatusResponse.data) {
-          console.error(
-            '[ERROR] Failed to check job status:',
-            jobStatusResponse.error
-          );
-          // Continue polling despite error, as the job might still complete
           continue;
         }
 
         let jobStatus;
         try {
           jobStatus = JSON.parse(jobStatusResponse.data);
-          console.log(`[DEBUG] Job status: ${jobStatus.status}`);
         } catch (parseError) {
-          console.error('[ERROR] Failed to parse job status:', parseError);
           continue;
         }
 
@@ -701,9 +663,6 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
 
         // Check if job completed successfully
         if (jobStatus.status === 'success' && jobStatus.url) {
-          console.log(
-            '[DEBUG] PDF.co job completed successfully, fetching result...'
-          );
           responseData.url = jobStatus.url;
           break;
         }
@@ -712,11 +671,6 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
 
     // Handle the response which might contain a URL to fetch the result
     if (responseData.url) {
-      console.log(
-        '[DEBUG] PDF.co returned a result URL, fetching text content:',
-        responseData.url
-      );
-
       // Parse URL to get hostname and path
       const resultUrl = new URL(responseData.url);
 
@@ -737,35 +691,8 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
         );
       }
 
-      console.log('[DEBUG] Successfully retrieved text content from URL');
-      console.log(
-        `[DEBUG] Text extraction successful, extracted ${resultResponse.data.length} characters`
-      );
-
-      // Log a sample of the extracted text
-      if (resultResponse.data.length < 100) {
-        console.log(`[DEBUG] Extracted text sample: ${resultResponse.data}`);
-      } else {
-        console.log(
-          `[DEBUG] Extracted text sample: ${resultResponse.data.substring(0, 100)}...`
-        );
-        console.log(
-          `[DEBUG] Extracted text length: ${resultResponse.data.length} characters`
-        );
-
-        // Log a larger sample for debugging
-        console.log('[DEBUG] Larger extracted text sample:');
-        console.log('----------------START OF TEXT SAMPLE----------------');
-        console.log(resultResponse.data.substring(0, 1000));
-        console.log('----------------END OF TEXT SAMPLE----------------');
-      }
-
       return resultResponse.data; // Return the extracted text
     } else if (responseData.text) {
-      // Also support the case where text is directly in the response
-      console.log(
-        '[DEBUG] Text extraction successful, found text directly in response'
-      );
       return responseData.text;
     }
 
@@ -774,10 +701,6 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       'No text content, result URL, or job ID found in PDF.co response'
     );
   } catch (error) {
-    console.error('[ERROR] PDF extraction failed:', {
-      error: error instanceof Error ? error.message : String(error),
-      errorObject: error,
-    });
     throw new Error(
       `Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -833,14 +756,9 @@ function createGeminiPayload(extractedText: string): object {
  */
 function processGeminiResponse(responseText: string): EnhancedGeminiResponse {
   // Parse the JSON response from Gemini
-  console.log('[DEBUG] Attempting to parse JSON from Gemini response...');
   const parsedJson = extractJsonFromGeminiResponse(responseText);
   if (!parsedJson) {
-    console.error('[ERROR] Failed to parse JSON from Gemini response');
-    // Log the first 500 characters of the response to help diagnose
-    console.log(
-      `[DEBUG] Failed JSON parsing. Response text sample: ${responseText.substring(0, 500)}...`
-    );
+    // Failed JSON parsing
     throw new Error('Failed to parse JSON from Gemini response');
   }
 
@@ -848,52 +766,30 @@ function processGeminiResponse(responseText: string): EnhancedGeminiResponse {
   const hasNewFormat = parsedJson.highLevelOverview && parsedJson.granularBreakdown;
   
   if (hasNewFormat) {
-    console.log('[DEBUG] Detected new enhanced JSON format with highLevelOverview and granularBreakdown');
     // Validate the new format
     if (!Array.isArray(parsedJson.highLevelOverview) || !Array.isArray(parsedJson.granularBreakdown)) {
-      console.error('[ERROR] New format detected but arrays are invalid');
       throw new Error('Invalid new format: highLevelOverview and granularBreakdown must be arrays');
     }
     
-    console.log(`[DEBUG] Successfully parsed new format with ${parsedJson.highLevelOverview.length} overview items and ${parsedJson.granularBreakdown.length} breakdown items`);
     return parsedJson;
-  } else {
-    console.log('[DEBUG] Processing legacy format with allCoverages');
-    // Handle legacy format
-    const validationResult = validateCoverages(parsedJson.allCoverages || []);
-
-    // If no valid coverages, create default ones
-    let processedCoverages = validationResult.validCoverages;
-    if (processedCoverages.length === 0) {
-      console.log(
-        '[DEBUG] No valid coverages found in Gemini response. Creating default coverages.'
-      );
-      console.log('[DEBUG] Validation result:', validationResult);
-
-      if (parsedJson.allCoverages && parsedJson.allCoverages.length > 0) {
-        console.log(
-          `[DEBUG] Raw coverages from Gemini (${parsedJson.allCoverages.length} items):`
-        );
-        console.log(JSON.stringify(parsedJson.allCoverages[0], null, 2));
-      } else {
-        console.log('[DEBUG] No allCoverages array found in Gemini response');
-      }
-
-      processedCoverages = createDefaultCoverages(parsedJson.metadata);
-    } else {
-      console.log(
-        `[DEBUG] Successfully validated ${processedCoverages.length} coverage(s) from Gemini response`
-      );
-    }
-
-    // Return the structured response with legacy format
-    return {
-      metadata: parsedJson.metadata,
-      planOptions: parsedJson.planOptions,
-      allCoverages: processedCoverages,
-      documentNotes: parsedJson.documentNotes,
-    };
   }
+  
+  // Handle legacy format
+  const validationResult = validateCoverages(parsedJson.allCoverages || []);
+
+  // If no valid coverages, create default ones
+  let processedCoverages = validationResult.validCoverages;
+  if (processedCoverages.length === 0) {
+    processedCoverages = createDefaultCoverages(parsedJson.metadata);
+  }
+
+  // Return the structured response with legacy format
+  return {
+    metadata: parsedJson.metadata,
+    planOptions: parsedJson.planOptions,
+    allCoverages: processedCoverages,
+    documentNotes: parsedJson.documentNotes,
+  };
 }
 
 /**
@@ -947,11 +843,6 @@ async function structureDataWithGemini(
     if (!responseText) {
       throw new Error('Empty response text from Gemini API');
     }
-
-    // Log a sample of the Gemini response text to debug
-    console.log(
-      `[DEBUG] Gemini response text sample (first 300 chars): ${responseText.substring(0, 300)}...`
-    );
 
     // Process the response
     return processGeminiResponse(responseText);
@@ -1036,27 +927,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   };
 
-  /**
-   * Structured logging utility for process tracking
-   * This avoids direct console.log calls while still providing useful logs in development
-   */
-  const logger = {
-    info: (message: string, data?: Record<string, unknown>) => {
-      // In production, this could be replaced with proper logging infrastructure
-      if (process.env.NODE_ENV !== 'production') {
-        // Only log in development and test environments
-        // eslint-disable-next-line no-console
-        console.log(`[INFO] ${message}`, data ? data : '');
-      }
-      return message; // Return the message for potential further use
-    },
-    error: (message: string, data?: Record<string, unknown>) => {
-      // Always log errors regardless of environment
-      // eslint-disable-next-line no-console
-      console.error(`[ERROR] ${message}`, data ? data : '');
-      return message;
-    },
-  };
 
   // Helper function to update stage status
   const updateStage = (stageId: string, status: ProcessStage['status'], details?: string, progress?: number) => {
@@ -1074,13 +944,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         stages[stageId].progress = progress;
       }
     }
-    
-    // Log stage updates with the structured logger
-    logger.info(`Process stage updated: ${stageId}`, { 
-      status, 
-      details: details || undefined,
-      progress: progress !== undefined ? `${progress}%` : undefined 
-    });
   };
 
   try {
@@ -1180,17 +1043,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // PDF extraction stage
     updateStage('pdf_extraction', 'in_progress');
     // Extract text from the PDF using PDF.co API
-    logger.info('Starting PDF text extraction...');
     let extractedText: string;
     try {
       extractedText = await extractTextFromPdf(fileBuffer);
       updateStage('pdf_extraction', 'completed', `Extracted ${extractedText.length} characters`);
-      logger.info('PDF text extraction completed successfully');
     } catch (error) {
       updateStage('pdf_extraction', 'failed', `Extraction error: ${error instanceof Error ? error.message : String(error)}`);
-      logger.error('PDF extraction error in main handler:', {
-        error: error instanceof Error ? error.message : String(error),
-      });
       throw new ProcessingError(
         `Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`,
         'pdf_extraction'
@@ -1246,7 +1104,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     if (hasNewFormat) {
       // New enhanced format
-      console.log('[DEBUG] Returning new enhanced format response');
       return NextResponse.json({
         success: true,
         processedData: structuredData, // Contains highLevelOverview and granularBreakdown
@@ -1262,8 +1119,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       });
     } else {
-      // Legacy format
-      console.log('[DEBUG] Returning legacy format response');
       const {
         metadata: extractedMetadata = {},
         allCoverages: extractedCoverages = [],
@@ -1299,10 +1154,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
   } catch (error) {
-    logger.error('Document processing failed', {
-      error: error instanceof Error ? error.message : String(error),
-      stage: error instanceof ProcessingError ? error.stage : 'unknown',
-    });
 
     const errorDetails = getErrorMessage(error);
     const errorStage = error instanceof ProcessingError ? error.stage : 'unknown';

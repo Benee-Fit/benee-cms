@@ -90,13 +90,9 @@ export default function DocumentParserResultsPage() {
   const [companyName, setCompanyName] = useState<string>('');
 
   useEffect(() => {
-    console.log('[DEBUG] ===== Document Parser Results Page =====');
-    console.log('[DEBUG] Checking localStorage for parsed documents');
-    
     try {
       const storedData = localStorage.getItem('parsedBenefitsDocuments');
       const questionnaireData = localStorage.getItem('quoteQuestionnaireResults');
-      console.log('[DEBUG] Found stored data, attempting to parse JSON');
       
       // Load company name from questionnaire data
       if (questionnaireData) {
@@ -104,22 +100,17 @@ export default function DocumentParserResultsPage() {
           const questionnaire = JSON.parse(questionnaireData);
           if (questionnaire.companyName) {
             setCompanyName(questionnaire.companyName);
-            console.log('[DEBUG] Loaded company name:', questionnaire.companyName);
           }
         } catch (e) {
-          console.log('[DEBUG] Error parsing questionnaire data:', e);
+          // Error parsing questionnaire data - ignore silently
         }
       }
       
       if (storedData) {
         const parsedDocuments = JSON.parse(storedData) as ParsedDocument[];
-        console.log(`[DEBUG] Successfully parsed JSON. Found ${parsedDocuments.length} document(s)`);
-        console.log('[DEBUG] First document structure:', JSON.stringify(parsedDocuments[0], null, 2).substring(0, 500));
         
         // Normalize and repair documents if needed
         const normalizedDocuments = parsedDocuments.map((doc, index) => {
-          console.log(`[DEBUG] --- Document ${index + 1}: ${doc.originalFileName || 'Unknown filename'} ---`);
-          
           // Handle nested structure - if data is under processedData, extract it
           let actualDoc = doc;
           if (doc.processedData) {
@@ -133,7 +124,6 @@ export default function DocumentParserResultsPage() {
           
           // Check for metadata and create default if missing
           if (!actualDoc.metadata || typeof actualDoc.metadata !== 'object') {
-            console.log('[DEBUG] WARNING: Document is missing metadata - adding default metadata');
             actualDoc.metadata = {
               documentType: 'Unknown',
               clientName: 'Unknown',
@@ -144,7 +134,6 @@ export default function DocumentParserResultsPage() {
               fileCategory: actualDoc.category || 'Current'
             };
           } else {
-            console.log('[DEBUG] Metadata found:', Object.keys(actualDoc.metadata).length, 'properties');
             // Map primaryCarrierName to carrierName if needed
             if (actualDoc.metadata.primaryCarrierName && !actualDoc.metadata.carrierName) {
               actualDoc.metadata.carrierName = actualDoc.metadata.primaryCarrierName;
@@ -153,7 +142,6 @@ export default function DocumentParserResultsPage() {
           
           // Check for coverages and create default if missing
           if (!actualDoc.coverages) {
-            console.log('[DEBUG] ERROR: Document has no coverages property - creating default coverage');
             actualDoc.coverages = [
               {
                 coverageType: 'Basic Life',
@@ -173,7 +161,6 @@ export default function DocumentParserResultsPage() {
               }
             ];
           } else if (!Array.isArray(actualDoc.coverages)) {
-            console.log('[DEBUG] ERROR: Document coverages is not an array - converting to array with default coverage');
             actualDoc.coverages = [
               {
                 coverageType: 'Basic Life',
@@ -193,7 +180,6 @@ export default function DocumentParserResultsPage() {
               }
             ];
           } else if (actualDoc.coverages.length === 0) {
-            console.log('[DEBUG] WARNING: Document has empty coverages array - adding default coverage');
             actualDoc.coverages.push({
               coverageType: 'Basic Life',
               carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
@@ -211,12 +197,9 @@ export default function DocumentParserResultsPage() {
               }
             });
           } else {
-            console.log('[DEBUG] Coverages found:', actualDoc.coverages.length);
-            
             // Validate each coverage has required fields
             actualDoc.coverages = actualDoc.coverages.map(coverage => {
               if (!coverage || typeof coverage !== 'object') {
-                console.log('[DEBUG] Invalid coverage item found - replacing with valid default');
                 return {
                   coverageType: 'Basic Life',
                   carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
@@ -256,7 +239,6 @@ export default function DocumentParserResultsPage() {
         
         // Update state with normalized documents
         setParsedDocuments(normalizedDocuments);
-        console.log('[DEBUG] Document normalization complete');
         
         // Check if we actually have coverage data in any document
         const hasCoverages = normalizedDocuments.some(
@@ -264,19 +246,15 @@ export default function DocumentParserResultsPage() {
         );
         
         if (!hasCoverages) {
-          console.log('[DEBUG] CRITICAL ERROR: No coverage data found in any document');
           setError('Documents found, but no coverage data detected in parsed results.');
         }
       } else {
-        console.log('[DEBUG] No stored parsed documents found in localStorage');
         setError('No parsed document data found in storage.');
       }
     } catch (e) {
-      console.log('[DEBUG] Error parsing stored documents:', e instanceof Error ? e.message : 'Unknown error');
       setError('Failed to load parsed data. It might be corrupted.');
     } finally {
       setIsLoading(false);
-      console.log('[DEBUG] ===== End Document Parser Results Page Initialization =====');
     }
   }, []);
 

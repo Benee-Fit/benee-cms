@@ -54,7 +54,7 @@ export default function QuoteQuestionnaireModal({
           const parsedData = JSON.parse(savedData);
           setData({ ...initialData, ...parsedData });
         } catch (e) {
-          console.warn('Failed to parse saved questionnaire data:', e);
+          // Failed to parse saved questionnaire data - reset to initial state
         }
       }
     }

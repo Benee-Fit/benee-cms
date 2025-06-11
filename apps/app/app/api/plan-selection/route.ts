@@ -194,7 +194,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       updatedAt: session.updatedAt
     });
   } catch (error) {
-    console.error('Error retrieving plan selections:', error);
     return NextResponse.json(
       { error: 'Failed to retrieve plan selections' },
       { status: 500 }
@@ -265,7 +264,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sessionId: user.id
     });
   } catch (error) {
-    console.error('Error saving plan selections:', error);
     return NextResponse.json(
       { error: 'Failed to save plan selections' },
       { status: 500 }
@@ -333,7 +331,6 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
       document: session.documents[documentIndex]
     });
   } catch (error) {
-    console.error('Error updating plan selection:', error);
     return NextResponse.json(
       { error: 'Failed to update plan selection' },
       { status: 500 }
@@ -384,7 +381,6 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       remainingDocuments: session.documents.length
     });
   } catch (error) {
-    console.error('Error removing document:', error);
     return NextResponse.json(
       { error: 'Failed to remove document' },
       { status: 500 }

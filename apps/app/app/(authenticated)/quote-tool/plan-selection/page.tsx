@@ -109,7 +109,6 @@ export default function PlanSelectionPage() {
         setDocuments(documentsWithPlans);
         setIsLoading(false);
       } catch (err) {
-        console.error('Error loading documents:', err);
         setError('Failed to load processed documents. Please try again.');
         setIsLoading(false);
       }
@@ -280,7 +279,6 @@ export default function PlanSelectionPage() {
       // Navigate to results
       router.push('/quote-tool/document-parser/results');
     } catch (err) {
-      console.error('Error saving plan selections:', err);
       setError('Failed to save plan selections. Please try again.');
     } finally {
       setIsSaving(false);

@@ -158,16 +158,7 @@ export default function DocumentParserPage() {
       
       // Process each file sequentially to avoid overloading the server
       for (const file of files) {
-        console.log(`[DEBUG] Processing file: ${file.name}`);
         const processedResult = await processDocumentFile(file);
-        
-        // Detailed validation and debugging of the API response
-        console.log('[DEBUG] API Response Structure:', {
-          hasMetadata: !!processedResult.metadata,
-          hasCoverages: !!processedResult.coverages,
-          coveragesIsArray: Array.isArray(processedResult.coverages),
-          coveragesLength: Array.isArray(processedResult.coverages) ? processedResult.coverages.length : 'N/A',
-        });
         
         // Explicitly normalize the document structure if needed
         const normalizedResult = {
@@ -203,23 +194,8 @@ export default function DocumentParserPage() {
               }]
         };
         
-        // Final validation before adding to results
-        console.log('[DEBUG] Final document structure validation:', {
-          hasNormalizedMetadata: !!normalizedResult.metadata,
-          hasNormalizedCoverages: !!normalizedResult.coverages,
-          normalizedCoveragesLength: Array.isArray(normalizedResult.coverages) ? normalizedResult.coverages.length : 'N/A'
-        });
-        
         results.push(normalizedResult);
       }
-      
-      // Log the full structure before saving to localStorage
-      console.log(`[DEBUG] Saving ${results.length} processed documents to localStorage`);
-      console.log('[DEBUG] Documents structure summary:', results.map(doc => ({
-        fileName: doc.originalFileName,
-        hasCoverages: Array.isArray(doc.coverages) && doc.coverages.length > 0,
-        coveragesCount: Array.isArray(doc.coverages) ? doc.coverages.length : 0
-      })));
       
       // Store processed results temporarily
       setProcessedResults(results);

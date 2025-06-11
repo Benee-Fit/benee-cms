@@ -69,60 +69,29 @@ interface FullMarketComparisonProps {
 }
 
 export default function FullMarketComparison({ documents, selectedCoverageType }: FullMarketComparisonProps) {
-  console.log('[DEBUG] ===== FullMarketComparison Component =====');
-  console.log(`[DEBUG] Received documents: ${documents ? documents.length : 0}`);
-  console.log(`[DEBUG] Selected coverage type: ${selectedCoverageType || 'None (showing all)'}`);
   
-  // Debug information
+  // Document validation
   const hasDocuments = documents && documents.length > 0;
   const hasCoverages = hasDocuments && documents.some(doc => 
     doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0
   );
   const coverageCount = hasDocuments ? 
     documents.reduce((count, doc) => count + (doc.coverages?.length || 0), 0) : 0;
-    
-  console.log(`[DEBUG] Document and coverage check: hasDocuments=${hasDocuments}, hasCoverages=${hasCoverages}, total coverages=${coverageCount}`);
-  
-  // More detailed document and coverage inspection
-  if (hasDocuments) {
-    documents.forEach((doc, idx) => {
-      const coveragesStatus = doc.coverages && Array.isArray(doc.coverages) ? 
-        `${doc.coverages.length} coverages` : 
-        'No valid coverages array';
-      console.log(`[DEBUG] Document ${idx+1}: ${doc.metadata?.carrierName || 'Unknown'} - ${coveragesStatus}`);
-      
-      // If document has coverages, inspect first coverage
-      if (doc.coverages && Array.isArray(doc.coverages) && doc.coverages.length > 0) {
-        console.log(`[DEBUG] Sample coverage from doc ${idx+1}: ${JSON.stringify(doc.coverages[0]).substring(0, 200)}...`);
-      }
-    });
-  }
 
-  // Group coverages by type, with improved defensive coding and debugging
-  console.log('[DEBUG] Grouping coverages by type with filtering...');
-  const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document, docIndex) => {
+  // Group coverages by type
+  const coveragesByType = documents.reduce<Record<string, Coverage[]>>((acc, document) => {
     // Skip if document is null/undefined or doesn't have coverages
     if (!document || !document.coverages || !Array.isArray(document.coverages)) {
-      console.log(`[DEBUG] Skipping document ${docIndex}: No valid coverages array`);
       return acc;
     }
-
-    console.log(`[DEBUG] Processing coverages from document ${docIndex}: ${document.coverages.length} items`);
-    let includedCount = 0;
-    let filteredCount = 0;
-    let invalidCount = 0;
     
     document.coverages.forEach(coverage => {
       // Make sure coverage is an object with required fields
       if (!coverage || typeof coverage !== 'object') {
-        console.log(`[DEBUG] Invalid coverage in document ${docIndex}: ${coverage === null ? 'null' : typeof coverage}`);
-        invalidCount++;
         return;
       }
       
       if (!('coverageType' in coverage)) {
-        console.log(`[DEBUG] Coverage missing coverageType in document ${docIndex}`);
-        invalidCount++;
         return;
       }
       
@@ -130,21 +99,16 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
       
       // Apply filter if selected
       if (!coverageType) {
-        console.log(`[DEBUG] Coverage has empty coverageType in document ${docIndex}`);
-        invalidCount++;
         return;
       }
       
       if (selectedCoverageType && coverageType !== selectedCoverageType) {
-        // Filtered out by selected type
-        filteredCount++;
         return;
       }
       
       // Coverage passed all checks, add to appropriate bucket
       if (!acc[coverageType]) {
         acc[coverageType] = [];
-        console.log(`[DEBUG] Created new group for coverage type: ${coverageType}`);
       }
       
       // Add normalized coverage object
@@ -153,20 +117,13 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
         // Ensure carrierName has a value
         carrierName: coverage.carrierName || (document.metadata?.carrierName || 'Unknown Carrier')
       });
-      includedCount++;
     });
-    
-    console.log(`[DEBUG] Document ${docIndex} coverage processing results: ${includedCount} included, ${filteredCount} filtered, ${invalidCount} invalid`);
     
     return acc;
   }, {});
   
-  // Log the resulting coverage groups
+  // Get coverage types
   const coverageTypes = Object.keys(coveragesByType);
-  console.log(`[DEBUG] Grouped coverages into ${coverageTypes.length} types: ${coverageTypes.join(', ')}`);
-  coverageTypes.forEach(type => {
-    console.log(`[DEBUG] Type "${type}" has ${coveragesByType[type].length} coverages`);
-  });
 
   // Get unique carriers across all documents
   const uniqueCarriers = Array.from(
@@ -179,22 +136,7 @@ export default function FullMarketComparison({ documents, selectedCoverageType }
   if (Object.keys(coveragesByType).length === 0) {
     return (
       <div className="text-center py-8">
-        <div className="space-y-4">
-          <p className="text-gray-500">No coverage data available for the selected filter.</p>
-          
-          {/* Debugging information */}
-          <div className="text-left bg-muted/30 p-4 rounded-md max-w-lg mx-auto text-sm">
-            <h4 className="font-medium mb-2">Troubleshooting Information:</h4>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Documents found: {documents.length}</li>
-              <li>Has coverages: {hasCoverages ? 'Yes' : 'No'}</li>
-              <li>Total coverage items: {coverageCount}</li>
-              {selectedCoverageType && (
-                <li>Current filter: {selectedCoverageType}</li>
-              )}
-            </ul>
-          </div>
-        </div>
+        <p className="text-gray-500">No coverage data available for the selected filter.</p>
       </div>
     );
   }
