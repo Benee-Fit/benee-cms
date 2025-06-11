@@ -11,6 +11,7 @@ import { Info, Upload, AlertCircle, FileText, UploadCloud, CheckCircle2, Plus } 
 import QuoteQuestionnaireModal from './components/quote-questionnaire/QuoteQuestionnaireModal';
 import EnhancedDocumentTypeSelector from './components/EnhancedDocumentTypeSelector';
 import ProcessingStatus from './components/ProcessingStatus';
+import BatchProcessingStatus from './components/BatchProcessingStatus';
 import type { QuoteQuestionnaireData } from './components/quote-questionnaire/types';
 
 interface FileWithPreview extends File {
@@ -47,6 +48,12 @@ export default function DocumentParserPage() {
   const [currentProcessingFile, setCurrentProcessingFile] = useState<string | null>(null);
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   const [hasExistingSession, setHasExistingSession] = useState(false);
+  
+  // Batch processing state
+  const [processingIndex, setProcessingIndex] = useState(0);
+  const [completedFiles, setCompletedFiles] = useState<Array<{file: FileWithPreview; result: Record<string, unknown>}>>([]);
+  const [failedFiles, setFailedFiles] = useState<Array<{file: FileWithPreview; error: string}>>([]);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
 
   // Check for existing data on mount and reset questionnaire if no parsed documents
   useEffect(() => {
@@ -286,6 +293,48 @@ export default function DocumentParserPage() {
     setFiles(prev => [...prev, ...filesWithCategory]);
   };
 
+  // Calculate estimated time remaining
+  const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 90) => {
+    const remainingFiles = totalFiles - currentIndex;
+    return remainingFiles * avgTimePerFile; // seconds
+  }, []);
+
+  // Normalize processed result
+  const normalizeResult = useCallback((processedResult: Record<string, unknown>, file: FileWithPreview) => {
+    return {
+      ...processedResult,
+      originalFileName: file.name,
+      category: file.category,
+      // Ensure metadata exists
+      metadata: processedResult.metadata || {
+        documentType: 'Unknown',
+        clientName: 'Unknown',
+        carrierName: 'Unknown Carrier',
+        effectiveDate: new Date().toISOString().split('T')[0],
+        quoteDate: new Date().toISOString().split('T')[0],
+        fileName: file.name,
+        fileCategory: file.category || 'Current'
+      },
+      // Ensure coverages exists and is an array
+      coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
+        ? processedResult.coverages 
+        : [{
+            coverageType: 'Basic Life',
+            carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
+            planOptionName: 'Default Plan',
+            premium: 0,
+            monthlyPremium: 0,
+            unitRate: 0,
+            unitRateBasis: 'per $1,000',
+            volume: 0,
+            lives: 0,
+            benefitDetails: {
+              note: 'Coverage details could not be extracted from document'
+            }
+          }]
+    };
+  }, []);
+
   // Main process handler for all files
   const handleProcessFiles = async () => {
     if (files.length === 0) {
@@ -303,53 +352,55 @@ export default function DocumentParserPage() {
     setProcessingStages([]);
     setCurrentProcessingFile(null);
     
+    // Reset batch processing state
+    setProcessingIndex(0);
+    setCompletedFiles([]);
+    setFailedFiles([]);
+    setEstimatedTimeRemaining(calculateTimeRemaining(0, files.length));
+    
     // Open questionnaire modal immediately when processing starts
     setShowQuestionnaire(true);
     
     try {
       const results: Record<string, unknown>[] = [];
+      const startTime = Date.now();
       
       // Process each file sequentially to avoid overloading the server
-      for (const file of files) {
-        console.log(`[DEBUG] Processing file: ${file.name}`);
-        const processedResult = await processDocumentFile(file);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProcessingIndex(i);
         
-        // Explicitly normalize the document structure if needed
-        const normalizedResult = {
-          ...processedResult,
-          originalFileName: file.name,
-          category: file.category,
-          // Ensure metadata exists
-          metadata: processedResult.metadata || {
-            documentType: 'Unknown',
-            clientName: 'Unknown',
-            carrierName: 'Unknown Carrier',
-            effectiveDate: new Date().toISOString().split('T')[0],
-            quoteDate: new Date().toISOString().split('T')[0],
-            fileName: file.name,
-            fileCategory: file.category || 'Current'
-          },
-          // Ensure coverages exists and is an array
-          coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
-            ? processedResult.coverages 
-            : [{
-                coverageType: 'Basic Life',
-                carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
-                planOptionName: 'Default Plan',
-                premium: 0,
-                monthlyPremium: 0,
-                unitRate: 0,
-                unitRateBasis: 'per $1,000',
-                volume: 0,
-                lives: 0,
-                benefitDetails: {
-                  note: 'Coverage details could not be extracted from document'
-                }
-              }]
-        };
+        // Update time estimate based on actual performance
+        if (i > 0) {
+          const elapsedTime = (Date.now() - startTime) / 1000; // seconds
+          const avgTimePerFile = elapsedTime / i;
+          setEstimatedTimeRemaining(calculateTimeRemaining(i, files.length, avgTimePerFile));
+        }
         
-        results.push(normalizedResult);
+        console.log(`[DEBUG] Processing file ${i + 1}/${files.length}: ${file.name}`);
+        
+        try {
+          const processedResult = await processDocumentFile(file);
+          const normalizedResult = normalizeResult(processedResult, file);
+          
+          // Add to completed files
+          setCompletedFiles(prev => [...prev, { file, result: normalizedResult }]);
+          results.push(normalizedResult);
+        } catch (fileError) {
+          const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error';
+          console.error(`[DEBUG] Failed to process file ${file.name}:`, errorMessage);
+          
+          // Add to failed files
+          setFailedFiles(prev => [...prev, { file, error: errorMessage }]);
+          
+          // Continue processing other files instead of stopping
+          continue;
+        }
       }
+      
+      // Processing complete
+      setEstimatedTimeRemaining(0);
+      setProcessingIndex(files.length);
       
       // Store processed results temporarily
       setProcessedResults(results);
@@ -657,21 +708,38 @@ export default function DocumentParserPage() {
       )}
       
       {/* Processing Status */}
-      {isLoading && currentProcessingFile && processingStages.length > 0 && (
+      {isLoading && (
         <div className="mb-6">
-          <ProcessingStatus
-            fileName={currentProcessingFile}
-            stages={processingStages}
-            currentStage={processingStages.find(stage => stage.status === 'in_progress')?.id}
-            error={processingError}
-            onRetry={() => {
-              // Reset processing state for retry
-              setIsLoading(false);
-              setProcessingError(null);
-              setProcessingStages([]);
-              setCurrentProcessingFile(null);
-            }}
-          />
+          {files.length > 1 ? (
+            <BatchProcessingStatus
+              files={files}
+              processingIndex={processingIndex}
+              completedFiles={completedFiles}
+              failedFiles={failedFiles}
+              currentStages={processingStages}
+              estimatedTimeRemaining={estimatedTimeRemaining || undefined}
+              onRetryFile={(fileIndex) => {
+                // TODO: Implement individual file retry
+                console.log(`Retry file at index ${fileIndex}`);
+              }}
+            />
+          ) : (
+            currentProcessingFile && processingStages.length > 0 && (
+              <ProcessingStatus
+                fileName={currentProcessingFile}
+                stages={processingStages}
+                currentStage={processingStages.find(stage => stage.status === 'in_progress')?.id}
+                error={processingError}
+                onRetry={() => {
+                  // Reset processing state for retry
+                  setIsLoading(false);
+                  setProcessingError(null);
+                  setProcessingStages([]);
+                  setCurrentProcessingFile(null);
+                }}
+              />
+            )
+          )}
         </div>
       )}
       

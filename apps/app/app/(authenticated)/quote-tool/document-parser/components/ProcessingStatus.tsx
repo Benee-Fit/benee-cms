@@ -32,7 +32,7 @@ interface ProcessingStatusProps {
   stages: ProcessingStage[];
   currentStage?: string;
   error?: string;
-  onRetry?: () => void;
+  onRetry?: (strategy?: string) => void;
 }
 
 export default function ProcessingStatus({ 
@@ -83,6 +83,35 @@ export default function ProcessingStatus({
     return timeEstimates[stage.id] || '~15 seconds';
   };
 
+  const getElapsedTime = (stage: ProcessingStage) => {
+    if (!stage.startTime) return null;
+    
+    const start = new Date(stage.startTime);
+    const end = stage.endTime ? new Date(stage.endTime) : new Date();
+    const elapsed = Math.floor((end.getTime() - start.getTime()) / 1000);
+    
+    if (elapsed < 60) return `${elapsed}s`;
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes}m ${seconds}s`;
+  };
+
+  const getRetryOptions = (stage: ProcessingStage) => {
+    const retryStrategies: Record<string, Array<{label: string; value: string}>> = {
+      extraction: [
+        { label: 'Try alternate method', value: 'alternate_method' },
+        { label: 'Retry original', value: 'retry' }
+      ],
+      parsing: [
+        { label: 'Retry with simplified prompt', value: 'simplified' },
+        { label: 'Retry original', value: 'retry' }
+      ],
+      default: [{ label: 'Retry', value: 'retry' }]
+    };
+    
+    return retryStrategies[stage.id] || retryStrategies.default;
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -110,12 +139,27 @@ export default function ProcessingStatus({
                 <h4 className="text-sm font-medium text-red-800">Processing Failed</h4>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
                 {onRetry && (
-                  <button
-                    onClick={onRetry}
-                    className="text-sm text-red-800 underline hover:no-underline mt-2"
-                  >
-                    Try again
-                  </button>
+                  <div className="mt-3">
+                    {/* Find the failed stage for retry options */}
+                    {(() => {
+                      const failedStage = stages.find(stage => stage.status === 'failed');
+                      const retryOptions = failedStage ? getRetryOptions(failedStage) : [{ label: 'Retry', value: 'retry' }];
+                      
+                      return (
+                        <div className="flex space-x-2">
+                          {retryOptions.map(option => (
+                            <button
+                              key={option.value}
+                              onClick={() => onRetry(option.value)}
+                              className="text-sm bg-red-100 text-red-800 px-3 py-1 rounded hover:bg-red-200 transition-colors"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 )}
               </div>
             </div>
@@ -145,11 +189,18 @@ export default function ProcessingStatus({
                   <h4 className="text-sm font-medium text-gray-900">
                     {stage.name}
                   </h4>
-                  {stage.status === 'in_progress' && (
-                    <span className="text-xs text-blue-600">
-                      {getEstimatedTime(stage)}
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2 text-xs">
+                    {stage.status === 'in_progress' && (
+                      <span className="text-blue-600">
+                        {getEstimatedTime(stage)}
+                      </span>
+                    )}
+                    {getElapsedTime(stage) && (
+                      <span className="text-gray-500">
+                        ({getElapsedTime(stage)} elapsed)
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
                   {stage.description}
