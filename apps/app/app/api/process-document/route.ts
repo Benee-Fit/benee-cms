@@ -411,14 +411,6 @@ interface UploadFileResult {
   url: string;
 }
 
-/**
- * File URL parameters
- */
-interface GetFileUrlParams {
-  userId: string;
-  filename: string;
-  type: 'upload' | 'processed';
-}
 
 /**
  * Uploads a file to DigitalOcean Spaces (S3-compatible storage)
@@ -459,29 +451,6 @@ async function uploadFile(params: UploadFileParams): Promise<UploadFileResult> {
   }
 }
 
-/**
- * Generates a pre-signed URL for accessing a file in S3
- * @param params File URL parameters
- * @returns Promise resolving to the pre-signed URL
- */
-async function getFileUrl(params: GetFileUrlParams): Promise<string> {
-  // Generate the file key based on parameters
-  const fileKey = `${params.userId}/${params.type}/${params.filename}`;
-
-  // Create a GetObject command for the file
-  const command = new GetObjectCommand({
-    Bucket: DO_SPACES_BUCKET,
-    Key: fileKey,
-  });
-
-  try {
-    return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-  } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to generate pre-signed URL: ${errorMessage}`);
-  }
-}
 
 /**
  * Extracts text from a PDF document using PDF.co API
@@ -503,7 +472,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
     }
 
     // Check if buffer is likely a PDF (starts with PDF header)
-    const isPdfHeader = fileBuffer.slice(0, 4).toString() === '%PDF';
+    const isPdfHeader = fileBuffer.subarray(0, 4).toString() === '%PDF';
     if (!isPdfHeader) {
       throw new Error(
         'File does not appear to be a valid PDF (missing %PDF header)'
@@ -513,7 +482,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
     // First upload the file to DigitalOcean Spaces
 
     // Generate a unique filename for this upload
-    const timestamp = new Date().getTime();
+    const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 10);
     const filename = `pdf-extraction-${timestamp}-${randomString}.pdf`;
 
@@ -563,7 +532,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
     }
 
     // Parse the response
-    let responseData;
+    let responseData: any;
     try {
       responseData = JSON.parse(extractionResponse.data);
     } catch (parseError) {
@@ -619,7 +588,7 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
           continue;
         }
 
-        let jobStatus;
+        let jobStatus: any;
         try {
           jobStatus = JSON.parse(jobStatusResponse.data);
         } catch (parseError) {
@@ -671,7 +640,9 @@ async function extractTextFromPdf(fileBuffer: Buffer): Promise<string> {
       }
 
       return resultResponse.data; // Return the extracted text
-    } else if (responseData.text) {
+    } 
+    
+    if (responseData.text) {
       return responseData.text;
     }
 
@@ -1097,44 +1068,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           processingStages: Object.values(stages)
         }
       });
-    } else {
-      const {
-        metadata: extractedMetadata = {},
-        allCoverages: extractedCoverages = [],
-      } = structuredData;
-      
-      // Count the different coverage types for better feedback
-      const coverageTypes = (extractedCoverages as Array<{coverageType?: string}>).reduce((counts: Record<string, number>, coverage) => {
-        const type = coverage.coverageType || 'unknown';
-        counts[type] = (counts[type] || 0) + 1;
-        return counts;
-      }, {} as Record<string, number>);
-      
-      const coverageCount = extractedCoverages.length;
-      const coverageSummary = Object.entries(coverageTypes)
-        .map(([type, count]) => `${type}: ${count}`)
-        .join(', ');
-
-      return NextResponse.json({
-        success: true,
-        processedData,
-        url: uploadResult.url,
-        downloadUrl,
-        originalFileName: file.name,
-        category: (formData.get('category') as string) || 'Current',
-        metadata: extractedMetadata,
-        coverages: extractedCoverages,
-        processingStats: {
-          processingTime: calculateProcessingTime(stages),
-          coverageCount,
-          coverageSummary,
-          processingStages: Object.values(stages)
-        }
-      });
     }
     
-    // If we got here, we didn't get what we expected
-    throw new Error('No text content or result URL found in PDF.co response');
+    const {
+      metadata: extractedMetadata = {},
+      allCoverages: extractedCoverages = [],
+    } = structuredData;
+    
+    // Count the different coverage types for better feedback
+    const coverageTypes = (extractedCoverages as Array<{coverageType?: string}>).reduce((counts: Record<string, number>, coverage) => {
+      const type = coverage.coverageType || 'unknown';
+      counts[type] = (counts[type] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    
+    const coverageCount = extractedCoverages.length;
+    const coverageSummary = Object.entries(coverageTypes)
+      .map(([type, count]) => `${type}: ${count}`)
+      .join(', ');
+
+    return NextResponse.json({
+      success: true,
+      processedData,
+      url: uploadResult.url,
+      downloadUrl,
+      originalFileName: file.name,
+      category: (formData.get('category') as string) || 'Current',
+      metadata: extractedMetadata,
+      coverages: extractedCoverages,
+      processingStats: {
+        processingTime: calculateProcessingTime(stages),
+        coverageCount,
+        coverageSummary,
+        processingStages: Object.values(stages)
+      }
+    });
     
   } catch (error) {
 

@@ -6,12 +6,13 @@ import { trackShareLinkEvent } from '../../../../lib/analytics';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params;
   try {
     const shareLink = await db.reportShareLink.findUnique({
       where: {
-        shareToken: params.token,
+        shareToken: token,
       },
       include: {
         report: {
@@ -74,7 +75,7 @@ export async function GET(
     // Track analytics event
     await trackShareLinkEvent({
       reportId: shareLink.reportId,
-      shareToken: params.token,
+      shareToken: token,
       eventType: 'view',
       userAgent: request.headers.get('user-agent') || undefined,
       ipAddress: request.headers.get('x-forwarded-for') || 
@@ -101,8 +102,9 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params;
   try {
     const user = await currentUser();
     if (!user) {
@@ -115,7 +117,7 @@ export async function PUT(
     // Check if share link exists and user owns it
     const shareLink = await db.reportShareLink.findUnique({
       where: {
-        shareToken: params.token,
+        shareToken: token,
       },
       include: {
         report: {
@@ -135,7 +137,7 @@ export async function PUT(
     }
 
     const updatedLink = await db.reportShareLink.update({
-      where: { shareToken: params.token },
+      where: { shareToken: token },
       data: {
         ...(isActive !== undefined && { isActive }),
         ...(expiresAt !== undefined && { expiresAt: expiresAt ? new Date(expiresAt) : null }),
@@ -165,8 +167,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params;
   try {
     const user = await currentUser();
     if (!user) {
@@ -176,7 +179,7 @@ export async function DELETE(
     // Check if share link exists and user owns it
     const shareLink = await db.reportShareLink.findUnique({
       where: {
-        shareToken: params.token,
+        shareToken: token,
       },
       include: {
         report: {
@@ -196,7 +199,7 @@ export async function DELETE(
     }
 
     await db.reportShareLink.delete({
-      where: { shareToken: params.token },
+      where: { shareToken: token },
     });
 
     return NextResponse.json({ message: 'Share link deleted successfully' });
