@@ -13,7 +13,8 @@ import {
   FileText,
   Brain,
   Save,
-  Loader2
+  Loader2,
+  Info
 } from 'lucide-react';
 
 interface ProcessingStage {
@@ -74,13 +75,13 @@ export default function ProcessingStatus({
 
   const getEstimatedTime = (stage: ProcessingStage) => {
     const timeEstimates: Record<string, string> = {
-      upload: '~5 seconds',
-      extraction: '~30 seconds',
-      parsing: '~45 seconds',
-      saving: '~10 seconds'
+      upload: '~30 seconds',
+      extraction: '~2-3 minutes',
+      parsing: '~3-4 minutes',
+      saving: '~30 seconds'
     };
     
-    return timeEstimates[stage.id] || '~15 seconds';
+    return timeEstimates[stage.id] || '~1-2 minutes';
   };
 
   const getElapsedTime = (stage: ProcessingStage) => {
@@ -121,12 +122,22 @@ export default function ProcessingStatus({
             {error ? 'Failed' : 'Processing'}
           </Badge>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex justify-between text-sm text-gray-600">
             <span>Overall Progress</span>
             <span>{Math.round(getOverallProgress())}%</span>
           </div>
           <Progress value={getOverallProgress()} className="w-full" />
+          
+          {/* Processing time notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center space-x-2 text-sm text-blue-800">
+              <Info className="h-4 w-4" />
+              <span>
+                Processing typically takes 4-8 minutes depending on document size and complexity.
+              </span>
+            </div>
+          </div>
         </div>
       </CardHeader>
 
@@ -166,11 +177,11 @@ export default function ProcessingStatus({
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {stages.map((stage, index) => (
             <div
               key={stage.id}
-              className={`flex items-center space-x-4 p-3 rounded-lg border ${
+              className={`p-4 rounded-lg border text-center ${
                 stage.status === 'in_progress' 
                   ? 'bg-blue-50 border-blue-200' 
                   : stage.status === 'completed'
@@ -180,47 +191,54 @@ export default function ProcessingStatus({
                   : 'bg-gray-50 border-gray-200'
               }`}
             >
-              <div className="flex-shrink-0">
-                {getStageStatus(stage)}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-gray-900">
-                    {stage.name}
-                  </h4>
-                  <div className="flex items-center space-x-2 text-xs">
-                    {stage.status === 'in_progress' && (
-                      <span className="text-blue-600">
-                        {getEstimatedTime(stage)}
-                      </span>
-                    )}
-                    {getElapsedTime(stage) && (
-                      <span className="text-gray-500">
-                        ({getElapsedTime(stage)} elapsed)
-                      </span>
-                    )}
+              <div className="flex flex-col items-center space-y-3">
+                {/* Icon and Status */}
+                <div className="flex items-center space-x-2">
+                  <div className="flex-shrink-0">
+                    {getStageIcon(stage)}
+                  </div>
+                  <div className="flex-shrink-0">
+                    {getStageStatus(stage)}
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
+                
+                {/* Stage Title */}
+                <h4 className="text-sm font-medium text-gray-900">
+                  {stage.name}
+                </h4>
+                
+                {/* Time Information */}
+                <div className="text-xs space-y-1">
+                  {stage.status === 'in_progress' && (
+                    <div className="text-blue-600">
+                      {getEstimatedTime(stage)}
+                    </div>
+                  )}
+                  {getElapsedTime(stage) && (
+                    <div className="text-gray-500">
+                      ({getElapsedTime(stage)} elapsed)
+                    </div>
+                  )}
+                </div>
+                
+                {/* Description */}
+                <p className="text-xs text-gray-600 leading-tight">
                   {stage.description}
                 </p>
                 
+                {/* Progress Bar */}
                 {stage.status === 'in_progress' && stage.progress !== undefined && (
-                  <div className="mt-2">
-                    <Progress value={stage.progress} className="h-2" />
+                  <div className="w-full">
+                    <Progress value={stage.progress} className="h-1.5" />
                   </div>
                 )}
                 
+                {/* Details */}
                 {stage.details && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 leading-tight">
                     {stage.details}
                   </p>
                 )}
-              </div>
-              
-              <div className="flex-shrink-0">
-                {getStageIcon(stage)}
               </div>
             </div>
           ))}

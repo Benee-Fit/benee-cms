@@ -11,6 +11,7 @@ import {
 import { BarChart, ChevronRight, FileText, FileUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Header } from '../components/header';
+import RecentReports from './components/RecentReports';
 
 export default function QuoteToolPage() {
   const router = useRouter();
@@ -31,64 +32,72 @@ export default function QuoteToolPage() {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileUp className="h-5 w-5 mr-2 text-primary" />
-                  Document Parser
-                </CardTitle>
-                <CardDescription>
-                  Upload and parse insurance quote PDFs from carriers
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>
-                  Upload insurance documents from different carriers to extract
-                  key information using AI. The tool categorizes documents as
-                  Current, Renegotiated, or Alternative quotes for detailed
-                  comparison.
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={() => router.push('/quote-tool/document-parser')}
-                >
-                  Open Document Parser
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardFooter>
-            </Card>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Main Action Cards */}
+            <div className="lg:col-span-2 grid gap-6 md:grid-cols-2">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileUp className="h-5 w-5 mr-2 text-primary" />
+                    Document Parser
+                  </CardTitle>
+                  <CardDescription>
+                    Upload and parse insurance quote PDFs from carriers
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p>
+                    Upload insurance documents from different carriers to extract
+                    key information using AI. The tool categorizes documents as
+                    Current, Renegotiated, or Alternative quotes for detailed
+                    comparison.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    onClick={() => router.push('/quote-tool/document-parser')}
+                  >
+                    Open Document Parser
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </CardFooter>
+              </Card>
 
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BarChart className="h-5 w-5 mr-2 text-primary" />
-                  Market Comparison
-                </CardTitle>
-                <CardDescription>
-                  Compare multiple insurance options side-by-side
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p>
-                  View comprehensive comparisons between current plans,
-                  renegotiated options, and alternative carriers. Analyze
-                  premiums, coverage details, and potential cost savings across
-                  the market.
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={() =>
-                    router.push('/quote-tool/document-parser/results')
-                  }
-                >
-                  View Comparisons
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardFooter>
-            </Card>
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BarChart className="h-5 w-5 mr-2 text-primary" />
+                    Market Comparison
+                  </CardTitle>
+                  <CardDescription>
+                    Compare multiple insurance options side-by-side
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p>
+                    View comprehensive comparisons between current plans,
+                    renegotiated options, and alternative carriers. Analyze
+                    premiums, coverage details, and potential cost savings across
+                    the market.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    onClick={() =>
+                      router.push('/quote-tool/document-parser/results')
+                    }
+                  >
+                    View Comparisons
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+
+            {/* Recent Reports Sidebar */}
+            <div className="lg:col-span-1">
+              <RecentReports limit={5} />
+            </div>
           </div>
 
           <div className="mt-8">

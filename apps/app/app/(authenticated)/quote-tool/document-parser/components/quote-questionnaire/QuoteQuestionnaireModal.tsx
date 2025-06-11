@@ -52,6 +52,7 @@ export default function QuoteQuestionnaireModal({
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<QuoteQuestionnaireData>(initialData);
   const [isWaitingForProcessing, setIsWaitingForProcessing] = useState(false);
+  const [autoCloseCountdown, setAutoCloseCountdown] = useState<number | null>(null);
 
   // Load saved data on mount
   useEffect(() => {
@@ -81,10 +82,40 @@ export default function QuoteQuestionnaireModal({
       // Both questionnaire and processing are complete
       handleComplete();
     } else if (isQuestionnaireComplete(data) && !isProcessingComplete) {
-      // Questionnaire complete but still processing
+      // Questionnaire complete but still processing - start countdown
       setIsWaitingForProcessing(true);
+      setAutoCloseCountdown(5);
     }
   }, [data, isProcessingComplete]);
+
+  // Auto-close countdown timer
+  useEffect(() => {
+    if (autoCloseCountdown === null) return;
+
+    if (autoCloseCountdown === 0) {
+      // Close modal and scroll to processing status
+      onClose();
+      setAutoCloseCountdown(null);
+      
+      // Scroll to processing status after a brief delay to ensure modal is closed
+      setTimeout(() => {
+        const processingElement = document.querySelector('[data-processing-status]');
+        if (processingElement) {
+          processingElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 100);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAutoCloseCountdown(autoCloseCountdown - 1);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [autoCloseCountdown, onClose]);
 
   const handleComplete = () => {
     const completedData = { ...data, completedAt: new Date().toISOString() };
@@ -119,6 +150,7 @@ export default function QuoteQuestionnaireModal({
     if (canGoBack) {
       setCurrentStep(currentStep - 1);
       setIsWaitingForProcessing(false);
+      setAutoCloseCountdown(null); // Cancel auto-close when navigating back
     }
   };
 
@@ -127,12 +159,14 @@ export default function QuoteQuestionnaireModal({
     if (step <= currentStep) {
       setCurrentStep(step);
       setIsWaitingForProcessing(false);
+      setAutoCloseCountdown(null); // Cancel auto-close when navigating back
     }
   };
 
   const handleClose = () => {
     // Save current state before closing
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setAutoCloseCountdown(null); // Cancel auto-close when manually closing
     onClose();
   };
 
@@ -154,6 +188,22 @@ export default function QuoteQuestionnaireModal({
           <p className="text-gray-600 mb-4">
             Waiting for document processing to finish...
           </p>
+          
+          {/* Auto-close countdown */}
+          {autoCloseCountdown !== null && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-md mx-auto mb-4">
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <p className="text-sm text-green-700">
+                  Closing in {autoCloseCountdown} second{autoCloseCountdown !== 1 ? 's' : ''}...
+                </p>
+              </div>
+              <p className="text-xs text-green-600 mt-1">
+                We'll scroll you to the processing status to track progress.
+              </p>
+            </div>
+          )}
+          
           {processingError ? (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
               <p className="text-sm text-red-600">{processingError}</p>

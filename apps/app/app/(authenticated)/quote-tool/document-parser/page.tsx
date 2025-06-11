@@ -293,10 +293,10 @@ export default function DocumentParserPage() {
     setFiles(prev => [...prev, ...filesWithCategory]);
   };
 
-  // Calculate estimated time remaining
-  const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 90) => {
+  // Calculate estimated time remaining (4-8 minutes per file)
+  const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 360) => {
     const remainingFiles = totalFiles - currentIndex;
-    return remainingFiles * avgTimePerFile; // seconds
+    return remainingFiles * avgTimePerFile; // seconds (6 minutes average)
   }, []);
 
   // Normalize processed result
@@ -709,7 +709,7 @@ export default function DocumentParserPage() {
       
       {/* Processing Status */}
       {isLoading && (
-        <div className="mb-6">
+        <div className="mb-6" data-processing-status>
           {files.length > 1 ? (
             <BatchProcessingStatus
               files={files}
@@ -768,13 +768,19 @@ export default function DocumentParserPage() {
           <div className="flex justify-between items-center mt-6">
             <div className="text-sm text-gray-600">
               {files.length > 0 && (
-                <div className="flex items-center space-x-4">
-                  <span>Ready to process {files.length} document{files.length !== 1 ? 's' : ''}</span>
-                  {files.length > 1 && (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-4">
+                    <span>Ready to process {files.length} document{files.length !== 1 ? 's' : ''}</span>
                     <Badge variant="secondary" className="text-xs">
-                      Estimated time: {Math.ceil(files.length * 1.5)} minutes
+                      {files.length === 1 
+                        ? '4-8 minutes per document' 
+                        : `${Math.ceil(files.length * 4)}-${Math.ceil(files.length * 8)} minutes total`
+                      }
                     </Badge>
-                  )}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    ⏱️ Processing typically takes 4-8 minutes per document depending on size and complexity
+                  </div>
                 </div>
               )}
             </div>

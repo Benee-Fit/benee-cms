@@ -80,7 +80,6 @@ export default function SaveReportModal({
         clientId: formData.clientId && formData.clientId !== 'no-client' ? formData.clientId : null,
         data: reportData,
         documentIds,
-        notes: formData.notes,
       };
       
       console.log('[DEBUG] SaveReportModal - Making API request with data:', requestData);
