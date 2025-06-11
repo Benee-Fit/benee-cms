@@ -2,16 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@repo/database';
 import { uploadToSpaces } from '../../../../../lib/do-spaces';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 // GET all documents for a client
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const documents = await database.brokerClientDocument.findMany({
@@ -32,7 +26,7 @@ export async function GET(
 // POST upload new document
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const formData = await request.formData();

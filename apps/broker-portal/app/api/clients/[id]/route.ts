@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@repo/database';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 // GET single client
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const client = await database.brokerClient.findUnique({
@@ -38,7 +32,7 @@ export async function GET(
 // PUT update client
 export async function PUT(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const body = await request.json();
@@ -86,7 +80,7 @@ export async function PUT(
 // DELETE client
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     await database.brokerClient.delete({

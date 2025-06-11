@@ -2,17 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@repo/database';
 import { deleteFromSpaces } from '../../../../../../lib/do-spaces';
 
-interface RouteParams {
-  params: {
-    id: string;
-    docId: string;
-  };
-}
-
 // DELETE document
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: { id: string; docId: string } }
 ) {
   try {
     // Get document to find the file URL
