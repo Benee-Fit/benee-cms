@@ -21,7 +21,36 @@ const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[]
       const planOption = processedData.planOptions[0];
       const carrierProposal = planOption.carrierProposals?.[0];
       
-      if (carrierProposal && carrierProposal.coverageBreakdown) {
+      // First, try to use allCoverages from processedData (this contains the actual premium data)
+      if (processedData.allCoverages && processedData.allCoverages.length > 0) {
+        enhancedCoverages = processedData.allCoverages.map((coverage: any) => {
+          const enhanced = {
+            coverageType: coverage.coverageType,
+            carrierName: coverage.carrierName || doc.metadata?.carrierName,
+            planOptionName: coverage.planOptionName || planOption.planOptionName,
+            premium: coverage.premium || coverage.monthlyPremium || 0,
+            monthlyPremium: coverage.monthlyPremium || coverage.premium || 0,
+            unitRate: coverage.unitRate || null,
+            unitRateBasis: coverage.unitRateBasis || 'per unit',
+            volume: coverage.volume || null,
+            lives: coverage.lives || 0,
+            benefitDetails: coverage.benefitDetails || {}
+          };
+
+          // For EHC and Dental, we need to handle Single/Family breakdown
+          if (coverage.coverageType === 'Extended Healthcare' || coverage.coverageType === 'Dental Care') {
+            // If we have lives data, assume it's all family (since single would be 0 premium typically)
+            if (coverage.lives && coverage.lives > 0) {
+              enhanced.livesFamily = coverage.lives;
+              enhanced.livesSingle = 0;
+              enhanced.premiumPerFamily = coverage.monthlyPremium ? coverage.monthlyPremium / coverage.lives : 0;
+              enhanced.premiumPerSingle = 0;
+            }
+          }
+
+          return enhanced;
+        });
+      } else if (carrierProposal && carrierProposal.coverageBreakdown) {
         // If we have detailed coverage breakdown, use it
         enhancedCoverages = Object.entries(carrierProposal.coverageBreakdown).map(([coverageType, details]: [string, any]) => ({
           coverageType,
