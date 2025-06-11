@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
 import type { ParsedDocument, Coverage } from '../../../types';
 import { cn } from '@repo/design-system/lib/utils';
@@ -24,7 +24,7 @@ import {
 } from '@repo/design-system/components/ui/accordion';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Badge } from '@repo/design-system/components/ui/badge';
-import { ChevronRight, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, Search, X, Edit2 } from 'lucide-react';
 import { Input } from '@repo/design-system/components/ui/input';
 
 // Using shared ParsedDocument type from types.ts
@@ -36,10 +36,88 @@ interface PlanComparisonTabProps {
 // Type for benefit details which can be string, number, boolean, or nested object with those types
 type BenefitDetail = string | number | boolean | null | { [key: string]: BenefitDetail };
 
+// Editable Table Cell Component
+interface EditableTableCellProps {
+  value: string;
+  onUpdate: (value: string) => void;
+  className?: string;
+}
+
+const EditableTableCell: React.FC<EditableTableCellProps> = ({ 
+  value, 
+  onUpdate, 
+  className = ''
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempValue, setTempValue] = useState(value);
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    onUpdate(tempValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setIsEditing(false);
+      onUpdate(tempValue);
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setTempValue(value);
+    }
+  };
+
+  // Update tempValue when value prop changes
+  React.useEffect(() => {
+    setTempValue(value);
+  }, [value]);
+
+  if (isEditing) {
+    return (
+      <div className="relative">
+        <input
+          type="text"
+          value={tempValue}
+          onChange={(e) => setTempValue(e.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className={`w-full pl-2 pr-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+          autoFocus
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="group relative cursor-pointer hover:bg-blue-50 rounded px-2 py-1"
+      onClick={() => setIsEditing(true)}
+    >
+      <span className={className}>{value}</span>
+      <Edit2 className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+};
+
 // DetailRenderer component for clean data presentation with better text wrapping
-const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
+const DetailRenderer = ({ 
+  details, 
+  isEditable = false,
+  onUpdate,
+  editKey = ''
+}: { 
+  details: BenefitDetail;
+  isEditable?: boolean;
+  onUpdate?: (value: string) => void;
+  editKey?: string;
+}) => {
   if (!details || typeof details !== 'object') {
-    return <p className="text-sm break-words whitespace-normal leading-relaxed">{String(details) || '-'}</p>;
+    const stringValue = String(details) || '-';
+    
+    if (isEditable && onUpdate) {
+      return <EditableTableCell value={stringValue} onUpdate={onUpdate} className="text-sm" />;
+    }
+    
+    return <p className="text-sm break-words whitespace-normal leading-relaxed">{stringValue}</p>;
   }
   return (
     <ul className="space-y-2">
@@ -50,7 +128,12 @@ const DetailRenderer = ({ details }: { details: BenefitDetail }) => {
           </span>
           <span className="ml-2 text-muted-foreground break-words">
             {typeof value === 'object' && value !== null ? (
-              <DetailRenderer details={value} />
+              <DetailRenderer 
+                details={value} 
+                isEditable={isEditable}
+                onUpdate={onUpdate}
+                editKey={`${editKey}-${key}`}
+              />
             ) : (
               String(value) || '-'
             )}
@@ -219,6 +302,19 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPlanOptions, setSelectedPlanOptions] = useState<Record<string, string>>({});
+  
+  // State for edited cell values
+  const [editedValues, setEditedValues] = useState<Record<string, any>>({});
+  
+  // Helper function to get edited value or default
+  const getEditedValue = (key: string, defaultValue: any) => {
+    return editedValues[key] !== undefined ? editedValues[key] : defaultValue;
+  };
+  
+  // Helper function to update edited value
+  const updateEditedValue = (key: string, value: any) => {
+    setEditedValues(prev => ({ ...prev, [key]: value }));
+  };
   
   if (!results || results.length === 0) {
     return (
@@ -441,13 +537,19 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                           const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
                           const fieldValue = data[field];
                           
+                          const editKey = `${coverageType}-${field}-${carrier.name}-${planOption}`;
+                          const editedFieldValue = getEditedValue(editKey, fieldValue);
+                          
                           return (
                             <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
                               <div className="break-words whitespace-normal">
                                 <DetailRenderer 
-                                  details={fieldValue === true ? 'Yes' :
-                                         fieldValue === false ? 'No' :
-                                         fieldValue}
+                                  details={editedFieldValue === true ? 'Yes' :
+                                         editedFieldValue === false ? 'No' :
+                                         editedFieldValue}
+                                  isEditable={true}
+                                  onUpdate={(value) => updateEditedValue(editKey, value)}
+                                  editKey={editKey}
                                 />
                               </div>
                             </TableCell>
