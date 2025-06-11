@@ -1,19 +1,15 @@
 'use client';
 
-import { ClientInsights } from '@/app/components/client-insights';
-import { usePageTitle } from '@/app/components/layout/PageTitleContext';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function ClientInsightsPage() {
-  const { setTitle } = usePageTitle();
+  const router = useRouter();
   
   useEffect(() => {
-    setTitle('Client Insights');
-  }, [setTitle]);
+    // Redirect to overview as the default page
+    router.replace('/client-insights/overview');
+  }, [router]);
 
-  return (
-    <div>
-      <ClientInsights />
-    </div>
-  );
+  return null;
 }

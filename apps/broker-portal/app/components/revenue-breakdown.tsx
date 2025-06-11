@@ -245,6 +245,42 @@ export function RevenueBreakdown({
     },
   ];
 
+  // Mock data for Broker Splits
+  const brokerSplitsData = [
+    {
+      brokerName: 'John Smith',
+      clients: 14,
+      planMembers: 350,
+      avgClientSplitPercent: 85.5,
+      avgClientSplitDollar: 3420,
+      percentOfTotalBlock: 28.2,
+    },
+    {
+      brokerName: 'Emily Davis',
+      clients: 18,
+      planMembers: 485,
+      avgClientSplitPercent: 88.2,
+      avgClientSplitDollar: 4150,
+      percentOfTotalBlock: 32.5,
+    },
+    {
+      brokerName: 'Michael Johnson',
+      clients: 12,
+      planMembers: 295,
+      avgClientSplitPercent: 82.8,
+      avgClientSplitDollar: 2890,
+      percentOfTotalBlock: 21.8,
+    },
+    {
+      brokerName: 'Sarah Williams',
+      clients: 10,
+      planMembers: 238,
+      avgClientSplitPercent: 86.7,
+      avgClientSplitDollar: 3125,
+      percentOfTotalBlock: 17.5,
+    },
+  ];
+
   // Column configurations for sortable tables
   const teamMembersColumns: ColumnConfig<(typeof teamMembers)[0]>[] = [
     { key: 'name', header: 'Broker', type: 'string' },
@@ -294,6 +330,15 @@ export function RevenueBreakdown({
       align: 'right',
     },
     { key: 'topQuoteSource', header: 'Top Quote Source', type: 'string' },
+  ];
+
+  const brokerSplitsColumns: ColumnConfig<(typeof brokerSplitsData)[0]>[] = [
+    { key: 'brokerName', header: 'Broker Name', type: 'string' },
+    { key: 'clients', header: '# of Clients', type: 'number', align: 'right' },
+    { key: 'planMembers', header: '# of Plan Members', type: 'number', align: 'right' },
+    { key: 'avgClientSplitPercent', header: 'Avg Client Split %', type: 'number', align: 'right', render: (value) => `${value}%` },
+    { key: 'avgClientSplitDollar', header: 'Avg Client Split $', type: 'currency', align: 'right' },
+    { key: 'percentOfTotalBlock', header: '% of Total Block', type: 'number', align: 'right', render: (value) => `${value}%` },
   ];
 
   const commissionSplits = [
@@ -954,6 +999,21 @@ export function RevenueBreakdown({
               </ChartContainer>
             </CardContent>
           </Card>
+        </section>
+      )}
+
+      {/* Broker Splits */}
+      {shouldRenderSection('broker-splits-title') && (
+        <section aria-labelledby="broker-splits-title" className="pt-6">
+          <h3 id="broker-splits-title" className="text-xl font-medium mb-2">
+            Broker Splits
+          </h3>
+          <SortableTable
+            data={brokerSplitsData}
+            columns={brokerSplitsColumns}
+            defaultSortKey="percentOfTotalBlock"
+            defaultSortDirection="desc"
+          />
         </section>
       )}
 

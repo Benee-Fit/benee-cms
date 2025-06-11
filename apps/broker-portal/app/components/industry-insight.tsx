@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@repo/design-system/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -16,26 +15,32 @@ import {
   TableRow,
 } from '@repo/design-system/components/ui/table';
 import { cn } from '@repo/design-system/lib/utils';
-// import { useState } from 'react'; // No longer needed as mock data is static for now
-
-const bluePaletteConst = ['#0D47A1', '#1976D2', '#2196F3', '#64B5F6', '#90CAF9', '#BBDEFB'];
-const extendedBluePaletteConst = ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB', '#E3F2FD'];
-
+import {
+  SortableTable,
+  type ColumnConfig,
+} from './sortable-table/sortable-table';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
   Legend,
-  // Line, // Unused Line import
-  // LineChart, // Unused LineChart import
   Pie,
   PieChart,
-  ResponsiveContainer, // Added for responsive charts
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+
+const bluePaletteConst = [
+  '#0D47A1',
+  '#1976D2',
+  '#2196F3',
+  '#64B5F6',
+  '#90CAF9',
+  '#BBDEFB',
+];
 
 interface ChartDataset {
   label: string;
@@ -122,15 +127,16 @@ const ChartComponent = ({
           <XAxis dataKey="name" className="text-xs text-muted-foreground" />
           <YAxis className="text-xs text-muted-foreground" />
           <Tooltip />
-          {options?.plugins?.legend?.display !== false && (
+          {(options?.plugins?.legend?.display ?? true) && (
             <Legend {...legendProps()} />
           )}
           <Bar
             dataKey="value"
-            fill={ // Default fill if not an array or if Cells are not used
-              !Array.isArray(data.datasets[0].backgroundColor)
-                ? (data.datasets[0].backgroundColor as string) || 'hsl(var(--primary) / 0.7)'
-                : undefined // Let Cells handle fill if backgroundColor is an array
+            fill={
+              Array.isArray(data.datasets[0].backgroundColor)
+                ? undefined
+                : (data.datasets[0].backgroundColor as string) ||
+                  'hsl(var(--primary) / 0.7)'
             }
           >
             {Array.isArray(data.datasets[0].backgroundColor) &&
@@ -139,7 +145,8 @@ const ChartComponent = ({
                   key={`cell-${index}`}
                   fill={
                     (data.datasets[0].backgroundColor as string[])[
-                      index % (data.datasets[0].backgroundColor as string[]).length
+                      index %
+                        (data.datasets[0].backgroundColor as string[]).length
                     ]
                   }
                 />
@@ -176,7 +183,7 @@ const ChartComponent = ({
               />
             ))}
           </Pie>
-          {options?.plugins?.legend?.display !== false &&
+          {(options?.plugins?.legend?.display ?? true) &&
             options?.plugins?.legend?.position && <Legend {...legendProps()} />}
         </PieChart>
       </ResponsiveContainer>
@@ -201,6 +208,41 @@ export function IndustryInsight({
   const shouldRenderSection = (id: string) => {
     return !sectionId || sectionId === id;
   };
+
+  // Column configuration for sortable industry performance table
+  const industryColumns: ColumnConfig<(typeof industryPerformance)[0]>[] = [
+    {
+      key: 'industry',
+      header: 'Industry',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'clients',
+      header: 'Clients',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'revenue',
+      header: 'Revenue',
+      type: 'currency',
+      align: 'right',
+    },
+    {
+      key: 'growth',
+      header: 'YoY Growth',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value}%`,
+    },
+    {
+      key: 'avgPremium',
+      header: 'Avg. Premium',
+      type: 'currency',
+      align: 'right',
+    },
+  ];
 
   // Mock data from the original component
   const industryPerformance = [
@@ -288,7 +330,15 @@ export function IndustryInsight({
       {
         label: 'Quotes Submitted',
         data: [48, 37, 29, 22, 19, 14, 8],
-        backgroundColor: ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6'], // extendedBluePalette (7 needed)
+        backgroundColor: [
+          '#0D47A1',
+          '#1565C0',
+          '#1976D2',
+          '#1E88E5',
+          '#2196F3',
+          '#42A5F5',
+          '#64B5F6',
+        ], // extendedBluePalette (7 needed)
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
@@ -301,7 +351,15 @@ export function IndustryInsight({
       {
         label: 'Conversion Rate (%)',
         data: [72, 65, 59, 68, 55, 42, 63],
-        backgroundColor: ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6'], // extendedBluePalette (7 needed)
+        backgroundColor: [
+          '#0D47A1',
+          '#1565C0',
+          '#1976D2',
+          '#1E88E5',
+          '#2196F3',
+          '#42A5F5',
+          '#64B5F6',
+        ], // extendedBluePalette (7 needed)
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
@@ -360,53 +418,17 @@ export function IndustryInsight({
           <h3 id="industry-perf-title" className="text-xl font-medium mb-2">
             Industry Performance
           </h3>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Industry</TableHead>
-                    <TableHead className="text-right">Clients</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-right">YoY Growth</TableHead>
-                    <TableHead className="text-right">Avg. Premium</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {industryPerformance.map((industry) => (
-                    <TableRow key={industry.industry}>
-                      <TableCell className="font-medium">
-                        {industry.industry}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {industry.clients}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${industry.revenue.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {industry.growth}%
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${industry.avgPremium.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Highlight top verticals and growth areas:
-            <Badge variant="outline" className="ml-2 mr-1">
-              Technology
-            </Badge>
-            <Badge variant="outline">Healthcare</Badge>
-          </p>
+          <SortableTable
+            data={industryPerformance}
+            columns={industryColumns}
+            defaultSortKey="revenue"
+            defaultSortDirection="desc"
+          />
         </section>
       )}
 
-      {/* B. Premium Benchmarks */}
+      {/* B. Premium Benchmarks - COMMENTED OUT FOR FUTURE RESTORATION */}
+      {/* 
       {shouldRenderSection('premium-bench-title') && (
         <section aria-labelledby="premium-bench-title">
           <h3 id="premium-bench-title" className="text-xl font-medium mb-2">
@@ -477,6 +499,7 @@ export function IndustryInsight({
           </div>
         </section>
       )}
+      */}
 
       {/* C. Company Size Tiers */}
       {shouldRenderSection('company-size-tiers-title') && (
@@ -494,7 +517,9 @@ export function IndustryInsight({
                       Number of Clients
                     </TableHead>
                     <TableHead className="text-right">% of Business</TableHead>
-                    <TableHead className="text-right"># of Plan Members</TableHead>
+                    <TableHead className="text-right">
+                      # of Plan Members
+                    </TableHead>
                     <TableHead className="text-right">
                       Avg. Premium/Client
                     </TableHead>

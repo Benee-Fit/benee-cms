@@ -14,11 +14,11 @@ const tabNavItems = [
     href: '/industry-insight/performance',
     sectionId: 'industry-performance-title',
   },
-  {
-    label: 'Benchmarks',
-    href: '/industry-insight/benchmarks',
-    sectionId: 'premium-bench-title',
-  },
+  // {
+  //   label: 'Benchmarks',
+  //   href: '/industry-insight/benchmarks',
+  //   sectionId: 'premium-bench-title',
+  // }, // TEMPORARILY REMOVED
   {
     label: 'Size Tiers',
     href: '/industry-insight/size-tiers',
@@ -46,10 +46,10 @@ export default function IndustryInsightLayout({
   return (
     <div className="space-y-6">
       <p className="text-muted-foreground">
-        Explore detailed breakdowns of industry performance, benchmarks, and analytics.
+        Explore detailed breakdowns of industry performance, size tiers, and analytics.
       </p>
       <Tabs defaultValue={pathname} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 mb-6">
           {tabNavItems.map((item) => (
             <Link
               key={item.href}
