@@ -22,17 +22,22 @@ export default function OpportunityTypeStep({ value, onChange }: OpportunityType
         className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
         <Label htmlFor="renewal" className="cursor-pointer">
-          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 ${
+          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 h-32 ${
             value === 'renewal' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
-            <CardContent className="p-6">
+            <CardContent className="p-6 h-full flex flex-col justify-center">
               <div className="flex items-center space-x-4">
                 <RadioGroupItem value="renewal" id="renewal" className="sr-only" />
-                <div>
+                <div className="flex-shrink-0">
+                  <RefreshCw className={`h-8 w-8 ${
+                    value === 'renewal' ? 'text-orange-600' : 'text-gray-400'
+                  }`} />
+                </div>
+                <div className="flex-1">
                   <div className="text-lg font-medium text-gray-900">
                     Renewal
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-1 leading-tight">
                     Renewing existing coverage with current or new carrier
                   </p>
                 </div>
@@ -42,17 +47,22 @@ export default function OpportunityTypeStep({ value, onChange }: OpportunityType
         </Label>
 
         <Label htmlFor="go-to-market" className="cursor-pointer">
-          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 ${
+          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 h-32 ${
             value === 'go-to-market' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
-            <CardContent className="p-6">
+            <CardContent className="p-6 h-full flex flex-col justify-center">
               <div className="flex items-center space-x-4">
                 <RadioGroupItem value="go-to-market" id="go-to-market" className="sr-only" />
-                <div>
+                <div className="flex-shrink-0">
+                  <TrendingUp className={`h-8 w-8 ${
+                    value === 'go-to-market' ? 'text-purple-600' : 'text-gray-400'
+                  }`} />
+                </div>
+                <div className="flex-1">
                   <div className="text-lg font-medium text-gray-900">
                     Go to Market
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-1 leading-tight">
                     Shopping the market for competitive options
                   </p>
                 </div>

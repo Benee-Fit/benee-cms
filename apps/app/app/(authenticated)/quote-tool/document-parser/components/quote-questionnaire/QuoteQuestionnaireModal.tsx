@@ -1,18 +1,26 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@repo/design-system/components/ui/dialog';
-import { Button } from '@repo/design-system/components/ui/button';
-import { Progress } from '@repo/design-system/components/ui/progress';
 import { Badge } from '@repo/design-system/components/ui/badge';
-import { CheckCircle, Clock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Button } from '@repo/design-system/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/design-system/components/ui/dialog';
+import { Progress } from '@repo/design-system/components/ui/progress';
+import { ArrowLeft, ArrowRight, CheckCircle, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import ClientTypeStep from './steps/ClientTypeStep';
-import OpportunityTypeStep from './steps/OpportunityTypeStep';
 import CompanyDetailsStep from './steps/CompanyDetailsStep';
 import JointCaseStep from './steps/JointCaseStep';
+import OpportunityTypeStep from './steps/OpportunityTypeStep';
 import QuoteOriginStep from './steps/QuoteOriginStep';
 
-import type { QuoteQuestionnaireData, QuoteQuestionnaireModalProps } from './types';
-import { validateStep, isQuestionnaireComplete } from './utils/validation';
+import type {
+  QuoteQuestionnaireData,
+  QuoteQuestionnaireModalProps,
+} from './types';
+import { isQuestionnaireComplete, validateStep } from './utils/validation';
 
 const STORAGE_KEY = 'quoteQuestionnaireData';
 
@@ -27,11 +35,11 @@ const initialData: QuoteQuestionnaireData = {
 };
 
 const steps = [
-  { id: 1, title: 'Client Type', description: 'New or existing client' },
-  { id: 2, title: 'Opportunity', description: 'Renewal or go to market' },
-  { id: 3, title: 'Company Details', description: 'Name and management fee' },
-  { id: 4, title: 'Joint Case', description: 'Broker fee splitting' },
-  { id: 5, title: 'Quote Origin', description: 'Request source' },
+  { id: 1, title: 'Client Type', description: '' },
+  { id: 2, title: 'Opportunity', description: '' },
+  { id: 3, title: 'Company Details', description: '' },
+  { id: 4, title: 'Joint Case', description: '' },
+  { id: 5, title: 'Quote Origin', description: '' },
 ];
 
 export default function QuoteQuestionnaireModal({
@@ -39,7 +47,7 @@ export default function QuoteQuestionnaireModal({
   onClose,
   onComplete,
   isProcessingComplete,
-  processingError
+  processingError,
 }: QuoteQuestionnaireModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [data, setData] = useState<QuoteQuestionnaireData>(initialData);
@@ -85,7 +93,7 @@ export default function QuoteQuestionnaireModal({
   };
 
   const updateData = (updates: Partial<QuoteQuestionnaireData>) => {
-    setData(prev => ({ ...prev, ...updates }));
+    setData((prev) => ({ ...prev, ...updates }));
   };
 
   const isStepValid = (step: number) => validateStep(step, data);
@@ -129,7 +137,9 @@ export default function QuoteQuestionnaireModal({
   };
 
   const progress = ((currentStep - 1) / (steps.length - 1)) * 100;
-  const completedSteps = steps.filter(step => isStepCompleted(step.id)).length;
+  const completedSteps = steps.filter((step) =>
+    isStepCompleted(step.id)
+  ).length;
 
   const renderCurrentStep = () => {
     if (isWaitingForProcessing) {
@@ -154,7 +164,8 @@ export default function QuoteQuestionnaireModal({
           ) : (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
               <p className="text-sm text-blue-600">
-                Your responses have been saved. The system will proceed automatically when processing completes.
+                Your responses have been saved. The system will proceed
+                automatically when processing completes.
               </p>
             </div>
           )}
@@ -183,7 +194,9 @@ export default function QuoteQuestionnaireModal({
             companyName={data.companyName}
             planManagementFee={data.planManagementFee}
             onCompanyNameChange={(value) => updateData({ companyName: value })}
-            onPlanManagementFeeChange={(value) => updateData({ planManagementFee: value })}
+            onPlanManagementFeeChange={(value) =>
+              updateData({ planManagementFee: value })
+            }
           />
         );
       case 4:
@@ -192,7 +205,9 @@ export default function QuoteQuestionnaireModal({
             isJointCase={data.isJointCase}
             brokerSplits={data.brokerSplits}
             onIsJointCaseChange={(value) => updateData({ isJointCase: value })}
-            onBrokerSplitsChange={(splits) => updateData({ brokerSplits: splits })}
+            onBrokerSplitsChange={(splits) =>
+              updateData({ brokerSplits: splits })
+            }
           />
         );
       case 5:
@@ -242,13 +257,15 @@ export default function QuoteQuestionnaireModal({
               }`}
               onClick={() => handleStepClick(step.id)}
             >
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
-                isStepCompleted(step.id)
-                  ? 'bg-green-500 border-green-500 text-white'
-                  : step.id === currentStep
-                  ? 'border-blue-500 text-blue-500'
-                  : 'border-gray-300 text-gray-400'
-              }`}>
+              <div
+                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
+                  isStepCompleted(step.id)
+                    ? 'bg-green-500 border-green-500 text-white'
+                    : step.id === currentStep
+                      ? 'border-blue-500 text-blue-500'
+                      : 'border-gray-300 text-gray-400'
+                }`}
+              >
                 {isStepCompleted(step.id) ? (
                   <CheckCircle className="h-5 w-5" />
                 ) : (
@@ -256,9 +273,11 @@ export default function QuoteQuestionnaireModal({
                 )}
               </div>
               <div className="text-center">
-                <div className={`text-xs font-medium ${
-                  step.id === currentStep ? 'text-blue-600' : 'text-gray-600'
-                }`}>
+                <div
+                  className={`text-xs font-medium ${
+                    step.id === currentStep ? 'text-blue-600' : 'text-gray-600'
+                  }`}
+                >
                   {step.title}
                 </div>
                 <div className="text-xs text-gray-500 max-w-20 leading-tight">
@@ -270,9 +289,7 @@ export default function QuoteQuestionnaireModal({
         </div>
 
         {/* Step Content */}
-        <div className="flex-1 overflow-y-auto py-6">
-          {renderCurrentStep()}
-        </div>
+        <div className="flex-1 overflow-y-auto py-6">{renderCurrentStep()}</div>
 
         {/* Navigation */}
         {!isWaitingForProcessing && (
@@ -289,7 +306,10 @@ export default function QuoteQuestionnaireModal({
 
             <div className="flex items-center space-x-2">
               {isProcessingComplete && (
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800"
+                >
                   Processing Complete
                 </Badge>
               )}

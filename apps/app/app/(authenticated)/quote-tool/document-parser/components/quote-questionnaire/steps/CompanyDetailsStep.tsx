@@ -39,7 +39,7 @@ export default function CompanyDetailsStep({
         <p className="text-gray-600 mt-2">Enter the company information and fee structure</p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-6">
         {/* Company Name */}
         <Card>
           <CardContent className="p-6">
