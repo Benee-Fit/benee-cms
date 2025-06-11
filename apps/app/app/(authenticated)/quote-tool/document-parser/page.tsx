@@ -261,7 +261,7 @@ export default function DocumentParserPage() {
     }
   };
 
-  // Proceed to results page with combined data
+  // Proceed to plan selection page with combined data
   const proceedToResults = (results: Record<string, unknown>[], questionnaire: QuoteQuestionnaireData) => {
     // Combine processed documents with questionnaire data
     const combinedData = {
@@ -269,12 +269,12 @@ export default function DocumentParserPage() {
       questionnaireData: questionnaire
     };
     
-    // Store combined results in localStorage for the results page
+    // Store combined results in localStorage for the plan selection page
     localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(results));
     localStorage.setItem('quoteQuestionnaireResults', JSON.stringify(questionnaire));
     
-    // Navigate to results page
-    router.push('/quote-tool/document-parser/results');
+    // Navigate to plan selection page instead of results
+    router.push('/quote-tool/plan-selection');
   };
 
   return (
