@@ -47,9 +47,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import {
+  type BrokerDetails,
+  brokerDetailsData,
+} from './broker-details/broker-data';
 import { BrokerDetailsModal } from './broker-details/broker-details-modal';
-import { brokerDetailsData, type BrokerDetails } from './broker-details/broker-data';
-import { SortableTable, type ColumnConfig } from './sortable-table/sortable-table';
+import {
+  type ColumnConfig,
+  SortableTable,
+} from './sortable-table/sortable-table';
 
 interface RevenueBreakdownProps {
   className?: string;
@@ -60,7 +66,9 @@ export function RevenueBreakdown({
   className,
   sectionId,
 }: RevenueBreakdownProps) {
-  const [selectedBroker, setSelectedBroker] = useState<BrokerDetails | null>(null);
+  const [selectedBroker, setSelectedBroker] = useState<BrokerDetails | null>(
+    null
+  );
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
 
   const handleBrokerClick = (brokerName: string) => {
@@ -136,7 +144,7 @@ export function RevenueBreakdown({
 
   // Mock HSA breakdown data
   const hsaData = {
-    avgCoverageAmount: 2850.00,
+    avgCoverageAmount: 2850.0,
     avgTotalRevenue: 485.75,
     totalRevenue: 127450,
   };
@@ -238,22 +246,53 @@ export function RevenueBreakdown({
   ];
 
   // Column configurations for sortable tables
-  const teamMembersColumns: ColumnConfig<typeof teamMembers[0]>[] = [
+  const teamMembersColumns: ColumnConfig<any>[] = [
     { key: 'name', header: 'Broker', type: 'string' },
     { key: 'clients', header: '# of Clients', type: 'number', align: 'right' },
     { key: 'members', header: '# of Members', type: 'number', align: 'right' },
-    { key: 'avgGroupSize', header: 'Avg. Group Size', type: 'number', align: 'right' },
-    { key: 'totalRevenue', header: 'Total Revenue', type: 'currency', align: 'right' },
+    {
+      key: 'avgGroupSize',
+      header: 'Avg. Group Size',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'totalRevenue',
+      header: 'Total Revenue',
+      type: 'currency',
+      align: 'right',
+    },
     { key: 'topIndustry', header: 'Top Industry', type: 'string' },
   ];
 
-  const salesFunnelColumns: ColumnConfig<typeof salesFunnelData[0]>[] = [
+  const salesFunnelColumns: ColumnConfig<any>[] = [
     { key: 'name', header: 'Broker Name', type: 'string' },
-    { key: 'quotesSent', header: 'Quotes Sent', type: 'number', align: 'right' },
-    { key: 'closeRate', header: 'Close Rate', type: 'number', align: 'right', render: (value) => `${value}%` },
-    { key: 'avgDaysToClose', header: 'Avg Days to Close', type: 'number', align: 'right' },
+    {
+      key: 'quotesSent',
+      header: 'Quotes Sent',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'closeRate',
+      header: 'Close Rate',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value}%`,
+    },
+    {
+      key: 'avgDaysToClose',
+      header: 'Avg Days to Close',
+      type: 'number',
+      align: 'right',
+    },
     { key: 'avgIndustryQuoted', header: 'Top Industry Quoted', type: 'string' },
-    { key: 'avgCompanySizeQuoted', header: 'Avg Company Size Quoted', type: 'number', align: 'right' },
+    {
+      key: 'avgCompanySizeQuoted',
+      header: 'Avg Company Size Quoted',
+      type: 'number',
+      align: 'right',
+    },
     { key: 'topQuoteSource', header: 'Top Quote Source', type: 'string' },
   ];
 
@@ -435,7 +474,13 @@ export function RevenueBreakdown({
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   <Badge variant="outline" className="mr-1">
-                    +{avgRevenuePerMemberGrowthRates[timeframe as keyof typeof avgRevenuePerMemberGrowthRates]}%
+                    +
+                    {
+                      avgRevenuePerMemberGrowthRates[
+                        timeframe as keyof typeof avgRevenuePerMemberGrowthRates
+                      ]
+                    }
+                    %
                   </Badge>{' '}
                   from last {timeframe === 'ytd' && 'year'}
                   {timeframe === 'qtd' && 'quarter'}
@@ -449,7 +494,9 @@ export function RevenueBreakdown({
             <div className="grid md:grid-cols-3 gap-4 mb-6">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Avg Coverage Amount</CardTitle>
+                  <CardTitle className="text-base">
+                    Avg Coverage Amount
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold">
@@ -614,10 +661,12 @@ export function RevenueBreakdown({
             defaultSortKey="totalRevenue"
             defaultSortDirection="desc"
           />
-          
+
           {/* Sales Funnel Performance */}
           <div className="mt-6">
-            <h4 className="text-lg font-medium mb-3">Sales Funnel Performance</h4>
+            <h4 className="text-lg font-medium mb-3">
+              Sales Funnel Performance
+            </h4>
             <SortableTable
               data={salesFunnelData}
               columns={salesFunnelColumns}
@@ -643,7 +692,9 @@ export function RevenueBreakdown({
                     <TableHead>Carrier</TableHead>
                     <TableHead className="text-right">% Split</TableHead>
                     <TableHead className="text-right">Clients</TableHead>
-                    <TableHead className="text-right"># of Plan Members</TableHead>
+                    <TableHead className="text-right">
+                      # of Plan Members
+                    </TableHead>
                     <TableHead className="text-right">Total Revenue</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -906,7 +957,8 @@ export function RevenueBreakdown({
         </section>
       )}
 
-      {/* Forecasting */}
+      {/* Forecasting - TEMPORARILY REMOVED - Uncomment to restore */}
+      {/* 
       {shouldRenderSection('forecasting-title') && (
         <section aria-labelledby="forecasting-title" className="pt-6">
           <h3 id="forecasting-title" className="text-xl font-medium mb-2">
@@ -966,6 +1018,7 @@ export function RevenueBreakdown({
           </div>
         </section>
       )}
+      */}
 
       <BrokerDetailsModal
         broker={selectedBroker}

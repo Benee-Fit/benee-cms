@@ -22,7 +22,7 @@ export const mainNavItems: NavItem[] = [
       { label: 'Team Performance', href: '/revenue-breakdown/team-performance' },
       { label: 'Carrier Breakdown', href: '/revenue-breakdown/carrier-breakdown' },
       { label: 'Revenue Sources', href: '/revenue-breakdown/revenue-sources' },
-      { label: 'Forecasting', href: '/revenue-breakdown/forecasting' },
+      // { label: 'Forecasting', href: '/revenue-breakdown/forecasting' }, // TEMPORARILY REMOVED
     ],
   },
   {

@@ -25,7 +25,7 @@ export default function RevenueBreakdownLayout({
     { value: 'team-performance', label: 'Team Performance', href: '/revenue-breakdown/team-performance', sectionId: 'team-performance-title' },
     { value: 'carrier-breakdown', label: 'Carrier Breakdown', href: '/revenue-breakdown/carrier-breakdown', sectionId: 'commission-splits-title' },
     { value: 'revenue-sources', label: 'Revenue Sources', href: '/revenue-breakdown/revenue-sources', sectionId: 'revenue-sources-title' },
-    { value: 'forecasting', label: 'Forecasting', href: '/revenue-breakdown/forecasting', sectionId: 'forecasting-title' },
+    // { value: 'forecasting', label: 'Forecasting', href: '/revenue-breakdown/forecasting', sectionId: 'forecasting-title' }, // TEMPORARILY REMOVED
   ];
   
   const currentTab = tabs.find(tab => pathname === tab.href)?.value || 'overview';
@@ -34,7 +34,7 @@ export default function RevenueBreakdownLayout({
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <Tabs value={currentTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 mb-6">
             {tabs.map(tab => (
               <Link 
                 href={tab.href} 
