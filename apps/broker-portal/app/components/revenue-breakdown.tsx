@@ -228,6 +228,7 @@ export function RevenueBreakdown({
       type: 'Internal Broker',
       percentSplit: 28,
       clients: 45,
+      planMembers: 2850,
       totalCommission: 54800,
       carrier: 'Manulife',
     },
@@ -236,6 +237,7 @@ export function RevenueBreakdown({
       type: 'Referral',
       percentSplit: 22,
       clients: 38,
+      planMembers: 2180,
       totalCommission: 42600,
       carrier: 'Sun Life',
     },
@@ -244,6 +246,7 @@ export function RevenueBreakdown({
       type: 'Internal Broker',
       percentSplit: 20,
       clients: 30,
+      planMembers: 1920,
       totalCommission: 39000,
       carrier: 'Great-West Life',
     },
@@ -252,6 +255,7 @@ export function RevenueBreakdown({
       type: 'Internal Broker',
       percentSplit: 16,
       clients: 25,
+      planMembers: 1450,
       totalCommission: 31200,
       carrier: 'Blue Cross',
     },
@@ -260,6 +264,7 @@ export function RevenueBreakdown({
       type: 'Referral',
       percentSplit: 14,
       clients: 20,
+      planMembers: 980,
       totalCommission: 27300,
       carrier: 'Various',
     },
@@ -678,12 +683,11 @@ export function RevenueBreakdown({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Partner</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Carrier</TableHead>
                     <TableHead className="text-right">% Split</TableHead>
                     <TableHead className="text-right">Clients</TableHead>
-                    <TableHead className="text-right">$ Amount</TableHead>
-                    <TableHead>Carrier</TableHead>
+                    <TableHead className="text-right"># of Plan Members</TableHead>
+                    <TableHead className="text-right">Total Revenue</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -692,7 +696,6 @@ export function RevenueBreakdown({
                       <TableCell className="font-medium">
                         {commission.partner}
                       </TableCell>
-                      <TableCell>{commission.type}</TableCell>
                       <TableCell className="text-right">
                         {commission.percentSplit}%
                       </TableCell>
@@ -700,9 +703,11 @@ export function RevenueBreakdown({
                         {commission.clients}
                       </TableCell>
                       <TableCell className="text-right">
+                        {commission.planMembers?.toLocaleString() || '0'}
+                      </TableCell>
+                      <TableCell className="text-right">
                         ${commission.totalCommission.toLocaleString()}
                       </TableCell>
-                      <TableCell>{commission.carrier}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
