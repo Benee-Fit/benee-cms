@@ -76,36 +76,50 @@ export default function JointCaseStep({
         className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
         <Label htmlFor="joint-yes" className="cursor-pointer">
-          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 ${
+          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 h-32 ${
             isJointCase === true ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
-            <CardContent className="p-6">
-              <RadioGroupItem value="yes" id="joint-yes" className="sr-only" />
-              <div>
-                <div className="text-lg font-medium text-gray-900">
-                  Yes
+            <CardContent className="p-6 h-full flex flex-col justify-center">
+              <div className="flex items-center space-x-4">
+                <RadioGroupItem value="yes" id="joint-yes" className="sr-only" />
+                <div className="flex-shrink-0">
+                  <UserCheck className={`h-8 w-8 ${
+                    isJointCase === true ? 'text-orange-600' : 'text-gray-400'
+                  }`} />
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  Fee is split between multiple brokers
-                </p>
+                <div className="flex-1">
+                  <div className="text-lg font-medium text-gray-900">
+                    Yes
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1 leading-tight">
+                    Fee is split between multiple brokers
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
         </Label>
 
         <Label htmlFor="joint-no" className="cursor-pointer">
-          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 ${
+          <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 h-32 ${
             isJointCase === false ? 'border-gray-500 bg-gray-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
-            <CardContent className="p-6">
-              <RadioGroupItem value="no" id="joint-no" className="sr-only" />
-              <div>
-                <div className="text-lg font-medium text-gray-900">
-                  No
+            <CardContent className="p-6 h-full flex flex-col justify-center">
+              <div className="flex items-center space-x-4">
+                <RadioGroupItem value="no" id="joint-no" className="sr-only" />
+                <div className="flex-shrink-0">
+                  <UserX className={`h-8 w-8 ${
+                    isJointCase === false ? 'text-gray-600' : 'text-gray-400'
+                  }`} />
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  Single broker case
-                </p>
+                <div className="flex-1">
+                  <div className="text-lg font-medium text-gray-900">
+                    No
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1 leading-tight">
+                    Single broker case
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
