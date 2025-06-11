@@ -22,7 +22,7 @@ type SortField = 'companyName' | 'industry' | 'companySize' | 'sourceOfQuote' | 
 type SortDirection = 'asc' | 'desc';
 
 export function QuotesTable({ quotes }: QuotesTableProps) {
-  const [sortField, setSortField] = useState<SortField>('quoteDate');
+  const [sortField, setSortField] = useState<SortField>('companyName');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const handleSort = (field: SortField) => {
