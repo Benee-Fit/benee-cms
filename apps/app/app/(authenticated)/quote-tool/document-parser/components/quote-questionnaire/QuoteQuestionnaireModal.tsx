@@ -224,8 +224,8 @@ export default function QuoteQuestionnaireModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] overflow-hidden">
-        <DialogHeader className="pb-4">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="text-xl font-semibold">
             Quote Information
           </DialogTitle>
@@ -235,7 +235,7 @@ export default function QuoteQuestionnaireModal({
         </DialogHeader>
 
         {/* Progress Bar */}
-        <div className="space-y-4 pb-4">
+        <div className="flex-shrink-0 space-y-4 pb-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">
               Step {currentStep} of {steps.length}
@@ -248,7 +248,7 @@ export default function QuoteQuestionnaireModal({
         </div>
 
         {/* Step Indicators */}
-        <div className="flex items-center justify-between pb-6 border-b">
+        <div className="flex-shrink-0 flex items-center justify-between pb-6 border-b">
           {steps.map((step, index) => (
             <div
               key={step.id}
@@ -289,11 +289,11 @@ export default function QuoteQuestionnaireModal({
         </div>
 
         {/* Step Content */}
-        <div className="flex-1 overflow-y-auto py-6">{renderCurrentStep()}</div>
+        <div className="flex-1 overflow-y-auto py-6 min-h-0">{renderCurrentStep()}</div>
 
         {/* Navigation */}
         {!isWaitingForProcessing && (
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex-shrink-0 flex items-center justify-between pt-4 border-t">
             <Button
               variant="outline"
               onClick={handlePrevious}

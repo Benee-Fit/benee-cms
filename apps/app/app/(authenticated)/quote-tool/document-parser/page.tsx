@@ -1,19 +1,33 @@
 'use client';
 
-import { useState, useCallback, type DragEvent, type ChangeEvent } from 'react';
+import { useState, useCallback, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '../../components/header';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
-import { Info, Upload, AlertCircle, FileText, UploadCloud } from 'lucide-react';
+import { Badge } from '@repo/design-system/components/ui/badge';
+import { Info, Upload, AlertCircle, FileText, UploadCloud, CheckCircle2, Plus } from 'lucide-react';
 import QuoteQuestionnaireModal from './components/quote-questionnaire/QuoteQuestionnaireModal';
+import EnhancedDocumentTypeSelector from './components/EnhancedDocumentTypeSelector';
+import ProcessingStatus from './components/ProcessingStatus';
+import BatchProcessingStatus from './components/BatchProcessingStatus';
 import type { QuoteQuestionnaireData } from './components/quote-questionnaire/types';
 
 interface FileWithPreview extends File {
   preview?: string;
   category?: 'Current' | 'Renegotiated' | 'Alternative';
+}
+
+interface ProcessingStage {
+  id: string;
+  name: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  startTime?: string;
+  endTime?: string;
+  progress?: number;
+  details?: string;
 }
 
 export default function DocumentParserPage() {
@@ -30,6 +44,51 @@ export default function DocumentParserPage() {
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [questionnaireData, setQuestionnaireData] = useState<QuoteQuestionnaireData | null>(null);
   const [processedResults, setProcessedResults] = useState<Record<string, unknown>[]>([]);
+  const [processingStages, setProcessingStages] = useState<ProcessingStage[]>([]);
+  const [currentProcessingFile, setCurrentProcessingFile] = useState<string | null>(null);
+  const [showBatchUpload, setShowBatchUpload] = useState(false);
+  const [hasExistingSession, setHasExistingSession] = useState(false);
+  
+  // Batch processing state
+  const [processingIndex, setProcessingIndex] = useState(0);
+  const [completedFiles, setCompletedFiles] = useState<Array<{file: FileWithPreview; result: Record<string, unknown>}>>([]);
+  const [failedFiles, setFailedFiles] = useState<Array<{file: FileWithPreview; error: string}>>([]);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
+
+  // Check for existing data on mount and reset questionnaire if no parsed documents
+  useEffect(() => {
+    const parsedDocuments = localStorage.getItem('parsedBenefitsDocuments');
+    const questionnaireResults = localStorage.getItem('quoteQuestionnaireResults');
+    const questionnaireData = localStorage.getItem('quoteQuestionnaireData');
+    
+    // Set flag for existing session data
+    setHasExistingSession(!!parsedDocuments || !!questionnaireResults || !!questionnaireData);
+    
+    // If no parsed documents exist, clear the questionnaire data
+    if (!parsedDocuments) {
+      if (questionnaireResults) {
+        localStorage.removeItem('quoteQuestionnaireResults');
+        localStorage.removeItem('quoteQuestionnaireData'); // Also clear in-progress questionnaire data
+      }
+      setQuestionnaireData(null);
+      setProcessedResults([]);
+      setIsProcessingComplete(false);
+      setProcessingError(null);
+    }
+  }, []);
+
+  // Reset questionnaire and processed data when starting fresh
+  const resetSessionData = useCallback(() => {
+    localStorage.removeItem('parsedBenefitsDocuments');
+    localStorage.removeItem('quoteQuestionnaireResults');
+    localStorage.removeItem('quoteQuestionnaireData');
+    setQuestionnaireData(null);
+    setProcessedResults([]);
+    setIsProcessingComplete(false);
+    setProcessingError(null);
+    setShowQuestionnaire(false);
+    setHasExistingSession(false);
+  }, []);
 
   // Handle drag events
   const handleDrag = useCallback((e: DragEvent) => {
@@ -88,17 +147,68 @@ export default function DocumentParserPage() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Initialize processing stages for a file
+  const initializeProcessingStages = (fileName: string): ProcessingStage[] => [
+    {
+      id: 'upload',
+      name: 'File Upload',
+      description: 'Uploading document to server',
+      status: 'pending'
+    },
+    {
+      id: 'extraction',
+      name: 'Content Extraction',
+      description: 'Extracting text and data from PDF',
+      status: 'pending'
+    },
+    {
+      id: 'parsing',
+      name: 'AI Parsing',
+      description: 'Analyzing document structure and extracting benefits data',
+      status: 'pending'
+    },
+    {
+      id: 'saving',
+      name: 'Saving Results',
+      description: 'Saving parsed data and generating analysis',
+      status: 'pending'
+    }
+  ];
+
+  // Update processing stage status
+  const updateProcessingStage = (stageId: string, updates: Partial<ProcessingStage>) => {
+    setProcessingStages(prev => 
+      prev.map(stage => 
+        stage.id === stageId 
+          ? { ...stage, ...updates, startTime: updates.status === 'in_progress' ? new Date().toISOString() : stage.startTime, endTime: updates.status === 'completed' || updates.status === 'failed' ? new Date().toISOString() : stage.endTime }
+          : stage
+      )
+    );
+  };
+
   // Process a single document file and return the structured result
   const processDocumentFile = async (file: FileWithPreview): Promise<Record<string, unknown>> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('category', file.category || 'Current');
-    
-    // Create an AbortController to handle fetch timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout (Gemini API can take a while)
-    
+    setCurrentProcessingFile(file.name);
+    const stages = initializeProcessingStages(file.name);
+    setProcessingStages(stages);
+
     try {
+      // Stage 1: Upload
+      updateProcessingStage('upload', { status: 'in_progress', details: 'Preparing file for upload...' });
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', file.category || 'Current');
+      
+      updateProcessingStage('upload', { status: 'completed', details: 'File uploaded successfully' });
+      
+      // Stage 2: Extraction
+      updateProcessingStage('extraction', { status: 'in_progress', details: 'Extracting text content from PDF...' });
+      
+      // Create an AbortController to handle fetch timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout (Gemini API can take a while)
+      
       const response = await fetch('/api/process-document', {
         method: 'POST',
         body: formData,
@@ -121,23 +231,110 @@ export default function DocumentParserPage() {
           // Handle case where response isn't valid JSON
           errorMessage = `Error status ${response.status}: ${response.statusText}`;
         }
+        updateProcessingStage('extraction', { status: 'failed', details: errorMessage });
         throw new Error(errorMessage);
       }
       
+      updateProcessingStage('extraction', { status: 'completed', details: 'Text extraction completed' });
+      
+      // Stage 3: Parsing
+      updateProcessingStage('parsing', { status: 'in_progress', details: 'AI analyzing document structure...' });
+      
       const result = await response.json();
-      return {
+      
+      updateProcessingStage('parsing', { status: 'completed', details: 'Benefits data extracted successfully' });
+      
+      // Stage 4: Saving
+      updateProcessingStage('saving', { status: 'in_progress', details: 'Saving parsed results...' });
+      
+      const processedResult = {
         ...result,
         originalFileName: file.name,
         category: file.category,
       };
+      
+      updateProcessingStage('saving', { status: 'completed', details: 'Results saved successfully' });
+      
+      return processedResult;
     } catch (fetchError: unknown) {
-      if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
-        throw new Error(`Processing timeout for file ${file.name}. The request took too long.`);
+      const errorMessage = fetchError instanceof DOMException && fetchError.name === 'AbortError' 
+        ? `Processing timeout for file ${file.name}. The request took too long.`
+        : (fetchError instanceof Error ? fetchError.message : 'Unknown error occurred');
+      
+      // Mark current stage as failed
+      const currentStage = processingStages.find(stage => stage.status === 'in_progress');
+      if (currentStage) {
+        updateProcessingStage(currentStage.id, { status: 'failed', details: errorMessage });
       }
+      
       throw fetchError; // Re-throw to be handled in the outer catch
     }
   };
   
+  // Get file count by category for enhanced selector
+  const getFileCountByCategory = () => {
+    const counts: Record<string, number> = { Current: 0, Renegotiated: 0, Alternative: 0 };
+    files.forEach(file => {
+      if (file.category) {
+        counts[file.category]++;
+      }
+    });
+    return counts;
+  };
+
+  // Handle batch file upload
+  const handleBatchUpload = (newFiles: File[], category: 'Current' | 'Renegotiated' | 'Alternative') => {
+    const filesWithCategory = newFiles.map(file => {
+      const fileWithCategory = file as FileWithPreview;
+      fileWithCategory.category = category;
+      return fileWithCategory;
+    });
+    
+    setFiles(prev => [...prev, ...filesWithCategory]);
+  };
+
+  // Calculate estimated time remaining
+  const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 90) => {
+    const remainingFiles = totalFiles - currentIndex;
+    return remainingFiles * avgTimePerFile; // seconds
+  }, []);
+
+  // Normalize processed result
+  const normalizeResult = useCallback((processedResult: Record<string, unknown>, file: FileWithPreview) => {
+    return {
+      ...processedResult,
+      originalFileName: file.name,
+      category: file.category,
+      // Ensure metadata exists
+      metadata: processedResult.metadata || {
+        documentType: 'Unknown',
+        clientName: 'Unknown',
+        carrierName: 'Unknown Carrier',
+        effectiveDate: new Date().toISOString().split('T')[0],
+        quoteDate: new Date().toISOString().split('T')[0],
+        fileName: file.name,
+        fileCategory: file.category || 'Current'
+      },
+      // Ensure coverages exists and is an array
+      coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
+        ? processedResult.coverages 
+        : [{
+            coverageType: 'Basic Life',
+            carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
+            planOptionName: 'Default Plan',
+            premium: 0,
+            monthlyPremium: 0,
+            unitRate: 0,
+            unitRateBasis: 'per $1,000',
+            volume: 0,
+            lives: 0,
+            benefitDetails: {
+              note: 'Coverage details could not be extracted from document'
+            }
+          }]
+    };
+  }, []);
+
   // Main process handler for all files
   const handleProcessFiles = async () => {
     if (files.length === 0) {
@@ -145,58 +342,65 @@ export default function DocumentParserPage() {
       return;
     }
     
+    // Reset any previous session data when starting new processing
+    resetSessionData();
+    
     setIsLoading(true);
     setError(null);
     setIsProcessingComplete(false);
     setProcessingError(null);
+    setProcessingStages([]);
+    setCurrentProcessingFile(null);
+    
+    // Reset batch processing state
+    setProcessingIndex(0);
+    setCompletedFiles([]);
+    setFailedFiles([]);
+    setEstimatedTimeRemaining(calculateTimeRemaining(0, files.length));
     
     // Open questionnaire modal immediately when processing starts
     setShowQuestionnaire(true);
     
     try {
       const results: Record<string, unknown>[] = [];
+      const startTime = Date.now();
       
       // Process each file sequentially to avoid overloading the server
-      for (const file of files) {
-        console.log(`[DEBUG] Processing file: ${file.name}`);
-        const processedResult = await processDocumentFile(file);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProcessingIndex(i);
         
-        // Explicitly normalize the document structure if needed
-        const normalizedResult = {
-          ...processedResult,
-          originalFileName: file.name,
-          category: file.category,
-          // Ensure metadata exists
-          metadata: processedResult.metadata || {
-            documentType: 'Unknown',
-            clientName: 'Unknown',
-            carrierName: 'Unknown Carrier',
-            effectiveDate: new Date().toISOString().split('T')[0],
-            quoteDate: new Date().toISOString().split('T')[0],
-            fileName: file.name,
-            fileCategory: file.category || 'Current'
-          },
-          // Ensure coverages exists and is an array
-          coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
-            ? processedResult.coverages 
-            : [{
-                coverageType: 'Basic Life',
-                carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
-                planOptionName: 'Default Plan',
-                premium: 0,
-                monthlyPremium: 0,
-                unitRate: 0,
-                unitRateBasis: 'per $1,000',
-                volume: 0,
-                lives: 0,
-                benefitDetails: {
-                  note: 'Coverage details could not be extracted from document'
-                }
-              }]
-        };
+        // Update time estimate based on actual performance
+        if (i > 0) {
+          const elapsedTime = (Date.now() - startTime) / 1000; // seconds
+          const avgTimePerFile = elapsedTime / i;
+          setEstimatedTimeRemaining(calculateTimeRemaining(i, files.length, avgTimePerFile));
+        }
         
-        results.push(normalizedResult);
+        console.log(`[DEBUG] Processing file ${i + 1}/${files.length}: ${file.name}`);
+        
+        try {
+          const processedResult = await processDocumentFile(file);
+          const normalizedResult = normalizeResult(processedResult, file);
+          
+          // Add to completed files
+          setCompletedFiles(prev => [...prev, { file, result: normalizedResult }]);
+          results.push(normalizedResult);
+        } catch (fileError) {
+          const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error';
+          console.error(`[DEBUG] Failed to process file ${file.name}:`, errorMessage);
+          
+          // Add to failed files
+          setFailedFiles(prev => [...prev, { file, error: errorMessage }]);
+          
+          // Continue processing other files instead of stopping
+          continue;
+        }
       }
+      
+      // Processing complete
+      setEstimatedTimeRemaining(0);
+      setProcessingIndex(files.length);
       
       // Store processed results temporarily
       setProcessedResults(results);
@@ -232,10 +436,8 @@ export default function DocumentParserPage() {
   // Handle questionnaire modal close
   const handleQuestionnaireClose = () => {
     setShowQuestionnaire(false);
-    // Reset processing state if user closes modal before completion
-    if (!isProcessingComplete) {
-      setIsLoading(false);
-    }
+    // Don't reset loading state - let processing continue in background
+    // Users can reopen the questionnaire or wait for processing to complete
   };
 
   // Proceed to plan selection page with combined data
@@ -266,48 +468,54 @@ export default function DocumentParserPage() {
         </p>
       </div>
       
-      {/* Document Category Tabs */}
-      <Tabs 
-        defaultValue="Current" 
-        className="mb-6"
-        onValueChange={(value) => setActiveCategory(value as 'Current' | 'Renegotiated' | 'Alternative')}
-      >
-        <TabsList>
-          <TabsTrigger value="Current">Current Plan</TabsTrigger>
-          <TabsTrigger value="Renegotiated">Renegotiated</TabsTrigger>
-          <TabsTrigger value="Alternative">Alternative</TabsTrigger>
-        </TabsList>
+      {/* Enhanced Document Type Selector */}
+      <div className="mb-6">
+        <EnhancedDocumentTypeSelector
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+          fileCount={getFileCountByCategory()}
+        />
+      </div>
+      
+      {/* Batch Upload Toggle */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={showBatchUpload ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowBatchUpload(!showBatchUpload)}
+            className="flex items-center space-x-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>{showBatchUpload ? 'Single Upload' : 'Batch Upload'}</span>
+          </Button>
+          {showBatchUpload && (
+            <Badge variant="secondary" className="text-xs">
+              Upload multiple files across categories
+            </Badge>
+          )}
+          {hasExistingSession && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                resetSessionData();
+                setFiles([]);
+              }}
+              className="flex items-center space-x-2 text-orange-600 hover:text-orange-800"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <span>Start Fresh</span>
+            </Button>
+          )}
+        </div>
         
-        <TabsContent value="Current" className="mt-2">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>Current Plan Documents</AlertTitle>
-            <AlertDescription>
-              Upload existing plan documents for baseline comparison.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-        
-        <TabsContent value="Renegotiated" className="mt-2">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>Renegotiated Plan Documents</AlertTitle>
-            <AlertDescription>
-              Upload documents for renegotiated plans to compare against current plans.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-        
-        <TabsContent value="Alternative" className="mt-2">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>Alternative Quote Documents</AlertTitle>
-            <AlertDescription>
-              Upload alternative carrier quotes for competitive analysis.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-      </Tabs>
+        {files.length > 0 && (
+          <Badge variant="outline" className="text-sm">
+            {files.length} file{files.length !== 1 ? 's' : ''} ready
+          </Badge>
+        )}
+      </div>
       
       {/* Error Display */}
       {error && (
@@ -320,96 +528,273 @@ export default function DocumentParserPage() {
       
       {/* File Upload Area */}
       <div className="mb-6">
-        <div 
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${dragActive ? 'border-primary bg-muted/50' : 'border-muted-foreground/25 hover:border-muted-foreground/50'}`}
-        >
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="rounded-full bg-primary/10 p-4">
-              <UploadCloud className="h-8 w-8 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-medium">
-                Drag & drop files or click to browse
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Upload PDF files for parsing ({activeCategory} category)
-              </p>
-            </div>
-            <div>
-              <Button 
-                variant="outline" 
-                type="button" 
-                onClick={() => document.getElementById('file-upload')?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Select Files
-              </Button>
-              <input
-                id="file-upload"
-                type="file"
-                multiple
-                accept=".pdf"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+        {showBatchUpload ? (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Batch Upload</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(['Current', 'Renegotiated', 'Alternative'] as const).map((category) => {
+                const count = getFileCountByCategory()[category];
+                return (
+                  <div key={category} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">{category}</h4>
+                      {count > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {count} file{count !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </div>
+                    <div
+                      className="border-2 border-dashed rounded-lg p-6 text-center transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragActive(false);
+                        
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                          const newFiles = Array.from(e.dataTransfer.files).filter(file => 
+                            file.type === 'application/pdf'
+                          );
+                          handleBatchUpload(newFiles, category);
+                        }
+                      }}
+                    >
+                      <UploadCloud className="h-6 w-6 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        Drop {category.toLowerCase()} files here
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        type="button" 
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.multiple = true;
+                          input.accept = '.pdf';
+                          input.onchange = (e) => {
+                            const target = e.target as HTMLInputElement;
+                            if (target.files) {
+                              handleBatchUpload(Array.from(target.files), category);
+                            }
+                          };
+                          input.click();
+                        }}
+                      >
+                        <Upload className="mr-1 h-3 w-3" />
+                        Browse
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
+        ) : (
+          <div 
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${dragActive ? 'border-primary bg-muted/50' : 'border-muted-foreground/25 hover:border-muted-foreground/50'}`}
+          >
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="rounded-full bg-primary/10 p-4">
+                <UploadCloud className="h-8 w-8 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">
+                  Drag & drop files or click to browse
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Upload PDF files for parsing ({activeCategory} category)
+                </p>
+              </div>
+              <div>
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Select Files
+                </Button>
+                <input
+                  id="file-upload"
+                  type="file"
+                  multiple
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* File List */}
       {files.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-lg font-medium mb-3">
-            {files.length} file{files.length !== 1 ? 's' : ''} selected
-          </h3>
-          <div className="space-y-2">
-            {files.map((file, index) => (
-              <Card key={index} className="overflow-hidden">
-                <CardContent className="p-3 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="bg-muted rounded-md p-2 mr-3">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium truncate max-w-[300px]">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {(file.size / 1024).toFixed(1)} KB • 
-                        <span className="ml-2 px-2 py-0.5 rounded-full bg-muted text-xs">
-                          {file.category}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveFile(index)}
-                  >
-                    Remove
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-medium">
+              {files.length} file{files.length !== 1 ? 's' : ''} selected
+            </h3>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFiles([])}
+                className="text-red-600 hover:text-red-800"
+              >
+                Clear All
+              </Button>
+            </div>
           </div>
+          
+          {/* Group files by category */}
+          {(['Current', 'Renegotiated', 'Alternative'] as const).map(category => {
+            const categoryFiles = files.filter(file => file.category === category);
+            if (categoryFiles.length === 0) return null;
+            
+            return (
+              <div key={category} className="mb-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Badge variant="outline" className="text-sm">
+                    {category}
+                  </Badge>
+                  <span className="text-sm text-gray-500">
+                    {categoryFiles.length} file{categoryFiles.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="space-y-2 pl-4">
+                  {categoryFiles.map((file, index) => {
+                    const originalIndex = files.indexOf(file);
+                    return (
+                      <Card key={originalIndex} className="overflow-hidden">
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="flex items-center">
+                            <div className="bg-muted rounded-md p-2 mr-3">
+                              <FileText className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium truncate max-w-[300px]">
+                                {file.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(file.size / 1024).toFixed(1)} KB
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFile(originalIndex)}
+                          >
+                            Remove
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* Processing Status */}
+      {isLoading && (
+        <div className="mb-6">
+          {files.length > 1 ? (
+            <BatchProcessingStatus
+              files={files}
+              processingIndex={processingIndex}
+              completedFiles={completedFiles}
+              failedFiles={failedFiles}
+              currentStages={processingStages}
+              estimatedTimeRemaining={estimatedTimeRemaining || undefined}
+              onRetryFile={(fileIndex) => {
+                // TODO: Implement individual file retry
+                console.log(`Retry file at index ${fileIndex}`);
+              }}
+            />
+          ) : (
+            currentProcessingFile && processingStages.length > 0 && (
+              <ProcessingStatus
+                fileName={currentProcessingFile}
+                stages={processingStages}
+                currentStage={processingStages.find(stage => stage.status === 'in_progress')?.id}
+                error={processingError}
+                onRetry={() => {
+                  // Reset processing state for retry
+                  setIsLoading(false);
+                  setProcessingError(null);
+                  setProcessingStages([]);
+                  setCurrentProcessingFile(null);
+                }}
+              />
+            )
+          )}
+        </div>
+      )}
+      
+      {/* Questionnaire Reminder - show when processing but questionnaire is closed */}
+      {isLoading && !showQuestionnaire && (
+        <div className="mb-6">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Processing in Progress</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>Documents are being processed. You can fill out the questionnaire while waiting.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQuestionnaire(true)}
+                className="ml-4"
+              >
+                Open Questionnaire
+              </Button>
+            </AlertDescription>
+          </Alert>
         </div>
       )}
       
           {/* Process Button */}
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-between items-center mt-6">
+            <div className="text-sm text-gray-600">
+              {files.length > 0 && (
+                <div className="flex items-center space-x-4">
+                  <span>Ready to process {files.length} document{files.length !== 1 ? 's' : ''}</span>
+                  {files.length > 1 && (
+                    <Badge variant="secondary" className="text-xs">
+                      Estimated time: {Math.ceil(files.length * 1.5)} minutes
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
             <Button 
               onClick={handleProcessFiles}
               disabled={files.length === 0 || isLoading}
-              className="w-full sm:w-auto"
+              className="flex items-center space-x-2"
               size="lg"
             >
-              {isLoading ? 'Processing...' : 'Process Documents'}
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Process Documents</span>
+                </>
+              )}
             </Button>
           </div>
 

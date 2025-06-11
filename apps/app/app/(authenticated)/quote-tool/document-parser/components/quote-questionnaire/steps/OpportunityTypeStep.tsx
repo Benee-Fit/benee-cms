@@ -1,7 +1,6 @@
 import { RadioGroup, RadioGroupItem } from '@repo/design-system/components/ui/radio-group';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
-import { RefreshCw, TrendingUp } from 'lucide-react';
 
 interface OpportunityTypeStepProps {
   value: 'renewal' | 'go-to-market' | null;
@@ -26,21 +25,14 @@ export default function OpportunityTypeStep({ value, onChange }: OpportunityType
             value === 'renewal' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
             <CardContent className="p-6 h-full flex flex-col justify-center">
-              <div className="flex items-center space-x-4">
+              <div className="text-center">
                 <RadioGroupItem value="renewal" id="renewal" className="sr-only" />
-                <div className="flex-shrink-0">
-                  <RefreshCw className={`h-8 w-8 ${
-                    value === 'renewal' ? 'text-orange-600' : 'text-gray-400'
-                  }`} />
+                <div className="text-lg font-medium text-gray-900">
+                  Renewal
                 </div>
-                <div className="flex-1">
-                  <div className="text-lg font-medium text-gray-900">
-                    Renewal
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1 leading-tight">
-                    Renewing existing coverage with current or new carrier
-                  </p>
-                </div>
+                <p className="text-sm text-gray-600 mt-1 leading-tight">
+                  Renewing existing coverage with current or new carrier
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -51,21 +43,14 @@ export default function OpportunityTypeStep({ value, onChange }: OpportunityType
             value === 'go-to-market' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
             <CardContent className="p-6 h-full flex flex-col justify-center">
-              <div className="flex items-center space-x-4">
+              <div className="text-center">
                 <RadioGroupItem value="go-to-market" id="go-to-market" className="sr-only" />
-                <div className="flex-shrink-0">
-                  <TrendingUp className={`h-8 w-8 ${
-                    value === 'go-to-market' ? 'text-purple-600' : 'text-gray-400'
-                  }`} />
+                <div className="text-lg font-medium text-gray-900">
+                  Go to Market
                 </div>
-                <div className="flex-1">
-                  <div className="text-lg font-medium text-gray-900">
-                    Go to Market
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1 leading-tight">
-                    Shopping the market for competitive options
-                  </p>
-                </div>
+                <p className="text-sm text-gray-600 mt-1 leading-tight">
+                  Shopping the market for competitive options
+                </p>
               </div>
             </CardContent>
           </Card>
