@@ -3,6 +3,7 @@ import { auth } from '@repo/auth/server';
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
+import HomePage from '../../../broker-portal/app/page';
 import { AvatarStack } from './components/avatar-stack';
 import { Cursors } from './components/cursors';
 import { Header } from './components/header';
@@ -38,9 +39,7 @@ const App = async () => {
           </CollaborationProvider>
         )}
       </Header>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl" />
-      </div>
+      <HomePage />
     </>
   );
 };

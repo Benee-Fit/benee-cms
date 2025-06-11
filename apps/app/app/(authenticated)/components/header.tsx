@@ -17,8 +17,11 @@ type HeaderProps = {
 };
 
 export const Header = ({ pages, page, children }: HeaderProps) => (
-  <header className="flex h-16 shrink-0 items-center justify-between gap-2">
-    <div className="flex items-center gap-2 px-4">
+  <header
+    className="flex h-16 shrink-0 items-center justify-between gap-2"
+    style={{ marginTop: '-80px', marginBottom: '20px' }}
+  >
+    <div className="flex items-center">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       <Breadcrumb>

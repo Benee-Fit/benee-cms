@@ -2,122 +2,69 @@
 trigger: manual
 ---
 
-# Development Guidelines for Next-Forge SaaS Project
+# Windsurf: Core Rules for Next-Forge Project Interaction
 
-This document outlines the project structure, coding standards, and best practices for developing **this Next-Forge SaaS Project**. Adhering to these guidelines will help maintain code quality, consistency, and ease of collaboration.
+**Objective:** Guide Windsurf (AI Assistant) to correctly understand, navigate, and modify this Next-Forge (Turborepo, pnpm, Next.js, Prisma) project, prioritizing internal packages and established conventions.
 
-## 1. Overview & Tech Stack
+**Core Principle:** Prioritize using existing `@repo/*` packages and established project patterns. When new functionality is needed, first evaluate if it fits within an existing shared package or requires a new one. Query if unsure before introducing new public dependencies directly into individual applications.
 
-This project is a Software as a Service (SaaS) application built using the `next-forge` starter kit. Key technologies include:
+---
 
-* **Monorepo:** Turborepo (managed with `pnpm` workspaces)
-* **Frontend Framework:** Next.js (likely using the App Router)
-* **Package Manager:** `pnpm`
-* **Language:** TypeScript
-* **Database ORM:** Prisma
-* **Database:** PostgreSQL
-* **UI (for `app`):** shadcn/ui (built on Radix UI and Tailwind CSS)
-* **UI (for `web`):** twblocks (Tailwind CSS based templates)
-* **Styling:** Tailwind CSS (utility-first approach)
-* **Email Previews (`email` app):** react.email
-* **API/Serverless Functions (`api` app):** Next.js Route Handlers or standalone serverless functions.
-* **Documentation (`docs` app):** Likely using a static site generator or MDX-based solution.
-* **Component Library (`storybook` app):** Storybook
-* **Database Management (`studio` app):** Prisma Studio
-* **Environment Variables:** `@t3-oss/env-nextjs` for type-safe environment variables.
-* **Deployment:** DigitalOcean App Platform
+## 1. Monorepo Structure & Navigation
 
-## 2. Project Structure
+* **Understand `apps/` vs. `packages/`:**
+    * `apps/`: Contain deployable applications (e.g., `web`, `app`, `api`, `docs`, `email`). Each is a distinct operational unit.
+    * `packages/`: Contain shared libraries and utilities (e.g., `@repo/ui`, `@repo/database`, `@repo/utils`, `@repo/config`, `@repo/feature-flags`). Code here is for consumption by one or more `apps/`.
+* **Targeting Changes:** Correctly identify if modifications are app-specific (belong in `apps/*`) or represent a shared concern (belong in `packages/*`).
+* **`turbo.json` Reference:** This file at the root defines build/dev/lint/test pipelines and dependencies between workspaces. Consult it to understand task execution and inter-package relationships.
 
-The project is organized as a monorepo using Turborepo. Key directories include:
+## 2. Dependency Management (`pnpm` & Workspaces)
 
-* **`apps/`**: Contains deployable applications.
-    ```
-    | App       | Description                                                                    |
-    |-----------|--------------------------------------------------------------------------------|
-    | api       | Serverless functions/backend logic, e.g., webhooks, cron jobs, standalone API. |
-    | app       | The main user-facing SaaS application (e.g., dashboard, core features).        |
-    | docs      | Project documentation, guides, and tutorials.                                  |
-    | email     | Email templates and preview server (using react.email).                        |
-    | storybook | UI component development and showcase environment.                             |
-    | studio    | Prisma Studio for direct database interaction (development only).              |
-    | web       | Public-facing website/landing pages.                                           |
-    ```
-* **`packages/`**: Contains shared libraries, configurations, and utilities used across different applications. Examples might include:
-    * `@repo/ui` (shared React components)
-    * `@repo/database` (Prisma schema, client, seeding logic)
-    * `@repo/config` (shared ESLint, TypeScript configs)
-    * `@repo/utils` (common utility functions)
+* **Exclusive Tool:** All package management operations (add, remove, update) MUST use `pnpm` from the monorepo root.
+* **Prioritize Internal Packages (`@repo/*`):**
+    * **Rule:** Before adding a public npm package directly to an `app/*`, Windsurf MUST verify if an existing `@repo/*` package already provides the required functionality or a suitable abstraction (e.g., use `@repo/auth` for authentication features before adding `@clerk/nextjs` directly to an app).
+    * **Action:** If functionality is generic or reusable across apps, propose adding it to, or extending, an existing `packages/*` module.
+* **Adding Dependencies Correctly:**
+    * To an application (e.g., `web`): `pnpm --filter web add <package-name>`
+    * To an internal package (e.g., `@repo/ui`): `pnpm --filter @repo/ui add <package-name>`
+    * To the monorepo root (for shared development tools like `prisma`, `turbo`): `pnpm add -D -w <package-name>`
+* **`workspace:*` Protocol:** Always use the `workspace:*` protocol in `package.json` files for linking local monorepo packages.
+* **`pnpm-lock.yaml` Integrity:** After any dependency modification, `pnpm install` MUST be run from the monorepo root to update the `pnpm-lock.yaml` file. This lockfile is critical for reproducible builds and MUST be committed alongside any `package.json` changes.
+* **Avoid Redundant Installations:** If a shared `@repo/*` package already includes and configures a public dependency (e.g., `@repo/auth` managing `@clerk/nextjs`), Windsurf must not suggest installing that public dependency again directly into an application that already uses the managing `@repo/*` package.
 
-Making changes to files should be done in their respective app or package.
+## 3. Code Placement & Imports
 
-## 3. Development Environment Setup
+* **App-Specific Logic:** Code that is only relevant to a single application should reside within that app's directory structure (e.g., `apps/web/src/...`).
+* **Shared Logic & UI:** Code intended for use by multiple applications should be placed in an appropriate shared `packages/*` directory.
+* **Import Paths:** Windsurf MUST use the defined workspace aliases for importing from internal packages (e.g., `import { MyComponent } from '@repo/ui';`). Avoid relative paths like `../../packages/ui`.
 
-1.  **Clone Repository:** `git clone <your-repo-url>`
-2.  **Node.js & pnpm:**
-    * Ensure you have Node.js installed (version `>=18` as per `package.json` `engines`). Using a Node version manager like `nvm` is recommended.
-    * Enable `corepack` (if not already) to use the `pnpm` version specified in the root `package.json` (`packageManager` field): `corepack enable`
-3.  **Install Dependencies:** From the monorepo root:
-    ```bash
-    pnpm install
-    ```
-4.  **Environment Variables:**
-    * Copy the root `.env.example` to a new `.env` file: `cp .env.example .env`
-    * Update the `.env` file with your local development credentials, especially:
-        * `DATABASE_URL`: Point this to your local PostgreSQL instance (e.g., `postgresql://user:password@localhost:5432/your_dev_db_name?schema=public`).
-        * Other necessary API keys for local development (Clerk, Stripe test keys, etc.). Consult `env.ts` or similar files managed by `@t3-oss/env-nextjs` for required variables.
-5.  **Database Setup (Local):**
-    * Ensure your local PostgreSQL server is running.
-    * Apply migrations to set up the schema:
-        ```bash
-        pnpm exec prisma migrate dev
-        ```
-    * (Optional) If a seed script exists (`prisma/seed.ts` or similar and configured in `prisma.seed` in `package.json`):
-        ```bash
-        pnpm exec prisma db seed
-        ```
-6.  **Run Prisma Generate (if not handled by postinstall):**
-    To ensure Prisma Client is up-to-date with your schema:
-    ```bash
-    pnpm --filter @repo/database exec prisma generate # Or relevant package
-    ```
-7.  **Start Development Servers:**
-    * To run a specific app (e.g., `web`):
-        ```bash
-        pnpm --filter web dev
-        ```
-    * To run all apps (refer to `turbo.json` or root `package.json` `dev` script):
-        ```bash
-        pnpm dev
-        ```
+## 4. Core Technology Usage
 
-## 4. Coding Standards & Conventions
+* **Next.js (App Router Focus):**
+    * Adhere to App Router conventions (`page.tsx`, `layout.tsx`, Route Handlers for APIs).
+    * Default to React Server Components. Use `'use client';` only when client-side interactivity or browser-specific APIs are essential.
+* **Prisma (via `@repo/database`):**
+    * The Prisma schema is central: `packages/database/prisma/schema.prisma`.
+    * For schema changes, generate migrations: `pnpm --filter @repo/database exec prisma migrate dev --name <migration-name>`.
+    * Applications should import and use the Prisma client instance from `@repo/database`. Prisma Client generation is typically part of the build script for `@repo/database`.
+* **Styling (Tailwind CSS & `shadcn/ui`):**
+    * Primarily use Tailwind CSS utility classes.
+    * Applications like `apps/app` heavily leverage `shadcn/ui`. Use and customize these components as per project style. New `shadcn/ui` components are added to the app itself (`pnpm --filter app exec pnpm dlx shadcn-ui@latest add ...`).
+    * Generic, non-`shadcn/ui` specific UI elements for cross-app use belong in `@repo/ui` (or `@repo/design-system`) and should be developed/viewed in Storybook (`apps/storybook`).
 
-### General
-* **Language:** Use TypeScript for all new code.
-* **Formatting & Linting:** Adhere to the project's ESLint and Prettier configurations (often enforced via pre-commit hooks).
-* **File Naming:** Use kebab-case for files and directories (e.g., `user-profile.tsx`). Component files in React should be PascalCase (e.g., `UserProfile.tsx`).
+## 5. Running Commands & Development Workflow
 
-### Nesting
-* Avoid deeply nested code blocks (more than 2-3 levels if possible). Break down complex logic into smaller, well-named functions or components.
-* Opening curly braces (`{`) for blocks (functions, if/else, loops, try/catch) should generally be on the same line as the statement that begins the block.
-    ```typescript
-    // Good
-    if (condition) {
-      // ...
-    }
+* **Turborepo Tasks:** Utilize `pnpm turbo run <task> --filter=<scope>` for consistent execution of `build`, `dev`, `lint`, `test` scripts defined in `turbo.json`.
+* **Development Servers:**
+    * Start a specific app's dev server: `pnpm --filter <app-name> dev`.
+    * Run all dev servers (as per root `dev` script): `pnpm dev`.
+* **Production Start Script (Next.js):**
+    * Ensure the `start` script in the deployable app's `package.json` (e.g., `apps/web/package.json`) is appropriate for the `output` mode in its `next.config.js`.
+    * For default output or `output: "export"` with a separate server: `"start": "next start -p $PORT"`
+    * If `output: "standalone"` is used: `"start": "node .next/standalone/server.js"` (this script respects `$PORT`). Windsurf must verify this matches the app's Next.js configuration.
 
-    function greet() {
-      // ...
-    }
-    ```
+## 6. Environment Variables
 
-### Error Handling
-* **Specificity:** Always try to catch specific error types instead of generic `Error` or `any`, if possible.
-    ```typescript
-    try {
-      // code that might throw
-    } catch (error) {
-      if (error instanceof SpecificPrismaError) { // Replace SpecificPrismaError with actual error type if known
-        // handle Prisma error
-      } else if (error instanceof MyCustomError) { // Replace MyCustomError with your actual custom 
+* Recognize and respect the type-safe environment variable setup (e.g., often using `@t3-oss/env-nextjs`). Schemas are typically per-app.
+* Local secrets are in `.env` files (gitignored). `.env.example` files serve as templates.
+* Production environment variables are configured directly on 

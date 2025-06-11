@@ -26,7 +26,13 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   return (
     <NotificationsProvider userId={user.id}>
       <SidebarProvider>
-        <GlobalSidebar>{children}</GlobalSidebar>
+        <GlobalSidebar>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0 mt-14">
+            <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl p-6">
+              {children}
+            </div>
+          </div>
+        </GlobalSidebar>
         <PostHogIdentifier />
       </SidebarProvider>
     </NotificationsProvider>
