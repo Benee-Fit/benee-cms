@@ -47,6 +47,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { BrokerDetailsModal } from './broker-details/broker-details-modal';
+import { brokerDetailsData, type BrokerDetails } from './broker-details/broker-data';
+import { SortableTable, type ColumnConfig } from './sortable-table/sortable-table';
 
 interface RevenueBreakdownProps {
   className?: string;
@@ -57,6 +60,22 @@ export function RevenueBreakdown({
   className,
   sectionId,
 }: RevenueBreakdownProps) {
+  const [selectedBroker, setSelectedBroker] = useState<BrokerDetails | null>(null);
+  const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
+
+  const handleBrokerClick = (brokerName: string) => {
+    const broker = brokerDetailsData[brokerName];
+    if (broker) {
+      setSelectedBroker(broker);
+      setIsBrokerModalOpen(true);
+    }
+  };
+
+  const handleCloseBrokerModal = () => {
+    setIsBrokerModalOpen(false);
+    setSelectedBroker(null);
+  };
+
   const bluePalette = [
     '#0D47A1',
     '#1976D2',
@@ -186,9 +205,8 @@ export function RevenueBreakdown({
       closeRate: 68,
       avgDaysToClose: 15,
       avgIndustryQuoted: 'Technology',
-      avgCompanySizeQuoted: 'Medium (50-199)',
-      bestPerformingSegments: 'Tech SMEs, Manufacturing 200+',
-      quoteSource: 'Warm referrals, Cold outreach',
+      avgCompanySizeQuoted: 125,
+      topQuoteSource: 'Warm referrals',
     },
     {
       name: 'Emily Davis',
@@ -196,9 +214,8 @@ export function RevenueBreakdown({
       closeRate: 72,
       avgDaysToClose: 12,
       avgIndustryQuoted: 'Healthcare',
-      avgCompanySizeQuoted: 'Large (200+)',
-      bestPerformingSegments: 'Healthcare 100+, Finance SMEs',
-      quoteSource: 'Existing clients, Partnerships',
+      avgCompanySizeQuoted: 285,
+      topQuoteSource: 'Existing clients',
     },
     {
       name: 'Michael Johnson',
@@ -206,9 +223,8 @@ export function RevenueBreakdown({
       closeRate: 59,
       avgDaysToClose: 20,
       avgIndustryQuoted: 'Manufacturing',
-      avgCompanySizeQuoted: 'Medium (50-199)',
-      bestPerformingSegments: 'Manufacturing 50-199, Retail SMEs',
-      quoteSource: 'Events, Inbound website',
+      avgCompanySizeQuoted: 95,
+      topQuoteSource: 'Events',
     },
     {
       name: 'Sarah Williams',
@@ -216,10 +232,29 @@ export function RevenueBreakdown({
       closeRate: 64,
       avgDaysToClose: 18,
       avgIndustryQuoted: 'Finance',
-      avgCompanySizeQuoted: 'Large (200+)',
-      bestPerformingSegments: 'Finance 200+, Professional Services',
-      quoteSource: 'Warm referrals, Events',
+      avgCompanySizeQuoted: 310,
+      topQuoteSource: 'Warm referrals',
     },
+  ];
+
+  // Column configurations for sortable tables
+  const teamMembersColumns: ColumnConfig<typeof teamMembers[0]>[] = [
+    { key: 'name', header: 'Broker', type: 'string' },
+    { key: 'clients', header: '# of Clients', type: 'number', align: 'right' },
+    { key: 'members', header: '# of Members', type: 'number', align: 'right' },
+    { key: 'avgGroupSize', header: 'Avg. Group Size', type: 'number', align: 'right' },
+    { key: 'totalRevenue', header: 'Total Revenue', type: 'currency', align: 'right' },
+    { key: 'topIndustry', header: 'Top Industry', type: 'string' },
+  ];
+
+  const salesFunnelColumns: ColumnConfig<typeof salesFunnelData[0]>[] = [
+    { key: 'name', header: 'Broker Name', type: 'string' },
+    { key: 'quotesSent', header: 'Quotes Sent', type: 'number', align: 'right' },
+    { key: 'closeRate', header: 'Close Rate', type: 'number', align: 'right', render: (value) => `${value}%` },
+    { key: 'avgDaysToClose', header: 'Avg Days to Close', type: 'number', align: 'right' },
+    { key: 'avgIndustryQuoted', header: 'Top Industry Quoted', type: 'string' },
+    { key: 'avgCompanySizeQuoted', header: 'Avg Company Size Quoted', type: 'number', align: 'right' },
+    { key: 'topQuoteSource', header: 'Top Quote Source', type: 'string' },
   ];
 
   const commissionSplits = [
@@ -573,100 +608,23 @@ export function RevenueBreakdown({
               </SelectContent>
             </Select>
           </div>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Broker</TableHead>
-                    <TableHead className="text-right"># of Clients</TableHead>
-                    <TableHead className="text-right"># of Members</TableHead>
-                    <TableHead className="text-right">
-                      Avg. Group Size
-                    </TableHead>
-                    <TableHead className="text-right">Total Revenue</TableHead>
-                    <TableHead>Top Industry</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamMembers.map((member) => (
-                    <TableRow key={member.name}>
-                      <TableCell className="font-medium">
-                        {member.name}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.clients}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.members}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {member.avgGroupSize}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${member.totalRevenue.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        {member.topIndustry}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <SortableTable
+            data={teamMembers}
+            columns={teamMembersColumns}
+            defaultSortKey="totalRevenue"
+            defaultSortDirection="desc"
+          />
           
           {/* Sales Funnel Performance */}
           <div className="mt-6">
             <h4 className="text-lg font-medium mb-3">Sales Funnel Performance</h4>
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Broker Name</TableHead>
-                      <TableHead className="text-right">Quotes Sent</TableHead>
-                      <TableHead className="text-right">Close Rate</TableHead>
-                      <TableHead className="text-right">Avg Days to Close</TableHead>
-                      <TableHead>Avg Industry Quoted</TableHead>
-                      <TableHead>Avg Company Size Quoted</TableHead>
-                      <TableHead>Best Performing Industries & Company Sizes</TableHead>
-                      <TableHead>Where is quote coming from</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {salesFunnelData.map((broker) => (
-                      <TableRow key={broker.name}>
-                        <TableCell className="font-medium">
-                          {broker.name}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {broker.quotesSent}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {broker.closeRate}%
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {broker.avgDaysToClose}
-                        </TableCell>
-                        <TableCell>
-                          {broker.avgIndustryQuoted}
-                        </TableCell>
-                        <TableCell>
-                          {broker.avgCompanySizeQuoted}
-                        </TableCell>
-                        <TableCell>
-                          {broker.bestPerformingSegments}
-                        </TableCell>
-                        <TableCell>
-                          {broker.quoteSource}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <SortableTable
+              data={salesFunnelData}
+              columns={salesFunnelColumns}
+              defaultSortKey="closeRate"
+              defaultSortDirection="desc"
+              onRowClick={(broker) => handleBrokerClick(broker.name)}
+            />
           </div>
         </section>
       )}
@@ -1008,6 +966,12 @@ export function RevenueBreakdown({
           </div>
         </section>
       )}
+
+      <BrokerDetailsModal
+        broker={selectedBroker}
+        isOpen={isBrokerModalOpen}
+        onClose={handleCloseBrokerModal}
+      />
     </div>
   );
 }
