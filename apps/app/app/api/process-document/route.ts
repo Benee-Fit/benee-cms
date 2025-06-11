@@ -279,32 +279,24 @@ function extractJsonFromGeminiResponse(
 ): EnhancedGeminiResponse | null {
   try {
     // First, try to extract JSON from code blocks using regex
-    console.log('[DEBUG] Attempting to extract JSON from code blocks...');
     const match = text.match(jsonBlockRegex);
     if (match?.[1]) {
-      console.log('[DEBUG] Found JSON code block, attempting to parse...');
       try {
         return JSON.parse(match[1]);
       } catch (e) {
-        console.warn('[WARN] Failed to parse JSON from code block:', e);
-        console.log(
-          `[DEBUG] Code block content sample: ${match[1].substring(0, 300)}...`
-        );
+        // Failed to parse JSON from code block
       }
-    } else {
-      console.log('[DEBUG] No JSON code block found in the response');
     }
 
     // If no code block or parsing failed, try to parse the entire text as JSON
     try {
       return JSON.parse(text);
     } catch (e) {
-      console.warn('Failed to parse entire text as JSON:', e);
+      // Failed to parse entire text as JSON
     }
 
     return null;
   } catch (error) {
-    console.error('Error extracting JSON from Gemini response:', error);
     return null;
   }
 }
