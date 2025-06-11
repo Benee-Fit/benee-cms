@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { mainNavItems } from '../../../lib/navigation';
 import type { NavItem } from '../../../lib/navigation';
 import { 
   Sidebar, 
   SidebarContent, 
+  SidebarFooter,
   SidebarHeader, 
   SidebarMenu, 
   SidebarMenuButton, 
@@ -17,14 +18,17 @@ import {
   useSidebar
 } from '@repo/design-system/components/ui/sidebar';
 import { Button } from '@repo/design-system/components/ui/button';
+import { Input } from '@repo/design-system/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@repo/design-system/components/ui/collapsible';
-import { ChevronDown, Home } from 'lucide-react';
+import { ChevronDown, Home, Search } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Function to check if a nav item or any of its subitems is active
   const isActive = useCallback((item: NavItem): boolean => {
@@ -61,6 +65,18 @@ export function AppSidebar() {
   // Close mobile sidebar on navigation
   const handleNavClick = () => {
     setOpenMobile(false);
+  };
+
+  // Handle search submission
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      const searchParams = new URLSearchParams();
+      searchParams.set('search', searchTerm.trim());
+      router.push(`/client-list?${searchParams.toString()}`);
+      setOpenMobile(false);
+      setSearchTerm('');
+    }
   };
 
   return (
@@ -129,6 +145,21 @@ export function AppSidebar() {
             );
           })}
         </SidebarMenu>
+        
+        {/* Search Bar */}
+        <div className="mt-4 px-2">
+          <form onSubmit={handleSearchSubmit}>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search clients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-white"
+              />
+            </div>
+          </form>
+        </div>
       </SidebarContent>
     </Sidebar>
   );

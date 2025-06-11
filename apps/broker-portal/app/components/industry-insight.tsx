@@ -6,11 +6,18 @@ import {
   CardHeader,
   CardTitle,
 } from '@repo/design-system/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/design-system/components/ui/dialog';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   SortableTable,
   type ColumnConfig,
 } from './sortable-table/sortable-table';
+import { useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -261,12 +268,89 @@ interface IndustryInsightProps {
   sectionId?: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  companySize: number;
+  industry: string;
+}
+
+interface SizeTierClients {
+  [key: string]: Client[];
+}
+
 export function IndustryInsight({
   className,
   sectionId,
 }: IndustryInsightProps) {
+  const [selectedSizeTier, setSelectedSizeTier] = useState<string | null>(null);
+  const [isSizeTierModalOpen, setIsSizeTierModalOpen] = useState(false);
+
   const shouldRenderSection = (id: string) => {
     return !sectionId || sectionId === id;
+  };
+
+  // Mock client data for size tier drilldown
+  const sizeTierClients: SizeTierClients = {
+    'Small (1-49)': [
+      { id: 'C-001', name: 'Acme Consulting', companySize: 25, industry: 'Professional Services' },
+      { id: 'C-002', name: 'TechStart Solutions', companySize: 12, industry: 'Technology' },
+      { id: 'C-003', name: 'Green Valley Dental', companySize: 8, industry: 'Healthcare' },
+      { id: 'C-004', name: 'Artisan Bakery Co.', companySize: 35, industry: 'Retail' },
+      { id: 'C-005', name: 'Mountain View Law', companySize: 18, industry: 'Professional Services' },
+      { id: 'C-006', name: 'Digital Dreams Agency', companySize: 22, industry: 'Technology' },
+      { id: 'C-007', name: 'Riverside Clinic', companySize: 15, industry: 'Healthcare' },
+      { id: 'C-008', name: 'Custom Furniture Works', companySize: 30, industry: 'Manufacturing' },
+      { id: 'C-009', name: 'City Center Pharmacy', companySize: 6, industry: 'Healthcare' },
+      { id: 'C-010', name: 'Swift Delivery Co.', companySize: 45, industry: 'Transportation' },
+      { id: 'C-011', name: 'Elite Personal Training', companySize: 9, industry: 'Fitness' },
+      { id: 'C-012', name: 'Sunset Marketing Group', companySize: 28, industry: 'Professional Services' },
+      { id: 'C-013', name: 'Precision Auto Repair', companySize: 12, industry: 'Automotive' },
+      { id: 'C-014', name: 'Fresh Start Catering', companySize: 16, industry: 'Food Services' },
+      { id: 'C-015', name: 'Metro Pet Clinic', companySize: 11, industry: 'Healthcare' },
+      { id: 'C-016', name: 'Innovative Web Design', companySize: 19, industry: 'Technology' },
+      { id: 'C-017', name: 'Heritage Real Estate', companySize: 24, industry: 'Real Estate' },
+      { id: 'C-018', name: 'Coastal Insurance Agency', companySize: 14, industry: 'Financial Services' },
+    ],
+    'Medium (50-199)': [
+      { id: 'C-019', name: 'Regional Medical Center', companySize: 125, industry: 'Healthcare' },
+      { id: 'C-020', name: 'BlueTech Manufacturing', companySize: 89, industry: 'Manufacturing' },
+      { id: 'C-021', name: 'Metro School District', companySize: 156, industry: 'Education' },
+      { id: 'C-022', name: 'Quantum Software Solutions', companySize: 67, industry: 'Technology' },
+      { id: 'C-023', name: 'Central Bank & Trust', companySize: 98, industry: 'Financial Services' },
+      { id: 'C-024', name: 'Premier Engineering Group', companySize: 78, industry: 'Professional Services' },
+      { id: 'C-025', name: 'Pacific Coast Logistics', companySize: 145, industry: 'Transportation' },
+      { id: 'C-026', name: 'Advanced Materials Corp', companySize: 112, industry: 'Manufacturing' },
+      { id: 'C-027', name: 'Citywide Construction', companySize: 134, industry: 'Construction' },
+      { id: 'C-028', name: 'Summit Healthcare Network', companySize: 87, industry: 'Healthcare' },
+      { id: 'C-029', name: 'DataFlow Technologies', companySize: 92, industry: 'Technology' },
+      { id: 'C-030', name: 'Gateway Insurance Group', companySize: 76, industry: 'Financial Services' },
+      { id: 'C-031', name: 'Riverside Manufacturing', companySize: 158, industry: 'Manufacturing' },
+      { id: 'C-032', name: 'Elite Consulting Partners', companySize: 103, industry: 'Professional Services' },
+      { id: 'C-033', name: 'Northern Telecom Inc.', companySize: 119, industry: 'Technology' },
+      { id: 'C-034', name: 'Meridian Hospitality Group', companySize: 167, industry: 'Hospitality' },
+    ],
+    'Large (200+)': [
+      { id: 'C-035', name: 'Global Tech Industries', companySize: 450, industry: 'Technology' },
+      { id: 'C-036', name: 'Metropolitan Hospital System', companySize: 890, industry: 'Healthcare' },
+      { id: 'C-037', name: 'United Manufacturing Corp', companySize: 320, industry: 'Manufacturing' },
+      { id: 'C-038', name: 'State University System', companySize: 1250, industry: 'Education' },
+      { id: 'C-039', name: 'National Financial Services', companySize: 675, industry: 'Financial Services' },
+      { id: 'C-040', name: 'Continental Airlines Group', companySize: 2100, industry: 'Transportation' },
+      { id: 'C-041', name: 'Premier Healthcare Network', companySize: 567, industry: 'Healthcare' },
+      { id: 'C-042', name: 'Advanced Technologies Inc.', companySize: 298, industry: 'Technology' },
+      { id: 'C-043', name: 'Mega Retail Corporation', companySize: 1890, industry: 'Retail' },
+    ],
+  };
+
+  const handleSizeTierClick = (tier: string) => {
+    setSelectedSizeTier(tier);
+    setIsSizeTierModalOpen(true);
+  };
+
+  const handleCloseSizeTierModal = () => {
+    setIsSizeTierModalOpen(false);
+    setSelectedSizeTier(null);
   };
 
   // Column configuration for sortable industry performance table
@@ -342,6 +426,29 @@ export function IndustryInsight({
       header: 'Total Revenue',
       type: 'currency',
       align: 'right',
+    },
+  ];
+
+  // Column configuration for client drilldown table
+  const clientColumns: ColumnConfig<Client>[] = [
+    {
+      key: 'name',
+      header: 'Client Name',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'companySize',
+      header: 'Company Size',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value} employees`,
+    },
+    {
+      key: 'industry',
+      header: 'Industry',
+      type: 'string',
+      align: 'left',
     },
   ];
 
@@ -619,6 +726,7 @@ export function IndustryInsight({
             columns={companySizeColumns}
             defaultSortKey="totalRevenue"
             defaultSortDirection="desc"
+            onRowClick={(sizeData) => handleSizeTierClick(sizeData.tier)}
           />
         </section>
       )}
@@ -739,6 +847,91 @@ export function IndustryInsight({
           </div>
         </section>
       )}
+
+      {/* Size Tier Clients Modal */}
+      <Dialog open={isSizeTierModalOpen} onOpenChange={handleCloseSizeTierModal}>
+        <DialogContent
+          className="!max-w-[80vw] !w-[80vw] max-h-[80vh] overflow-hidden flex flex-col"
+          style={{ maxWidth: '80vw', width: '80vw' }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">
+              {selectedSizeTier ? `${selectedSizeTier} Clients` : 'Clients'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto space-y-6">
+            {selectedSizeTier && sizeTierClients[selectedSizeTier] && (
+              <>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Total Clients
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <div className="text-2xl font-bold">
+                        {sizeTierClients[selectedSizeTier].length}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Avg Company Size
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <div className="text-2xl font-bold">
+                        {Math.round(
+                          sizeTierClients[selectedSizeTier].reduce(
+                            (sum, client) => sum + client.companySize,
+                            0
+                          ) / sizeTierClients[selectedSizeTier].length
+                        )} employees
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Top Industry
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <div className="text-lg font-bold">
+                        {(() => {
+                          const industries = sizeTierClients[selectedSizeTier].map(c => c.industry);
+                          const counts = industries.reduce((acc, industry) => {
+                            acc[industry] = (acc[industry] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>);
+                          return Object.entries(counts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Clients Table */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Client List</h3>
+                  <SortableTable
+                    data={sizeTierClients[selectedSizeTier]}
+                    columns={clientColumns}
+                    defaultSortKey="companySize"
+                    defaultSortDirection="desc"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

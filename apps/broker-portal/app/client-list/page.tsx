@@ -24,6 +24,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { PageLayout } from '../page-layout';
 import { ClientWizard } from '../../components/client-wizard';
 
@@ -39,6 +40,9 @@ interface Client {
 }
 
 export default function ClientListPage() {
+  const searchParams = useSearchParams();
+  const searchTerm = searchParams.get('search') || '';
+  
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
@@ -81,10 +85,20 @@ export default function ClientListPage() {
   }, []);
 
   const sortedClients = useMemo(() => {
-    const sortableClients = [...clients];
+    // First, filter clients based on search term
+    let filteredClients = [...clients];
+    if (searchTerm) {
+      filteredClients = clients.filter(client => 
+        client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.industry.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Then sort the filtered results
     const { key, direction } = sortConfig;
     if (key) {
-      sortableClients.sort((a, b) => {
+      filteredClients.sort((a, b) => {
         const valA = a[key];
         const valB = b[key];
         if (valA < valB) {
@@ -96,8 +110,8 @@ export default function ClientListPage() {
         return 0;
       });
     }
-    return sortableClients;
-  }, [clients, sortConfig]);
+    return filteredClients;
+  }, [clients, sortConfig, searchTerm]);
 
   const paginatedClients = useMemo(() => {
     const startIndex = (currentPage - 1) * rowsPerPage;
@@ -148,7 +162,14 @@ export default function ClientListPage() {
     <PageLayout>
       <div className="container mx-auto pt-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Client List</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Client List</h1>
+            {searchTerm && (
+              <p className="text-muted-foreground mt-1">
+                Showing results for "{searchTerm}" ({sortedClients.length} found)
+              </p>
+            )}
+          </div>
           <Button onClick={() => setShowWizard(true)}>
             <Plus className="mr-2 h-4 w-4" /> Add Client
           </Button>
