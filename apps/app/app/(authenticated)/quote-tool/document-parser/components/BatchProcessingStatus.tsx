@@ -10,7 +10,8 @@ import {
   Clock, 
   Loader2,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import ProcessingStatus from './ProcessingStatus';
 
@@ -156,6 +157,17 @@ export default function BatchProcessingStatus({
             <Badge variant={failedCount > 0 ? 'destructive' : 'default'}>
               {completedCount}/{totalFiles} complete
             </Badge>
+          </div>
+        </div>
+        
+        {/* Processing time notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-center space-x-2 text-sm text-blue-800">
+            <Info className="h-4 w-4" />
+            <span>
+              Processing takes 4-8 minutes per document depending on size and complexity. 
+              You can fill out the questionnaire while waiting.
+            </span>
           </div>
         </div>
         
