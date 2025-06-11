@@ -95,7 +95,7 @@ export default function PlanSelectionPage() {
             documentType: result.category || 'Current',
             detectedPlans,
             processedData: result,
-            selectedPlans: detectedPlans.length > 0 ? [detectedPlans[0].planOptionName] : [],
+            selectedPlans: [],
             includeHSA: false,
             hsaDetails: {
               employerContribution: 1000,
@@ -388,7 +388,7 @@ export default function PlanSelectionPage() {
                     {document.detectedPlans.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No plans detected in this document.</p>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {document.detectedPlans.map((plan) => (
                           <div
                             key={plan.planOptionName}
@@ -400,39 +400,34 @@ export default function PlanSelectionPage() {
                             onClick={() => {
                               const isSelected = document.selectedPlans.includes(plan.planOptionName);
                               if (isSelected) {
-                                updateSelectedPlans(
-                                  document.documentId,
-                                  document.selectedPlans.filter(p => p !== plan.planOptionName)
-                                );
+                                // Deselect if clicking the already selected plan
+                                updateSelectedPlans(document.documentId, []);
                               } else {
-                                updateSelectedPlans(
-                                  document.documentId,
-                                  [...document.selectedPlans, plan.planOptionName]
-                                );
+                                // Select only this plan (single selection)
+                                updateSelectedPlans(document.documentId, [plan.planOptionName]);
                               }
                             }}
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <h4 className="font-medium">{plan.planOptionName}</h4>
-                                  {document.selectedPlans.includes(plan.planOptionName) && (
-                                    <Badge variant="default" className="text-xs">Selected</Badge>
-                                  )}
+                            <div className="flex flex-col h-full">
+                              <div className="space-y-2 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    <h4 className="font-medium">{plan.planOptionName}</h4>
+                                    {document.selectedPlans.includes(plan.planOptionName) && (
+                                      <Badge variant="default" className="text-xs mt-1">Selected</Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-lg font-semibold text-primary whitespace-nowrap">
+                                    ${plan.totalMonthlyPremium.toLocaleString()}/mo
+                                  </div>
                                 </div>
                                 
-                                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                  <div className="flex items-center space-x-1">
-                                    <DollarSign className="h-3 w-3" />
-                                    <span>${plan.totalMonthlyPremium.toLocaleString()}/month</span>
+                                {plan.rateGuarantee && (
+                                  <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                                    <Shield className="h-3 w-3" />
+                                    <span>{plan.rateGuarantee}</span>
                                   </div>
-                                  {plan.rateGuarantee && (
-                                    <div className="flex items-center space-x-1">
-                                      <Shield className="h-3 w-3" />
-                                      <span>{plan.rateGuarantee}</span>
-                                    </div>
-                                  )}
-                                </div>
+                                )}
 
                                 <div className="flex flex-wrap gap-1">
                                   {plan.coverageTypes.map((coverage) => (
