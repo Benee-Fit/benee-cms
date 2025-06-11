@@ -1,2 +1,11 @@
 @import "tailwindcss";
 @import "@repo/design-system/styles/globals.css";
+
+/* Custom tooltip arrow styling for white background tooltips */
+.tooltip-content-white + [data-radix-popper-arrow] > svg {
+  fill: white !important;
+}
+
+.tooltip-content-white + [data-radix-popper-arrow] {
+  filter: drop-shadow(0 -1px 0 rgb(229, 231, 235));
+}
