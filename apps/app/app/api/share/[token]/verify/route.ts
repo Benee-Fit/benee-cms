@@ -4,8 +4,9 @@ import { verifyPassword, isShareLinkValid } from '../../../../../lib/security';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
+  const { token } = await params;
   try {
     const body = await request.json();
     const { password } = body;
@@ -16,7 +17,7 @@ export async function POST(
 
     const shareLink = await db.reportShareLink.findUnique({
       where: {
-        shareToken: params.token,
+        shareToken: token,
       },
       select: {
         id: true,
