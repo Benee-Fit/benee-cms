@@ -9,6 +9,9 @@ import { Info, RefreshCw, Clipboard, Database } from 'lucide-react';
 import { Header } from '../../../components/header';
 // Import ComparisonContainer component
 import ComparisonContainer from './components/comparison-container';
+// Import Save and Share components
+import SaveReportModal from '../../../../../components/save-report-modal';
+import ShareReportModal from '../../../../../components/share-report-modal';
 
 // Define the parsed document type
 interface ParsedDocument {
@@ -88,6 +91,8 @@ export default function DocumentParserResultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showRawData, setShowRawData] = useState(false);
   const [companyName, setCompanyName] = useState<string>('');
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [savedReportTitle, setSavedReportTitle] = useState<string>('');
 
   useEffect(() => {
     console.log('[DEBUG] ===== Document Parser Results Page =====');
@@ -280,6 +285,29 @@ export default function DocumentParserResultsPage() {
     setShowRawData(!showRawData);
   };
 
+  // Handle successful report save
+  const handleReportSaved = (reportId: string) => {
+    setSavedReportId(reportId);
+    setSavedReportTitle(companyName ? `${companyName} Market Comparison` : 'Market Comparison Report');
+  };
+
+  // Get document IDs for the report
+  const getDocumentIds = () => {
+    return parsedDocuments.map((doc, index) => `doc-${index}-${doc.originalFileName}`);
+  };
+
+  // Prepare report data for saving
+  const getReportData = () => {
+    return {
+      documents: parsedDocuments,
+      companyName,
+      analysisDate: new Date().toISOString(),
+      documentCount: parsedDocuments.length,
+      totalCoverages: parsedDocuments.reduce((total, doc) => total + (doc.coverages?.length || 0), 0),
+      carriers: [...new Set(parsedDocuments.map(doc => doc.metadata?.carrierName).filter(Boolean))]
+    };
+  };
+
 
   if (isLoading) {
     return (
@@ -342,6 +370,21 @@ export default function DocumentParserResultsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {/* Save Report Button */}
+                  <SaveReportModal
+                    reportData={getReportData()}
+                    documentIds={getDocumentIds()}
+                    onSaved={handleReportSaved}
+                  />
+                  
+                  {/* Share Report Button - only show if report is saved */}
+                  {savedReportId && (
+                    <ShareReportModal
+                      reportId={savedReportId}
+                      reportTitle={savedReportTitle}
+                    />
+                  )}
+                  
                   <Button variant="outline" size="sm" onClick={toggleRawData}>
                     {showRawData ? (
                       <>
