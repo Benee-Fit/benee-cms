@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@repo/design-system/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -8,34 +7,39 @@ import {
   CardTitle,
 } from '@repo/design-system/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@repo/design-system/components/ui/table';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@repo/design-system/components/ui/dialog';
 import { cn } from '@repo/design-system/lib/utils';
-// import { useState } from 'react'; // No longer needed as mock data is static for now
-
-const bluePaletteConst = ['#0D47A1', '#1976D2', '#2196F3', '#64B5F6', '#90CAF9', '#BBDEFB'];
-const extendedBluePaletteConst = ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB', '#E3F2FD'];
-
+import {
+  SortableTable,
+  type ColumnConfig,
+} from './sortable-table/sortable-table';
+import { useState } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
   Legend,
-  // Line, // Unused Line import
-  // LineChart, // Unused LineChart import
   Pie,
   PieChart,
-  ResponsiveContainer, // Added for responsive charts
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+
+const bluePaletteConst = [
+  '#0D47A1',
+  '#1976D2',
+  '#2196F3',
+  '#64B5F6',
+  '#90CAF9',
+  '#BBDEFB',
+];
 
 interface ChartDataset {
   label: string;
@@ -112,6 +116,45 @@ const ChartComponent = ({
   };
 
   if (type === 'bar') {
+    // Handle multiple datasets for bar charts
+    if (data.datasets.length > 1) {
+      const multiDataProcessed = data.labels.map((label, index) => {
+        const item: Record<string, string | number> = { name: label };
+        data.datasets.forEach((dataset, dsIndex) => {
+          item[`dataset${dsIndex}`] = dataset.data[index];
+        });
+        return item;
+      });
+
+      return (
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart
+            data={multiDataProcessed}
+            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis dataKey="name" className="text-xs text-muted-foreground" />
+            <YAxis className="text-xs text-muted-foreground" />
+            <Tooltip />
+            {(options?.plugins?.legend?.display ?? true) && <Legend />}
+            {data.datasets.map((dataset, index) => (
+              <Bar
+                key={index}
+                dataKey={`dataset${index}`}
+                name={dataset.label}
+                fill={
+                  Array.isArray(dataset.backgroundColor)
+                    ? dataset.backgroundColor[0]
+                    : dataset.backgroundColor || bluePaletteConst[index]
+                }
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      );
+    }
+
+    // Single dataset bar chart
     return (
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
@@ -122,15 +165,17 @@ const ChartComponent = ({
           <XAxis dataKey="name" className="text-xs text-muted-foreground" />
           <YAxis className="text-xs text-muted-foreground" />
           <Tooltip />
-          {options?.plugins?.legend?.display !== false && (
+          {(options?.plugins?.legend?.display ?? true) && (
             <Legend {...legendProps()} />
           )}
           <Bar
             dataKey="value"
-            fill={ // Default fill if not an array or if Cells are not used
-              !Array.isArray(data.datasets[0].backgroundColor)
-                ? (data.datasets[0].backgroundColor as string) || 'hsl(var(--primary) / 0.7)'
-                : undefined // Let Cells handle fill if backgroundColor is an array
+            name={data.datasets[0].label || "Leads"}
+            fill={
+              Array.isArray(data.datasets[0].backgroundColor)
+                ? undefined
+                : (data.datasets[0].backgroundColor as string) ||
+                  'hsl(var(--primary) / 0.7)'
             }
           >
             {Array.isArray(data.datasets[0].backgroundColor) &&
@@ -139,7 +184,8 @@ const ChartComponent = ({
                   key={`cell-${index}`}
                   fill={
                     (data.datasets[0].backgroundColor as string[])[
-                      index % (data.datasets[0].backgroundColor as string[]).length
+                      index %
+                        (data.datasets[0].backgroundColor as string[]).length
                     ]
                   }
                 />
@@ -151,6 +197,9 @@ const ChartComponent = ({
   }
 
   if (type === 'pie') {
+    // Calculate total for percentage calculation
+    const total = chartDataProcessed.reduce((sum, entry) => sum + entry.value, 0);
+    
     return (
       <ResponsiveContainer width="100%" height={height}>
         <PieChart>
@@ -176,7 +225,32 @@ const ChartComponent = ({
               />
             ))}
           </Pie>
-          {options?.plugins?.legend?.display !== false &&
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                const data = payload[0];
+                const value = typeof data.value === 'number' ? data.value : 0;
+                const percentage = ((value / total) * 100).toFixed(1);
+                return (
+                  <div className="rounded-lg border bg-background p-2 shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="text-[0.70rem] uppercase text-muted-foreground">
+                        {data.name}
+                      </span>
+                      <span className="font-bold text-muted-foreground">
+                        {value} leads
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {percentage}% of total
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+          {(options?.plugins?.legend?.display ?? true) &&
             options?.plugins?.legend?.position && <Legend {...legendProps()} />}
         </PieChart>
       </ResponsiveContainer>
@@ -194,13 +268,189 @@ interface IndustryInsightProps {
   sectionId?: string;
 }
 
+interface Client {
+  id: string;
+  name: string;
+  companySize: number;
+  industry: string;
+}
+
+interface SizeTierClients {
+  [key: string]: Client[];
+}
+
 export function IndustryInsight({
   className,
   sectionId,
 }: IndustryInsightProps) {
+  const [selectedSizeTier, setSelectedSizeTier] = useState<string | null>(null);
+  const [isSizeTierModalOpen, setIsSizeTierModalOpen] = useState(false);
+
   const shouldRenderSection = (id: string) => {
     return !sectionId || sectionId === id;
   };
+
+  // Mock client data for size tier drilldown
+  const sizeTierClients: SizeTierClients = {
+    'Small (1-49)': [
+      { id: 'C-001', name: 'Acme Consulting', companySize: 25, industry: 'Professional Services' },
+      { id: 'C-002', name: 'TechStart Solutions', companySize: 12, industry: 'Technology' },
+      { id: 'C-003', name: 'Green Valley Dental', companySize: 8, industry: 'Healthcare' },
+      { id: 'C-004', name: 'Artisan Bakery Co.', companySize: 35, industry: 'Retail' },
+      { id: 'C-005', name: 'Mountain View Law', companySize: 18, industry: 'Professional Services' },
+      { id: 'C-006', name: 'Digital Dreams Agency', companySize: 22, industry: 'Technology' },
+      { id: 'C-007', name: 'Riverside Clinic', companySize: 15, industry: 'Healthcare' },
+      { id: 'C-008', name: 'Custom Furniture Works', companySize: 30, industry: 'Manufacturing' },
+      { id: 'C-009', name: 'City Center Pharmacy', companySize: 6, industry: 'Healthcare' },
+      { id: 'C-010', name: 'Swift Delivery Co.', companySize: 45, industry: 'Transportation' },
+      { id: 'C-011', name: 'Elite Personal Training', companySize: 9, industry: 'Fitness' },
+      { id: 'C-012', name: 'Sunset Marketing Group', companySize: 28, industry: 'Professional Services' },
+      { id: 'C-013', name: 'Precision Auto Repair', companySize: 12, industry: 'Automotive' },
+      { id: 'C-014', name: 'Fresh Start Catering', companySize: 16, industry: 'Food Services' },
+      { id: 'C-015', name: 'Metro Pet Clinic', companySize: 11, industry: 'Healthcare' },
+      { id: 'C-016', name: 'Innovative Web Design', companySize: 19, industry: 'Technology' },
+      { id: 'C-017', name: 'Heritage Real Estate', companySize: 24, industry: 'Real Estate' },
+      { id: 'C-018', name: 'Coastal Insurance Agency', companySize: 14, industry: 'Financial Services' },
+    ],
+    'Medium (50-199)': [
+      { id: 'C-019', name: 'Regional Medical Center', companySize: 125, industry: 'Healthcare' },
+      { id: 'C-020', name: 'BlueTech Manufacturing', companySize: 89, industry: 'Manufacturing' },
+      { id: 'C-021', name: 'Metro School District', companySize: 156, industry: 'Education' },
+      { id: 'C-022', name: 'Quantum Software Solutions', companySize: 67, industry: 'Technology' },
+      { id: 'C-023', name: 'Central Bank & Trust', companySize: 98, industry: 'Financial Services' },
+      { id: 'C-024', name: 'Premier Engineering Group', companySize: 78, industry: 'Professional Services' },
+      { id: 'C-025', name: 'Pacific Coast Logistics', companySize: 145, industry: 'Transportation' },
+      { id: 'C-026', name: 'Advanced Materials Corp', companySize: 112, industry: 'Manufacturing' },
+      { id: 'C-027', name: 'Citywide Construction', companySize: 134, industry: 'Construction' },
+      { id: 'C-028', name: 'Summit Healthcare Network', companySize: 87, industry: 'Healthcare' },
+      { id: 'C-029', name: 'DataFlow Technologies', companySize: 92, industry: 'Technology' },
+      { id: 'C-030', name: 'Gateway Insurance Group', companySize: 76, industry: 'Financial Services' },
+      { id: 'C-031', name: 'Riverside Manufacturing', companySize: 158, industry: 'Manufacturing' },
+      { id: 'C-032', name: 'Elite Consulting Partners', companySize: 103, industry: 'Professional Services' },
+      { id: 'C-033', name: 'Northern Telecom Inc.', companySize: 119, industry: 'Technology' },
+      { id: 'C-034', name: 'Meridian Hospitality Group', companySize: 167, industry: 'Hospitality' },
+    ],
+    'Large (200+)': [
+      { id: 'C-035', name: 'Global Tech Industries', companySize: 450, industry: 'Technology' },
+      { id: 'C-036', name: 'Metropolitan Hospital System', companySize: 890, industry: 'Healthcare' },
+      { id: 'C-037', name: 'United Manufacturing Corp', companySize: 320, industry: 'Manufacturing' },
+      { id: 'C-038', name: 'State University System', companySize: 1250, industry: 'Education' },
+      { id: 'C-039', name: 'National Financial Services', companySize: 675, industry: 'Financial Services' },
+      { id: 'C-040', name: 'Continental Airlines Group', companySize: 2100, industry: 'Transportation' },
+      { id: 'C-041', name: 'Premier Healthcare Network', companySize: 567, industry: 'Healthcare' },
+      { id: 'C-042', name: 'Advanced Technologies Inc.', companySize: 298, industry: 'Technology' },
+      { id: 'C-043', name: 'Mega Retail Corporation', companySize: 1890, industry: 'Retail' },
+    ],
+  };
+
+  const handleSizeTierClick = (tier: string) => {
+    setSelectedSizeTier(tier);
+    setIsSizeTierModalOpen(true);
+  };
+
+  const handleCloseSizeTierModal = () => {
+    setIsSizeTierModalOpen(false);
+    setSelectedSizeTier(null);
+  };
+
+  // Column configuration for sortable industry performance table
+  const industryColumns: ColumnConfig<(typeof industryPerformance)[0]>[] = [
+    {
+      key: 'industry',
+      header: 'Industry',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'clients',
+      header: 'Clients',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'revenue',
+      header: 'Revenue',
+      type: 'currency',
+      align: 'right',
+    },
+    {
+      key: 'growth',
+      header: 'YoY Growth',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value}%`,
+    },
+    {
+      key: 'avgPremium',
+      header: 'Avg. Premium',
+      type: 'currency',
+      align: 'right',
+    },
+  ];
+
+  // Column configuration for sortable company size tiers table
+  const companySizeColumns: ColumnConfig<(typeof companySize)[0]>[] = [
+    {
+      key: 'tier',
+      header: 'Size Tier',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'clients',
+      header: 'Number of Clients',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'percentOfBusiness',
+      header: '% of Business',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value}%`,
+    },
+    {
+      key: 'planMembers',
+      header: '# of Plan Members',
+      type: 'number',
+      align: 'right',
+    },
+    {
+      key: 'avgPremium',
+      header: 'Avg. Premium/Client',
+      type: 'currency',
+      align: 'right',
+    },
+    {
+      key: 'totalRevenue',
+      header: 'Total Revenue',
+      type: 'currency',
+      align: 'right',
+    },
+  ];
+
+  // Column configuration for client drilldown table
+  const clientColumns: ColumnConfig<Client>[] = [
+    {
+      key: 'name',
+      header: 'Client Name',
+      type: 'string',
+      align: 'left',
+    },
+    {
+      key: 'companySize',
+      header: 'Company Size',
+      type: 'number',
+      align: 'right',
+      render: (value) => `${value} employees`,
+    },
+    {
+      key: 'industry',
+      header: 'Industry',
+      type: 'string',
+      align: 'left',
+    },
+  ];
 
   // Mock data from the original component
   const industryPerformance = [
@@ -261,18 +511,24 @@ export function IndustryInsight({
       clients: 18,
       avgPremium: 19200,
       totalRevenue: 345600,
+      percentOfBusiness: 41.5,
+      planMembers: 450,
     },
     {
       tier: 'Medium (50-199)',
       clients: 16,
       avgPremium: 28400,
       totalRevenue: 454400,
+      percentOfBusiness: 37.2,
+      planMembers: 1850,
     },
     {
       tier: 'Large (200+)',
       clients: 9,
       avgPremium: 34500,
       totalRevenue: 310500,
+      percentOfBusiness: 21.3,
+      planMembers: 3200,
     },
   ];
 
@@ -282,7 +538,15 @@ export function IndustryInsight({
       {
         label: 'Quotes Submitted',
         data: [48, 37, 29, 22, 19, 14, 8],
-        backgroundColor: ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6'], // extendedBluePalette (7 needed)
+        backgroundColor: [
+          '#0D47A1',
+          '#1565C0',
+          '#1976D2',
+          '#1E88E5',
+          '#2196F3',
+          '#42A5F5',
+          '#64B5F6',
+        ], // extendedBluePalette (7 needed)
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
@@ -295,7 +559,15 @@ export function IndustryInsight({
       {
         label: 'Conversion Rate (%)',
         data: [72, 65, 59, 68, 55, 42, 63],
-        backgroundColor: ['#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', '#64B5F6'], // extendedBluePalette (7 needed)
+        backgroundColor: [
+          '#0D47A1',
+          '#1565C0',
+          '#1976D2',
+          '#1E88E5',
+          '#2196F3',
+          '#42A5F5',
+          '#64B5F6',
+        ], // extendedBluePalette (7 needed)
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
@@ -309,7 +581,6 @@ export function IndustryInsight({
         label: 'Source Breakdown',
         data: [42, 23, 15, 12, 8],
         backgroundColor: bluePaletteConst.slice(0, 5), // bluePalette (5 needed)
-
         borderWidth: 1,
         borderColor: 'hsl(var(--background))',
       },
@@ -317,18 +588,25 @@ export function IndustryInsight({
   };
 
   const efficiencyChartData: ChartData = {
-    labels: ['Referrals', 'Cold Outreach', 'Website', 'Events', 'Partners'],
+    labels: [
+      'Paid Advertising',
+      'Organic & Inbound Marketing',
+      'Outbound & Direct Outreach',
+      'Referrals & Partnerships',
+      'Authority Building',
+      'Events & Workshops'
+    ],
     datasets: [
       {
         label: 'Conversion Rate (%)',
-        data: [68, 22, 34, 51, 47],
+        data: [42, 58, 35, 72, 28, 51],
         backgroundColor: bluePaletteConst[0],
         borderColor: 'hsl(var(--primary))',
         borderWidth: 1,
       },
       {
         label: 'Avg. Client Value ($K)',
-        data: [28.4, 22.7, 19.5, 26.2, 24.8],
+        data: [22.5, 31.2, 24.8, 35.6, 18.9, 27.3],
         backgroundColor: bluePaletteConst[1],
         borderColor: 'hsl(var(--muted-foreground))',
         borderWidth: 1,
@@ -354,53 +632,17 @@ export function IndustryInsight({
           <h3 id="industry-perf-title" className="text-xl font-medium mb-2">
             Industry Performance
           </h3>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Industry</TableHead>
-                    <TableHead className="text-right">Clients</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-right">YoY Growth</TableHead>
-                    <TableHead className="text-right">Avg. Premium</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {industryPerformance.map((industry) => (
-                    <TableRow key={industry.industry}>
-                      <TableCell className="font-medium">
-                        {industry.industry}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {industry.clients}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${industry.revenue.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {industry.growth}%
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${industry.avgPremium.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Highlight top verticals and growth areas:
-            <Badge variant="outline" className="ml-2 mr-1">
-              Technology
-            </Badge>
-            <Badge variant="outline">Healthcare</Badge>
-          </p>
+          <SortableTable
+            data={industryPerformance}
+            columns={industryColumns}
+            defaultSortKey="revenue"
+            defaultSortDirection="desc"
+          />
         </section>
       )}
 
-      {/* B. Premium Benchmarks */}
+      {/* B. Premium Benchmarks - COMMENTED OUT FOR FUTURE RESTORATION */}
+      {/* 
       {shouldRenderSection('premium-bench-title') && (
         <section aria-labelledby="premium-bench-title">
           <h3 id="premium-bench-title" className="text-xl font-medium mb-2">
@@ -471,6 +713,7 @@ export function IndustryInsight({
           </div>
         </section>
       )}
+      */}
 
       {/* C. Company Size Tiers */}
       {shouldRenderSection('company-size-tiers-title') && (
@@ -478,40 +721,13 @@ export function IndustryInsight({
           <h3 id="company-size-title" className="text-xl font-medium mb-2">
             Company Size Tiers
           </h3>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Size Tier</TableHead>
-                    <TableHead className="text-right">
-                      Number of Clients
-                    </TableHead>
-                    <TableHead className="text-right">
-                      Avg. Premium/Client
-                    </TableHead>
-                    <TableHead className="text-right">Total Revenue</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {companySize.map((size) => (
-                    <TableRow key={size.tier}>
-                      <TableCell className="font-medium">{size.tier}</TableCell>
-                      <TableCell className="text-right">
-                        {size.clients}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${size.avgPremium.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${size.totalRevenue.toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <SortableTable
+            data={companySize}
+            columns={companySizeColumns}
+            defaultSortKey="totalRevenue"
+            defaultSortDirection="desc"
+            onRowClick={(sizeData) => handleSizeTierClick(sizeData.tier)}
+          />
         </section>
       )}
 
@@ -605,7 +821,7 @@ export function IndustryInsight({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">
-                  Lead Source Efficiency
+                  Lead Source
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -631,6 +847,91 @@ export function IndustryInsight({
           </div>
         </section>
       )}
+
+      {/* Size Tier Clients Modal */}
+      <Dialog open={isSizeTierModalOpen} onOpenChange={handleCloseSizeTierModal}>
+        <DialogContent
+          className="!max-w-[80vw] !w-[80vw] max-h-[80vh] overflow-hidden flex flex-col"
+          style={{ maxWidth: '80vw', width: '80vw' }}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">
+              {selectedSizeTier ? `${selectedSizeTier} Clients` : 'Clients'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto space-y-6">
+            {selectedSizeTier && sizeTierClients[selectedSizeTier] && (
+              <>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Total Clients
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <div className="text-2xl font-bold">
+                        {sizeTierClients[selectedSizeTier].length}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Avg Company Size
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <div className="text-2xl font-bold">
+                        {Math.round(
+                          sizeTierClients[selectedSizeTier].reduce(
+                            (sum, client) => sum + client.companySize,
+                            0
+                          ) / sizeTierClients[selectedSizeTier].length
+                        )} employees
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">
+                        Top Industry
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <div className="text-lg font-bold">
+                        {(() => {
+                          const industries = sizeTierClients[selectedSizeTier].map(c => c.industry);
+                          const counts = industries.reduce((acc, industry) => {
+                            acc[industry] = (acc[industry] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>);
+                          return Object.entries(counts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+                        })()}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Clients Table */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Client List</h3>
+                  <SortableTable
+                    data={sizeTierClients[selectedSizeTier]}
+                    columns={clientColumns}
+                    defaultSortKey="companySize"
+                    defaultSortDirection="desc"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

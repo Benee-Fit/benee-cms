@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Tabs, TabsList } from '@repo/design-system/components/ui/tabs';
 import { cn } from '@repo/design-system/lib/utils';
+import { usePageTitle } from '@/app/components/layout/PageTitleContext';
+import { useEffect } from 'react';
 
 const tabNavItems = [
   {
@@ -12,11 +14,11 @@ const tabNavItems = [
     href: '/industry-insight/performance',
     sectionId: 'industry-performance-title',
   },
-  {
-    label: 'Benchmarks',
-    href: '/industry-insight/benchmarks',
-    sectionId: 'premium-bench-title',
-  },
+  // {
+  //   label: 'Benchmarks',
+  //   href: '/industry-insight/benchmarks',
+  //   sectionId: 'premium-bench-title',
+  // }, // TEMPORARILY REMOVED
   {
     label: 'Size Tiers',
     href: '/industry-insight/size-tiers',
@@ -35,15 +37,19 @@ export default function IndustryInsightLayout({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const { setTitle } = usePageTitle();
+  
+  useEffect(() => {
+    setTitle('Industry Insight');
+  }, [setTitle]);
 
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-2">Industry Insight</h1>
-      <p className="text-muted-foreground mb-6">
-        Explore detailed breakdowns of industry performance, benchmarks, and analytics.
+    <div className="space-y-6">
+      <p className="text-muted-foreground">
+        Explore detailed breakdowns of industry performance, size tiers, and analytics.
       </p>
       <Tabs defaultValue={pathname} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 mb-6">
           {tabNavItems.map((item) => (
             <Link
               key={item.href}

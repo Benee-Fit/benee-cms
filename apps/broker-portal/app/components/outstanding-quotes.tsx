@@ -15,14 +15,6 @@ import {
   DropdownMenuTrigger,
 } from '@repo/design-system/components/ui/dropdown-menu';
 import { Input } from '@repo/design-system/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@repo/design-system/components/ui/table';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   AlertCircle,
@@ -32,16 +24,28 @@ import {
   Search,
 } from 'lucide-react';
 import { useState } from 'react';
+import { SortableTable, type ColumnConfig } from './sortable-table/sortable-table';
 
 interface OutstandingQuotesProps {
   className?: string;
+}
+
+interface Quote {
+  id: string;
+  client: string;
+  date: string;
+  carriers: string[];
+  status: { carrier: string; received: boolean }[];
+  waiting: string;
+  followUp: string;
+  age: number;
 }
 
 export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
   const [filterText, setFilterText] = useState('');
 
   // Mock data for quotes
-  const quotes = [
+  const quotes: Quote[] = [
     {
       id: 'Q-1001',
       client: 'Nimbus Technologies',
@@ -133,6 +137,98 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
     return 'destructive';
   };
 
+  // Define columns for the sortable table
+  const columns: ColumnConfig<Quote>[] = [
+    {
+      key: 'id',
+      header: 'Quote ID',
+      type: 'string',
+    },
+    {
+      key: 'client',
+      header: 'Client',
+      type: 'string',
+    },
+    {
+      key: 'date',
+      header: 'Submitted',
+      type: 'string',
+    },
+    {
+      key: 'carriers',
+      header: 'Carriers',
+      type: 'string',
+      render: (value: string[]) => value.join(', '),
+    },
+    {
+      key: 'status',
+      header: 'Response Status',
+      type: 'string',
+      render: (value: { carrier: string; received: boolean }[]) => (
+        <div className="space-y-1">
+          {value.map((status, index) => (
+            <div key={index} className="flex items-center">
+              {status.carrier}
+              {status.received ? (
+                <CheckCircle2 className="h-4 w-4 ml-1 text-green-500" />
+              ) : (
+                <Clock className="h-4 w-4 ml-1 text-amber-500" />
+              )}
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: 'waiting',
+      header: 'Waiting On',
+      type: 'string',
+      render: (value: string) => (
+        value === 'Complete' ? (
+          <Badge variant="outline">Complete</Badge>
+        ) : (
+          <Badge variant="default">{value}</Badge>
+        )
+      ),
+    },
+    {
+      key: 'followUp',
+      header: 'Last Follow Up',
+      type: 'string',
+    },
+    {
+      key: 'age',
+      header: 'Age',
+      type: 'number',
+      render: (value: number) => (
+        <Badge variant={getAgeBadgeVariant(value)}>
+          {value} days
+        </Badge>
+      ),
+    },
+    {
+      key: 'id', // Using id as key since we need actions per quote
+      header: 'Actions',
+      type: 'string',
+      render: (value: string, quote: Quote) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem>Resend to Carrier</DropdownMenuItem>
+            <DropdownMenuItem>Mark as Received</DropdownMenuItem>
+            <DropdownMenuItem>Archive</DropdownMenuItem>
+            <DropdownMenuItem>Add Internal Notes</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
+
   return (
     <div className={cn('space-y-6', className)}>
       {oldQuotes > 0 && (
@@ -162,89 +258,17 @@ export function OutstandingQuotes({ className }: OutstandingQuotesProps) {
           />
         </div>
 
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Quote ID</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Carriers</TableHead>
-                  <TableHead>Response Status</TableHead>
-                  <TableHead>Waiting On</TableHead>
-                  <TableHead>Last Follow Up</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuotes.map((quote) => (
-                  <TableRow key={quote.id}>
-                    <TableCell className="font-medium">{quote.id}</TableCell>
-                    <TableCell>{quote.client}</TableCell>
-                    <TableCell>{quote.date}</TableCell>
-                    <TableCell>{quote.carriers.join(', ')}</TableCell>
-                    <TableCell>
-                      {quote.status.map((status, index) => (
-                        <div key={index} className="flex items-center">
-                          {status.carrier}
-                          {status.received ? (
-                            <CheckCircle2 className="h-4 w-4 ml-1 text-green-500" />
-                          ) : (
-                            <Clock className="h-4 w-4 ml-1 text-amber-500" />
-                          )}
-                        </div>
-                      ))}
-                    </TableCell>
-                    <TableCell>
-                      {quote.waiting === 'Complete' ? (
-                        <Badge variant="outline">Complete</Badge>
-                      ) : (
-                        <Badge variant="default">{quote.waiting}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{quote.followUp}</TableCell>
-                    <TableCell>
-                      <Badge variant={getAgeBadgeVariant(quote.age)}>
-                        {quote.age} days
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Resend to Carrier</DropdownMenuItem>
-                          <DropdownMenuItem>Mark as Received</DropdownMenuItem>
-                          <DropdownMenuItem>Archive</DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Add Internal Notes
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-
-                {filteredQuotes.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={9}
-                      className="text-center py-4 text-muted-foreground"
-                    >
-                      No quotes found matching your filter.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <SortableTable
+          data={filteredQuotes}
+          columns={columns}
+          defaultSortKey="age"
+          defaultSortDirection="desc"
+        />
+        {filteredQuotes.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No quotes found matching your filter.
+          </div>
+        )}
       </section>
     </div>
   );

@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 import { usePageTitle } from '@/app/components/layout/PageTitleContext';
 import { useEffect } from 'react';
 
-export default function RevenueBreakdownLayout({
+export default function ClientInsightsLayout({
   children,
 }: {
   children: ReactNode;
@@ -17,16 +17,13 @@ export default function RevenueBreakdownLayout({
   const { setTitle } = usePageTitle();
   
   useEffect(() => {
-    setTitle('Revenue Breakdown');
+    setTitle('Client Insights');
   }, [setTitle]);
   
   const tabs = [
-    { value: 'overview', label: 'Revenue Overview', href: '/revenue-breakdown/overview', sectionId: 'revenue-overview-title' },
-    { value: 'team-performance', label: 'Team Performance', href: '/revenue-breakdown/team-performance', sectionId: 'team-performance-title' },
-    { value: 'carrier-breakdown', label: 'Carrier Breakdown', href: '/revenue-breakdown/carrier-breakdown', sectionId: 'commission-splits-title' },
-    { value: 'revenue-sources', label: 'Revenue Sources', href: '/revenue-breakdown/revenue-sources', sectionId: 'revenue-sources-title' },
-    { value: 'broker-splits', label: 'Broker Splits', href: '/revenue-breakdown/broker-splits', sectionId: 'broker-splits-title' },
-    // { value: 'forecasting', label: 'Forecasting', href: '/revenue-breakdown/forecasting', sectionId: 'forecasting-title' }, // TEMPORARILY REMOVED
+    { value: 'overview', label: 'Client Metrics Overview', href: '/client-insights/overview', sectionId: 'client-metrics-overview-title' },
+    { value: 'revenue-per-client', label: 'Revenue Per Client', href: '/client-insights/revenue-per-client', sectionId: 'revenue-per-client-title' },
+    { value: 'risk-and-opportunity', label: 'Risk and Opportunity', href: '/client-insights/risk-and-opportunity', sectionId: 'risk-and-opportunity-title' },
   ];
   
   const currentTab = tabs.find(tab => pathname === tab.href)?.value || 'overview';
@@ -35,7 +32,7 @@ export default function RevenueBreakdownLayout({
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <Tabs value={currentTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6">
             {tabs.map(tab => (
               <Link 
                 href={tab.href} 

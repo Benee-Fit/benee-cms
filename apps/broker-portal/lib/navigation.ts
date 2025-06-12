@@ -20,16 +20,21 @@ export const mainNavItems: NavItem[] = [
     subItems: [
       { label: 'Revenue Overview', href: '/revenue-breakdown/overview' },
       { label: 'Team Performance', href: '/revenue-breakdown/team-performance' },
-      { label: 'Commission Splits', href: '/revenue-breakdown/commission-splits' },
+      { label: 'Carrier Breakdown', href: '/revenue-breakdown/carrier-breakdown' },
       { label: 'Revenue Sources', href: '/revenue-breakdown/revenue-sources' },
-      { label: 'Forecasting', href: '/revenue-breakdown/forecasting' },
+      { label: 'Broker Splits', href: '/revenue-breakdown/broker-splits' },
+      // { label: 'Forecasting', href: '/revenue-breakdown/forecasting' }, // TEMPORARILY REMOVED
     ],
   },
   {
     label: 'Client Insights',
     href: '/client-insights',
     // icon: UsersIcon, // Example
-    // No sub-items as this is now a single page
+    subItems: [
+      { label: 'Client Metrics Overview', href: '/client-insights/overview' },
+      { label: 'Revenue Per Client', href: '/client-insights/revenue-per-client' },
+      { label: 'Risk and Opportunity', href: '/client-insights/risk-and-opportunity' },
+    ],
   },
   {
     label: 'Industry Insight',
@@ -37,7 +42,7 @@ export const mainNavItems: NavItem[] = [
     // icon: LineChartIcon, // Example
     subItems: [
       { label: 'Industry Performance', href: '/industry-insight/performance' },
-      { label: 'Benchmarks', href: '/industry-insight/benchmarks' },
+      // { label: 'Benchmarks', href: '/industry-insight/benchmarks' }, // TEMPORARILY REMOVED
       { label: 'Size Tiers', href: '/industry-insight/size-tiers' },
       { label: 'Analytics', href: '/industry-insight/analytics' },
     ],

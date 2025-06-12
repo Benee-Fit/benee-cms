@@ -1,12 +1,15 @@
 'use client';
 
-import { ClientInsights } from '@/app/components/client-insights';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function ClientInsightsPage() {
-  return (
-    <div className="container mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Client Insights</h1>
-      <ClientInsights />
-    </div>
-  );
+  const router = useRouter();
+  
+  useEffect(() => {
+    // Redirect to overview as the default page
+    router.replace('/client-insights/overview');
+  }, [router]);
+
+  return null;
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@repo/database';
 import { uploadToSpaces } from '../../../../../lib/do-spaces';
 
+
 interface RouteParams {
   params: Promise<{
     id: string;
@@ -11,7 +12,7 @@ interface RouteParams {
 // GET all documents for a client
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
@@ -33,7 +34,7 @@ export async function GET(
 // POST upload new document
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
