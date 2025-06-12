@@ -1,6 +1,12 @@
 {
-  "name": "broker-portal",
+  "name": "@repo/broker-portal",
   "private": true,
+  "main": "./app/components/index.ts",
+  "types": "./app/components/index.ts",
+  "exports": {
+    ".": "./app/components/index.ts",
+    "./components/*": "./app/components/*.tsx"
+  },
   "scripts": {
     "dev": "next dev -p 3006 --turbopack",
     "build": "next build",

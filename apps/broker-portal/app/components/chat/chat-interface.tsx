@@ -1,3 +1,5 @@
+'use client';
+
 import type React from 'react';
 import { useRef, useEffect, useState } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';

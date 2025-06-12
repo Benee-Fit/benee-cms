@@ -21,6 +21,7 @@
     "@repo/collaboration": "workspace:*",
     "@repo/database": "workspace:*",
     "@repo/design-system": "workspace:*",
+    "@repo/broker-portal": "workspace:*",
     "@repo/next-config": "workspace:*",
     "@repo/notifications": "workspace:*",
     "@repo/observability": "workspace:*",

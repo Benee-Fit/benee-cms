@@ -24,13 +24,17 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
 
   // Define the navigation items for the app header
 const navItems = [
-  { href: '/broker-portal', label: 'Broker Portal' },
+  { href: '/', label: 'Dashboard' },
+  { href: '/broker-portal/client-list', label: 'Client List' },
+  { href: '/broker-portal/revenue-breakdown', label: 'Revenue' },
+  { href: '/broker-portal/industry-insight', label: 'Industry Insights' },
   { href: 'https://hr-portal.beneefitapp.com', label: 'HR Portal' }
 ];
 
   // Define action buttons for the app header
 const actionButtons = [
-  { href: '/quote-tool/document-parser', label: 'New Quote' }
+  { href: '/quote-tool/document-parser', label: 'New Quote' },
+  { href: '/broker-portal/outstanding-quotes', label: 'Quotes' }
 ];
 
 return (

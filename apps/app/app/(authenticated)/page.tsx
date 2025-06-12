@@ -3,13 +3,10 @@ import { auth } from '@repo/auth/server';
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
-import HomePage from '../../../broker-portal/app/page';
-import { AvatarStack } from './components/avatar-stack';
-import { Cursors } from './components/cursors';
-import { Header } from './components/header';
+import { ClientInsights } from '@repo/broker-portal';
 
-const title = 'Acme Inc';
-const description = 'My application.';
+const title = 'Benee-fit Apps';
+const description = 'Insurance broker tools and client management platform.';
 
 const CollaborationProvider = dynamic(() =>
   import('./components/collaboration-provider').then(
@@ -31,15 +28,13 @@ const App = async () => {
 
   return (
     <>
-      <Header pages={['Dashboard']} page="Pages">
-        {env.LIVEBLOCKS_SECRET && (
-          <CollaborationProvider orgId={orgId}>
-            <AvatarStack />
-            <Cursors />
-          </CollaborationProvider>
-        )}
-      </Header>
-      <HomePage />
+      {env.LIVEBLOCKS_SECRET ? (
+        <CollaborationProvider orgId={orgId}>
+          <ClientInsights />
+        </CollaborationProvider>
+      ) : (
+        <ClientInsights />
+      )}
     </>
   );
 };

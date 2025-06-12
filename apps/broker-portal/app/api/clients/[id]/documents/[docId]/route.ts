@@ -1,26 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { database } from '@repo/database';
 import { deleteFromSpaces } from '../../../../../../lib/do-spaces';
 
-interface RouteParams {
-  params: {
-    id: string;
-    docId: string;
-  };
-}
-
 // DELETE document
 export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
+  const { id, docId } = await params;
   try {
     // Get document to find the file URL
-    const document = await database.brokerClientDocument.findUnique({
-      where: { id: params.docId },
+    const document = await database.clientDocument.findUnique({
+      where: { id: docId },
     });
     
-    if (!document || document.clientId !== params.id) {
+    if (!document || document.clientId !== id) {
       return NextResponse.json(
         { error: 'Document not found' },
         { status: 404 }
@@ -35,13 +29,13 @@ export async function DELETE(
     await deleteFromSpaces(key);
     
     // Delete from database
-    await database.brokerClientDocument.delete({
-      where: { id: params.docId },
+    await database.clientDocument.delete({
+      where: { id: docId },
     });
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting document:', error);
+    // Use structured error for better server monitoring
     return NextResponse.json(
       { error: 'Failed to delete document' },
       { status: 500 }

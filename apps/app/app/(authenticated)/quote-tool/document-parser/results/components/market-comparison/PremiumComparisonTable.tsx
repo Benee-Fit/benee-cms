@@ -1,3 +1,4 @@
+import { Badge } from '@repo/design-system/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -19,13 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/design-system/components/ui/table';
-import { Badge } from '@repo/design-system/components/ui/badge';
-import { Input } from '@repo/design-system/components/ui/input';
 import { Edit2 } from 'lucide-react';
 import React, { useMemo, useState, useCallback } from 'react';
 
 // Import ParsedDocumentResult and Coverage types
-import type { ParsedDocumentResult, Coverage, HighLevelOverview } from '../../../types';
+import type {
+  Coverage,
+  HighLevelOverview,
+  ParsedDocumentResult,
+} from '../../../types';
 
 /**
  * Define coverage types that are experience rated (vs pooled)
@@ -38,7 +41,7 @@ const experienceRatedCoverageTypes = [
   'Vision',
   'EAP',
   'Health Spending Account',
-  'HSA'
+  'HSA',
 ];
 
 // Format number as currency
@@ -47,7 +50,10 @@ const formatCurrency = (value: number | string | null | undefined): string => {
     return '$0.00';
   }
 
-  const numValue = typeof value === 'string' ? Number.parseFloat(value.replace(/,/g, '')) : value;
+  const numValue =
+    typeof value === 'string'
+      ? Number.parseFloat(value.replace(/,/g, ''))
+      : value;
 
   if (Number.isNaN(numValue)) {
     return '$0.00';
@@ -67,7 +73,10 @@ const formatUnitRate = (value: number | string | null | undefined): string => {
     return '-';
   }
 
-  const numValue = typeof value === 'string' ? Number.parseFloat(value.replace(/,/g, '')) : value;
+  const numValue =
+    typeof value === 'string'
+      ? Number.parseFloat(value.replace(/,/g, ''))
+      : value;
 
   if (Number.isNaN(numValue)) {
     return '-';
@@ -87,18 +96,18 @@ const formatVolume = (volume: string | number | null | undefined): string => {
   if (volume === '{}' || typeof volume === 'object') {
     return '-';
   }
-  
+
   // If volume is already a number, convert to string first
   const volumeStr = typeof volume === 'number' ? volume.toString() : volume;
-  
+
   // Try to parse as number
   const numericVolume = Number.parseFloat(volumeStr.replace(/,/g, ''));
-  
+
   // Return original string if could not parse
   if (Number.isNaN(numericVolume)) {
     return volumeStr;
   }
-  
+
   // Format with commas for thousands
   return Number(numericVolume).toLocaleString();
 };
@@ -127,9 +136,8 @@ const coverageTypeMap: Record<string, string> = {
   'Employee Assistance Program': 'EAP',
   'Health Spending Account': 'Health Spending Account',
   HSA: 'Health Spending Account',
-  'Voluntary Accident': 'Voluntary Accident'
+  'Voluntary Accident': 'Voluntary Accident',
 };
-
 
 // Define the master benefit order for the table
 const masterBenefitOrder = [
@@ -155,16 +163,14 @@ const masterBenefitOrder = [
 const coverageVariantOrder: Record<string, string[]> = {
   'Extended Healthcare': ['Single', 'Family'],
   'Dental Care': ['Single', 'Family'],
-  'Vision': ['Single', 'Family'],
-  'EAP': ['Single', 'Family'],
+  Vision: ['Single', 'Family'],
+  EAP: ['Single', 'Family'],
   'Health Spending Account': ['Single', 'Family'],
-  'HSA': ['Single', 'Family']
+  HSA: ['Single', 'Family'],
 };
-
 
 // Component type definitions
 // Using the ParsedDocumentResult type for document metadata and coverages
-
 
 interface PremiumComparisonTableProps {
   results: ParsedDocumentResult[];
@@ -180,15 +186,15 @@ interface EditableTableCellProps {
   isCurrency?: boolean;
 }
 
-const EditableTableCell: React.FC<EditableTableCellProps> = ({ 
-  value, 
-  onUpdate, 
+const EditableTableCell: React.FC<EditableTableCellProps> = ({
+  value,
+  onUpdate,
   isNumeric = false,
   className = '',
-  isCurrency = false
+  isCurrency = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // For currency values, strip the $ for editing but keep the number
   const getEditValue = (val: string) => {
     if (isCurrency && val.startsWith('$')) {
@@ -196,7 +202,7 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
     }
     return val;
   };
-  
+
   // For currency values, ensure $ is prepended when saving
   const getSaveValue = (val: string) => {
     if (isCurrency && val !== '-' && val !== '') {
@@ -235,13 +241,17 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
   if (isEditing) {
     return (
       <div className="relative">
-        {isCurrency && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>}
+        {isCurrency && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+            $
+          </span>
+        )}
         <input
           type="text"
           value={tempValue}
           onChange={(e) => {
             if (isNumeric) {
-              const val = e.target.value.replace(/[^0-9.,\-]/g, '');
+              const val = e.target.value.replace(/[^0-9.,-]/g, '');
               setTempValue(val);
             } else {
               setTempValue(e.target.value);
@@ -257,7 +267,7 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
   }
 
   return (
-    <div 
+    <div
       className="group relative cursor-pointer hover:bg-blue-50 rounded px-2 py-1"
       onClick={() => setIsEditing(true)}
     >
@@ -282,10 +292,11 @@ export function PremiumComparisonTable({
   results,
   highLevelOverview,
 }: PremiumComparisonTableProps): React.ReactElement {
-
   // State for per-carrier plan option selection
-  const [selectedPlanOptions, setSelectedPlanOptions] = useState<Record<string, string>>({});
-  
+  const [selectedPlanOptions, setSelectedPlanOptions] = useState<
+    Record<string, string>
+  >({});
+
   // State for edited cell values
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
 
@@ -300,177 +311,219 @@ export function PremiumComparisonTable({
             if (!carrierOptions[coverage.carrierName]) {
               carrierOptions[coverage.carrierName] = [];
             }
-            if (!carrierOptions[coverage.carrierName].includes(coverage.planOptionName)) {
-              carrierOptions[coverage.carrierName].push(coverage.planOptionName);
+            if (
+              !carrierOptions[coverage.carrierName].includes(
+                coverage.planOptionName
+              )
+            ) {
+              carrierOptions[coverage.carrierName].push(
+                coverage.planOptionName
+              );
             }
           }
         }
       }
     }
-    
+
     return carrierOptions;
   }, [results]);
 
   /**
    * Extract rate guarantee text from metadata
    */
-  const extractRateGuarantee = useCallback((rateGuarantees: string | string[] | null | undefined): string | null => {
-    if (!rateGuarantees) {
+  const extractRateGuarantee = useCallback(
+    (rateGuarantees: string | string[] | null | undefined): string | null => {
+      if (!rateGuarantees) {
+        return null;
+      }
+
+      if (typeof rateGuarantees === 'string') {
+        return rateGuarantees;
+      }
+
+      if (Array.isArray(rateGuarantees) && rateGuarantees.length > 0) {
+        return rateGuarantees.join(', ');
+      }
+
       return null;
-    }
-    
-    if (typeof rateGuarantees === 'string') {
-      return rateGuarantees;
-    }
-    
-    if (Array.isArray(rateGuarantees) && rateGuarantees.length > 0) {
-      return rateGuarantees.join(', ');
-    }
-    
-    return null;
-  }, []);
+    },
+    []
+  );
 
   /**
    * Extract carriers from coverages when metadata is missing
    */
-  const extractCarriersFromCoverages = useCallback((result: ParsedDocumentResult, carriersMap: Map<string, { name: string; rateGuarantee: string | null }>) => {
-    if (!result.allCoverages || result.allCoverages.length === 0) {
-      return;
-    }
-    
-    const uniqueCarrierNames = new Set(
-      result.allCoverages
-        .map(coverage => coverage.carrierName)
-        .filter(Boolean) as string[]
-    );
-    
-    for (const carrierName of uniqueCarrierNames) {
-      if (!carriersMap.has(carrierName)) {
-        carriersMap.set(carrierName, {
-          name: carrierName,
-          rateGuarantee: null
-        });
+  const extractCarriersFromCoverages = useCallback(
+    (
+      result: ParsedDocumentResult,
+      carriersMap: Map<string, { name: string; rateGuarantee: string | null }>
+    ) => {
+      if (!result.allCoverages || result.allCoverages.length === 0) {
+        return;
       }
-    }
-  }, []);
+
+      const uniqueCarrierNames = new Set(
+        result.allCoverages
+          .map((coverage) => coverage.carrierName)
+          .filter(Boolean) as string[]
+      );
+
+      for (const carrierName of uniqueCarrierNames) {
+        if (!carriersMap.has(carrierName)) {
+          carriersMap.set(carrierName, {
+            name: carrierName,
+            rateGuarantee: null,
+          });
+        }
+      }
+    },
+    []
+  );
 
   /**
    * Process a single result to extract carrier information
    */
-  const processResultForCarriers = useCallback((
-    result: ParsedDocumentResult,
-    carriersMap: Map<string, { name: string; rateGuarantee: string | null }>
-  ) => {
-    // Try to get carrier name from multiple sources
-    const carrierName = result.metadata?.carrierName || 
-                       (result as any).processedData?.metadata?.carrierName ||
-                       result.allCoverages?.[0]?.carrierName;
-    
-    if (!carrierName) {
-      extractCarriersFromCoverages(result, carriersMap);
-      return;
-    }
-    
-    // Try multiple sources for rate guarantee information in priority order
-    let rateGuaranteeText: string | null = null;
-    
-    // 1. Check new format processedData.metadata.rateGuarantees
-    if ((result as any).processedData?.metadata?.rateGuarantees) {
-      rateGuaranteeText = extractRateGuarantee((result as any).processedData.metadata.rateGuarantees);
-    }
-    
-    // 2. Check old format metadata.rateGuarantees
-    if (!rateGuaranteeText && result.metadata?.rateGuarantees) {
-      rateGuaranteeText = extractRateGuarantee(result.metadata.rateGuarantees);
-    }
-    
-    // 3. Check new format planOptions with carrierProposals
-    if (!rateGuaranteeText && (result as any).processedData?.planOptions) {
-      for (const planOption of (result as any).processedData.planOptions) {
-        if (planOption.carrierProposals) {
-          for (const carrierProposal of planOption.carrierProposals) {
-            if (carrierProposal.carrierName === carrierName && carrierProposal.rateGuaranteeText) {
-              rateGuaranteeText = carrierProposal.rateGuaranteeText;
-              break;
+  const processResultForCarriers = useCallback(
+    (
+      result: ParsedDocumentResult,
+      carriersMap: Map<string, { name: string; rateGuarantee: string | null }>
+    ) => {
+      // Try to get carrier name from multiple sources
+      const carrierName =
+        result.metadata?.carrierName ||
+        (result as any).processedData?.metadata?.carrierName ||
+        result.allCoverages?.[0]?.carrierName;
+
+      if (!carrierName) {
+        extractCarriersFromCoverages(result, carriersMap);
+        return;
+      }
+
+      // Try multiple sources for rate guarantee information in priority order
+      let rateGuaranteeText: string | null = null;
+
+      // 1. Check new format processedData.metadata.rateGuarantees
+      if ((result as any).processedData?.metadata?.rateGuarantees) {
+        rateGuaranteeText = extractRateGuarantee(
+          (result as any).processedData.metadata.rateGuarantees
+        );
+      }
+
+      // 2. Check old format metadata.rateGuarantees
+      if (!rateGuaranteeText && result.metadata?.rateGuarantees) {
+        rateGuaranteeText = extractRateGuarantee(
+          result.metadata.rateGuarantees
+        );
+      }
+
+      // 3. Check new format planOptions with carrierProposals
+      if (!rateGuaranteeText && (result as any).processedData?.planOptions) {
+        for (const planOption of (result as any).processedData.planOptions) {
+          if (planOption.carrierProposals) {
+            for (const carrierProposal of planOption.carrierProposals) {
+              if (
+                carrierProposal.carrierName === carrierName &&
+                carrierProposal.rateGuaranteeText
+              ) {
+                rateGuaranteeText = carrierProposal.rateGuaranteeText;
+                break;
+              }
             }
           }
-        }
-        if (rateGuaranteeText) break;
-      }
-    }
-    
-    // 4. Check old format planOptions
-    if (!rateGuaranteeText && result.planOptions) {
-      for (const planOption of result.planOptions) {
-        if (planOption.rateGuarantees && planOption.rateGuarantees.length > 0) {
-          rateGuaranteeText = extractRateGuarantee(planOption.rateGuarantees);
-          break;
+          if (rateGuaranteeText) break;
         }
       }
-    }
-    
-    // 5. Check documentNotes (new format)
-    if (!rateGuaranteeText && (result as any).processedData?.documentNotes) {
-      const documentNotes = (result as any).processedData.documentNotes;
-      if (typeof documentNotes === 'string' && documentNotes.toLowerCase().includes('rate guarantee')) {
-        rateGuaranteeText = documentNotes;
-      }
-    }
-    
-    // 6. Check documentNotes (root level)
-    if (!rateGuaranteeText && (result as any).documentNotes) {
-      const documentNotes = (result as any).documentNotes;
-      if (typeof documentNotes === 'string' && documentNotes.toLowerCase().includes('rate guarantee')) {
-        rateGuaranteeText = documentNotes;
-      }
-    }
-    
-    // 7. Check old format planNotes
-    if (!rateGuaranteeText && result.planNotes) {
-      for (const note of result.planNotes) {
-        const noteText = typeof note === 'string' ? note : note.note || '';
-        if (noteText.toLowerCase().includes('rate guarantee')) {
-          rateGuaranteeText = noteText;
-          break;
-        }
-      }
-    }
-    
-    if (!carriersMap.has(carrierName)) {
-      carriersMap.set(carrierName, {
-        name: carrierName,
-        rateGuarantee: rateGuaranteeText
-      });
-    } else if (rateGuaranteeText && carriersMap.get(carrierName)?.rateGuarantee === null) {
-      carriersMap.set(carrierName, {
-        name: carrierName,
-        rateGuarantee: rateGuaranteeText
-      });
-    }
-  }, [extractRateGuarantee, extractCarriersFromCoverages]);
 
+      // 4. Check old format planOptions
+      if (!rateGuaranteeText && result.planOptions) {
+        for (const planOption of result.planOptions) {
+          if (
+            planOption.rateGuarantees &&
+            planOption.rateGuarantees.length > 0
+          ) {
+            rateGuaranteeText = extractRateGuarantee(planOption.rateGuarantees);
+            break;
+          }
+        }
+      }
+
+      // 5. Check documentNotes (new format)
+      if (!rateGuaranteeText && (result as any).processedData?.documentNotes) {
+        const documentNotes = (result as any).processedData.documentNotes;
+        if (
+          typeof documentNotes === 'string' &&
+          documentNotes.toLowerCase().includes('rate guarantee')
+        ) {
+          rateGuaranteeText = documentNotes;
+        }
+      }
+
+      // 6. Check documentNotes (root level)
+      if (!rateGuaranteeText && (result as any).documentNotes) {
+        const documentNotes = (result as any).documentNotes;
+        if (
+          typeof documentNotes === 'string' &&
+          documentNotes.toLowerCase().includes('rate guarantee')
+        ) {
+          rateGuaranteeText = documentNotes;
+        }
+      }
+
+      // 7. Check old format planNotes
+      if (!rateGuaranteeText && result.planNotes) {
+        for (const note of result.planNotes) {
+          const noteText = typeof note === 'string' ? note : note.note || '';
+          if (noteText.toLowerCase().includes('rate guarantee')) {
+            rateGuaranteeText = noteText;
+            break;
+          }
+        }
+      }
+
+      if (!carriersMap.has(carrierName)) {
+        carriersMap.set(carrierName, {
+          name: carrierName,
+          rateGuarantee: rateGuaranteeText,
+        });
+      } else if (
+        rateGuaranteeText &&
+        carriersMap.get(carrierName)?.rateGuarantee === null
+      ) {
+        carriersMap.set(carrierName, {
+          name: carrierName,
+          rateGuarantee: rateGuaranteeText,
+        });
+      }
+    },
+    [extractRateGuarantee, extractCarriersFromCoverages]
+  );
 
   /**
    * Extract unique carriers from results - initially unsorted
    */
-  const unsortedCarriers = useMemo<Array<{
-    name: string;
-    rateGuarantee: string | null;
-  }>>(() => {
+  const unsortedCarriers = useMemo<
+    Array<{
+      name: string;
+      rateGuarantee: string | null;
+    }>
+  >(() => {
     if (!results || results.length === 0) {
       return [{ name: 'No Data Available', rateGuarantee: null }];
     }
-    
-    const carriersMap = new Map<string, { name: string; rateGuarantee: string | null }>();
-    
+
+    const carriersMap = new Map<
+      string,
+      { name: string; rateGuarantee: string | null }
+    >();
+
     for (const result of results) {
       processResultForCarriers(result, carriersMap);
     }
-    
+
     if (carriersMap.size === 0) {
       return [{ name: 'No Carrier Data', rateGuarantee: null }];
     }
-    
+
     return Array.from(carriersMap.values());
   }, [results, processResultForCarriers]);
 
@@ -478,20 +531,20 @@ export function PremiumComparisonTable({
   React.useEffect(() => {
     const newSelectedOptions: Record<string, string> = {};
     let hasChanges = false;
-    
-    unsortedCarriers.forEach(carrier => {
+
+    unsortedCarriers.forEach((carrier) => {
       const availableOptions = carrierPlanOptions[carrier.name] || [];
       if (availableOptions.length > 0) {
         // If not already set, use the first available option
-        if (!selectedPlanOptions[carrier.name]) {
+        if (selectedPlanOptions[carrier.name]) {
+          newSelectedOptions[carrier.name] = selectedPlanOptions[carrier.name];
+        } else {
           newSelectedOptions[carrier.name] = availableOptions[0];
           hasChanges = true;
-        } else {
-          newSelectedOptions[carrier.name] = selectedPlanOptions[carrier.name];
         }
       }
     });
-    
+
     // Only update if there are actual changes
     if (hasChanges) {
       setSelectedPlanOptions(newSelectedOptions);
@@ -499,85 +552,99 @@ export function PremiumComparisonTable({
   }, [unsortedCarriers, carrierPlanOptions]);
 
   // Function to update plan option for a specific carrier
-  const updateCarrierPlanOption = useCallback((carrierName: string, planOption: string) => {
-    setSelectedPlanOptions(prev => ({
-      ...prev,
-      [carrierName]: planOption
-    }));
-  }, []);
+  const updateCarrierPlanOption = useCallback(
+    (carrierName: string, planOption: string) => {
+      setSelectedPlanOptions((prev) => ({
+        ...prev,
+        [carrierName]: planOption,
+      }));
+    },
+    []
+  );
 
   // Helper function to get edited value or default
-  const getEditedValue = useCallback((key: string, defaultValue: any) => {
-    return editedValues[key] !== undefined ? editedValues[key] : defaultValue;
-  }, [editedValues]);
+  const getEditedValue = useCallback(
+    (key: string, defaultValue: any) => {
+      return editedValues[key] !== undefined ? editedValues[key] : defaultValue;
+    },
+    [editedValues]
+  );
 
   // Helper function to update edited value
   const updateEditedValue = useCallback((key: string, value: any) => {
-    setEditedValues(prev => ({ ...prev, [key]: value }));
+    setEditedValues((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   // Helper function to parse a value to a numeric value for calculations
-  const parseNumericValue = useCallback((value: string | number | null | undefined): number => {
-    if (value === null || value === undefined || value === '') {
-      return 0;
-    }
-    
-    if (typeof value === 'number') {
-      return value;
-    }
-    
-    // Handle string values, removing any formatting
-    const cleanValue = value.toString().replace(/[^0-9.-]/g, '');
-    const parsedValue = Number.parseFloat(cleanValue);
-    
-    return Number.isNaN(parsedValue) ? 0 : parsedValue;
-  }, []);
-  
+  const parseNumericValue = useCallback(
+    (value: string | number | null | undefined): number => {
+      if (value === null || value === undefined || value === '') {
+        return 0;
+      }
+
+      if (typeof value === 'number') {
+        return value;
+      }
+
+      // Handle string values, removing any formatting
+      const cleanValue = value.toString().replace(/[^0-9.-]/g, '');
+      const parsedValue = Number.parseFloat(cleanValue);
+
+      return Number.isNaN(parsedValue) ? 0 : parsedValue;
+    },
+    []
+  );
+
   // Helper function to normalize coverage types to standard naming
   const getNormalizedCoverageType = useCallback((type: string): string => {
     return coverageTypeMap[type] || type;
   }, []);
-  
-  // Check if a coverage type is experience-rated
-  const isExperienceRatedCoverage = useCallback((coverageType: string): boolean => {
-    return experienceRatedCoverageTypes.includes(coverageType);
-  }, []);
-  
-  // Helper function to extract and normalize values
-  const extractValue = useCallback((value: string | number | null | undefined): string | number | null => {
-    if (value === null || value === undefined) {
-      return null;
-    }
-    
-    if (typeof value === 'object') {
-      return null;
-    }
-    
-    return value;
-  }, []);
-  
 
+  // Check if a coverage type is experience-rated
+  const isExperienceRatedCoverage = useCallback(
+    (coverageType: string): boolean => {
+      return experienceRatedCoverageTypes.includes(coverageType);
+    },
+    []
+  );
+
+  // Helper function to extract and normalize values
+  const extractValue = useCallback(
+    (value: string | number | null | undefined): string | number | null => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+
+      if (typeof value === 'object') {
+        return null;
+      }
+
+      return value;
+    },
+    []
+  );
 
   /**
    * Filter coverages by plan option for a specific carrier
    */
-  const filterCoveragesByCarrierPlan = useCallback((
-    coverages: Coverage[] | undefined, 
-    carrierName: string
-  ): Coverage[] => {
-    if (!coverages) {
-      return [];
-    }
-    
-    const selectedPlan = selectedPlanOptions[carrierName];
-    if (!selectedPlan) {
-      return coverages;
-    }
-    
-    return coverages.filter((coverage) => 
-      !coverage.planOptionName || coverage.planOptionName === selectedPlan
-    );
-  }, [selectedPlanOptions]);
+  const filterCoveragesByCarrierPlan = useCallback(
+    (coverages: Coverage[] | undefined, carrierName: string): Coverage[] => {
+      if (!coverages) {
+        return [];
+      }
+
+      const selectedPlan = selectedPlanOptions[carrierName];
+      if (!selectedPlan) {
+        return coverages;
+      }
+
+      return coverages.filter(
+        (coverage) =>
+          !coverage.planOptionName || coverage.planOptionName === selectedPlan
+      );
+    },
+    [selectedPlanOptions]
+  );
 
   /**
    * Calculate total premiums for carriers (to be used for sorting)
@@ -592,15 +659,21 @@ export function PremiumComparisonTable({
 
     // Create a quick-access map of all coverages for performance.
     const processedCoverages = new Map<string, Coverage>();
-    
+
     for (const result of results) {
-      const carrierName = result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
+      const carrierName =
+        result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
       if (!carrierName) continue;
-      
-      const carrierIdx = unsortedCarriers.findIndex(c => c.name === carrierName);
+
+      const carrierIdx = unsortedCarriers.findIndex(
+        (c) => c.name === carrierName
+      );
       if (carrierIdx === -1) continue;
 
-      const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
+      const filteredCoverages = filterCoveragesByCarrierPlan(
+        result.allCoverages,
+        carrierName
+      );
 
       for (const coverage of filteredCoverages) {
         const normalizedType = getNormalizedCoverageType(coverage.coverageType);
@@ -613,11 +686,18 @@ export function PremiumComparisonTable({
     unsortedCarriers.forEach((carrier, idx) => {
       // Sum all coverage premiums for this carrier
       for (const key of masterBenefitOrder) {
-        if (!key.startsWith('HEADER-') && !key.startsWith('Subtotal-') && key !== 'Grand Total' && key !== 'Rate Guarantees') {
+        if (
+          !key.startsWith('HEADER-') &&
+          !key.startsWith('Subtotal-') &&
+          key !== 'Grand Total' &&
+          key !== 'Rate Guarantees'
+        ) {
           if (key.includes('-Single') || key.includes('-Family')) {
             // Handle Single/Family sub-rows
             const [baseType, variant] = key.split('-');
-            const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
+            const coverage = processedCoverages.get(
+              `${carrier.name}-${baseType}`
+            );
             if (coverage) {
               let premium = 0;
               if (variant === 'Single') {
@@ -639,7 +719,11 @@ export function PremiumComparisonTable({
             const coverage = processedCoverages.get(`${carrier.name}-${key}`);
             if (coverage) {
               const numericPremium = parseNumericValue(coverage.monthlyPremium);
-              if (numericPremium > 0 && key !== 'Extended Healthcare' && key !== 'Dental Care') {
+              if (
+                numericPremium > 0 &&
+                key !== 'Extended Healthcare' &&
+                key !== 'Dental Care'
+              ) {
                 grandTotal[idx] += numericPremium;
               }
             }
@@ -655,33 +739,41 @@ export function PremiumComparisonTable({
     });
 
     return totalsMap;
-  }, [results, unsortedCarriers, filterCoveragesByCarrierPlan, getNormalizedCoverageType, parseNumericValue]);
+  }, [
+    results,
+    unsortedCarriers,
+    filterCoveragesByCarrierPlan,
+    getNormalizedCoverageType,
+    parseNumericValue,
+  ]);
 
   /**
    * Sort carriers by TOTAL MONTHLY PREMIUM (cheapest first)
    */
-  const carriers = useMemo<Array<{
-    name: string;
-    rateGuarantee: string | null;
-  }>>(() => {
+  const carriers = useMemo<
+    Array<{
+      name: string;
+      rateGuarantee: string | null;
+    }>
+  >(() => {
     if (unsortedCarriers.length === 0) {
       return unsortedCarriers;
     }
-    
+
     // Sort carriers by TOTAL MONTHLY PREMIUM (cheapest first)
     return unsortedCarriers.sort((a, b) => {
       const totalA = calculateCarrierTotals.get(a.name) || 0;
       const totalB = calculateCarrierTotals.get(b.name) || 0;
-      
+
       // If both have premiums, sort by premium amount
       if (totalA > 0 && totalB > 0) {
         return totalA - totalB;
       }
-      
+
       // If only one has premium data, put it first
       if (totalA > 0) return -1;
       if (totalB > 0) return 1;
-      
+
       // If neither has premium data, sort alphabetically
       return a.name.localeCompare(b.name);
     });
@@ -703,13 +795,17 @@ export function PremiumComparisonTable({
     // 1. First, create a quick-access map of all coverages for performance.
     const processedCoverages = new Map<string, Coverage>();
     for (const result of results) {
-      const carrierName = result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
+      const carrierName =
+        result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
       if (!carrierName) continue;
-      
-      const carrierIdx = carriers.findIndex(c => c.name === carrierName);
+
+      const carrierIdx = carriers.findIndex((c) => c.name === carrierName);
       if (carrierIdx === -1) continue;
 
-      const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
+      const filteredCoverages = filterCoveragesByCarrierPlan(
+        result.allCoverages,
+        carrierName
+      );
 
       for (const coverage of filteredCoverages) {
         const normalizedType = getNormalizedCoverageType(coverage.coverageType);
@@ -724,21 +820,27 @@ export function PremiumComparisonTable({
       if (key.startsWith('HEADER-')) {
         // Handle Header Rows
         if (key === 'HEADER-EHC') {
-          rows.push({ 
-            key, 
-            type: 'header', 
-            label: 'HEALTH CARE (EHC)', 
+          rows.push({
+            key,
+            type: 'header',
+            label: 'HEALTH CARE (EHC)',
             volume: '',
-            values: new Array(carriersLength).fill({ unitRate: '', monthlyPremium: '' })
+            values: new Array(carriersLength).fill({
+              unitRate: '',
+              monthlyPremium: '',
+            }),
           });
         }
         if (key === 'HEADER-DENTAL') {
-          rows.push({ 
-            key, 
-            type: 'header', 
-            label: 'DENTAL CARE', 
+          rows.push({
+            key,
+            type: 'header',
+            label: 'DENTAL CARE',
             volume: '',
-            values: new Array(carriersLength).fill({ unitRate: '', monthlyPremium: '' })
+            values: new Array(carriersLength).fill({
+              unitRate: '',
+              monthlyPremium: '',
+            }),
           });
         }
       } else if (key.startsWith('Subtotal-')) {
@@ -750,27 +852,41 @@ export function PremiumComparisonTable({
       } else if (key.includes('-Single') || key.includes('-Family')) {
         // Handle Single/Family sub-rows for EHC and Dental
         const [baseType, variant] = key.split('-');
-        
+
         // Find first coverage with lives data for volume column
         const firstCoverageWithLives = carriers
-          .map(c => processedCoverages.get(`${c.name}-${baseType}`))
-          .find(cov => cov && (variant === 'Single' ? (cov as any).livesSingle : (cov as any).livesFamily));
-        const lives = variant === 'Single' ? (firstCoverageWithLives as any)?.livesSingle : (firstCoverageWithLives as any)?.livesFamily;
-        
+          .map((c) => processedCoverages.get(`${c.name}-${baseType}`))
+          .find(
+            (cov) =>
+              cov &&
+              (variant === 'Single'
+                ? (cov as any).livesSingle
+                : (cov as any).livesFamily)
+          );
+        const lives =
+          variant === 'Single'
+            ? (firstCoverageWithLives as any)?.livesSingle
+            : (firstCoverageWithLives as any)?.livesFamily;
+
         const rowData = {
           key,
           type: 'subBenefit',
           label: variant,
           volume: formatVolume(lives),
-          values: new Array(carriersLength).fill({ unitRate: '', monthlyPremium: '$0.00' })
+          values: new Array(carriersLength).fill({
+            unitRate: '',
+            monthlyPremium: '$0.00',
+          }),
         };
 
         carriers.forEach((carrier, idx) => {
-          const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
+          const coverage = processedCoverages.get(
+            `${carrier.name}-${baseType}`
+          );
           if (coverage) {
             // Handle Single/Family variants - data is stored directly on coverage object
             let premium, rate;
-            
+
             if (variant === 'Single') {
               // For Single: calculate total premium for all single enrollees
               const singleLives = (coverage as any).livesSingle || 0;
@@ -784,12 +900,12 @@ export function PremiumComparisonTable({
               rate = familyRate;
               premium = familyRate * familyLives;
             }
-            
+
             rowData.values[idx] = {
               unitRate: formatUnitRate(rate),
               monthlyPremium: formatCurrency(premium),
             };
-            
+
             const numericPremium = parseNumericValue(premium);
             if (numericPremium > 0) {
               experienceTotal[idx] += numericPremium;
@@ -802,9 +918,9 @@ export function PremiumComparisonTable({
         // Handle standard benefit rows
         // Find first coverage with data for the consolidated volume column
         const firstCoverage = carriers
-          .map(c => processedCoverages.get(`${c.name}-${key}`))
-          .find(cov => cov);
-        
+          .map((c) => processedCoverages.get(`${c.name}-${key}`))
+          .find((cov) => cov);
+
         // For Dependent Life, use lives field; for others, use volume field
         let volumeValue = '-';
         if (firstCoverage) {
@@ -814,13 +930,16 @@ export function PremiumComparisonTable({
             volumeValue = formatVolume(firstCoverage.volume);
           }
         }
-          
+
         const rowData = {
           key,
           type: 'benefit',
           label: key,
           volume: volumeValue,
-          values: new Array(carriersLength).fill({ unitRate: '-', monthlyPremium: '$0.00' })
+          values: new Array(carriersLength).fill({
+            unitRate: '-',
+            monthlyPremium: '$0.00',
+          }),
         };
 
         carriers.forEach((carrier, idx) => {
@@ -830,12 +949,16 @@ export function PremiumComparisonTable({
               unitRate: formatUnitRate(coverage.unitRate),
               monthlyPremium: formatCurrency(coverage.monthlyPremium),
             };
-            
+
             // THIS IS THE KEY CHANGE:
             // Only add to totals here if it's NOT a benefit that we are
             // handling with a single/family breakdown.
             const numericPremium = parseNumericValue(coverage.monthlyPremium);
-            if (numericPremium > 0 && key !== 'Extended Healthcare' && key !== 'Dental Care') {
+            if (
+              numericPremium > 0 &&
+              key !== 'Extended Healthcare' &&
+              key !== 'Dental Care'
+            ) {
               // Determine if this is pooled or experience-rated
               const isPooled = !isExperienceRatedCoverage(key);
               if (isPooled) {
@@ -852,20 +975,22 @@ export function PremiumComparisonTable({
     }
 
     // 3. Filter out empty benefit rows (where no carrier has a premium)
-    const filteredRows = rows.filter(row => {
+    const filteredRows = rows.filter((row) => {
       // Keep headers, subtotals, and other summary rows
       if (row.type !== 'benefit') {
         return true;
       }
       // Check if any carrier has a non-zero premium for this benefit
-      return row.values.some((cell: any) => cell && parseNumericValue(cell.monthlyPremium) > 0);
+      return row.values.some(
+        (cell: any) => cell && parseNumericValue(cell.monthlyPremium) > 0
+      );
     });
 
     // 4. Insert subtotals, grand total, and rate guarantees at the correct positions.
     const finalRows: any[] = [];
     for (const row of filteredRows) {
       finalRows.push(row);
-      
+
       // CHANGE 1: Insert Pooled Subtotal after Dependent Life
       if (row.label === 'Dependent Life') {
         finalRows.push({
@@ -874,17 +999,19 @@ export function PremiumComparisonTable({
           label: 'Sub-total - Pooled Coverage',
           volume: '',
           isBold: true,
-          values: pooledTotal.map(total => ({ 
-            unitRate: '', 
-            monthlyPremium: formatCurrency(total) 
-          }))
+          values: pooledTotal.map((total) => ({
+            unitRate: '',
+            monthlyPremium: formatCurrency(total),
+          })),
         });
       }
-      
+
       if (row.label === 'Family' && row.type === 'subBenefit') {
         // Check if this is the last Family row (Dental Care)
         const currentIndex = finalRows.length - 1;
-        const isDentalFamily = finalRows.slice(0, currentIndex).some(r => r.label === 'DENTAL CARE');
+        const isDentalFamily = finalRows
+          .slice(0, currentIndex)
+          .some((r) => r.label === 'DENTAL CARE');
         if (isDentalFamily) {
           finalRows.push({
             key: 'Subtotal-Experience',
@@ -892,10 +1019,10 @@ export function PremiumComparisonTable({
             label: 'Sub-total - Experience Rated Benefits',
             volume: '',
             isBold: true,
-            values: experienceTotal.map(total => ({ 
-              unitRate: '', 
-              monthlyPremium: formatCurrency(total) 
-            }))
+            values: experienceTotal.map((total) => ({
+              unitRate: '',
+              monthlyPremium: formatCurrency(total),
+            })),
           });
         }
       }
@@ -906,26 +1033,34 @@ export function PremiumComparisonTable({
       type: 'total',
       label: 'TOTAL MONTHLY PREMIUM*',
       volume: '',
-      values: grandTotal.map(total => ({ 
-        unitRate: '', 
-        monthlyPremium: formatCurrency(total) 
-      }))
+      values: grandTotal.map((total) => ({
+        unitRate: '',
+        monthlyPremium: formatCurrency(total),
+      })),
     });
-    
+
     finalRows.push({
       key: 'Rate Guarantees',
       type: 'rateGuarantee',
       label: 'Rate Guarantees',
       volume: '',
       isBold: true,
-      values: carriers.map(carrier => ({ 
-        unitRate: '', 
-        monthlyPremium: carrier.rateGuarantee || '-' 
-      }))
+      values: carriers.map((carrier) => ({
+        unitRate: '',
+        monthlyPremium: carrier.rateGuarantee || '-',
+      })),
     });
 
     return finalRows;
-  }, [carriers, results, selectedPlanOptions, filterCoveragesByCarrierPlan, getNormalizedCoverageType, isExperienceRatedCoverage, parseNumericValue]);
+  }, [
+    carriers,
+    results,
+    selectedPlanOptions,
+    filterCoveragesByCarrierPlan,
+    getNormalizedCoverageType,
+    isExperienceRatedCoverage,
+    parseNumericValue,
+  ]);
 
   // High-level overview component
   const HighLevelOverviewSection = () => {
@@ -935,10 +1070,15 @@ export function PremiumComparisonTable({
 
     return (
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">Plan Overview</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">
+          Plan Overview
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {highLevelOverview.map((overview, index) => (
-            <Card key={`${overview.carrierName}-${index}`} className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow duration-200">
+            <Card
+              key={`${overview.carrierName}-${index}`}
+              className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow duration-200"
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-semibold text-blue-700">
@@ -952,12 +1092,14 @@ export function PremiumComparisonTable({
               <CardContent className="space-y-3">
                 {/* Total Premium - Most prominent */}
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
-                  <div className="text-sm text-gray-600 font-medium">Total Monthly Premium</div>
+                  <div className="text-sm text-gray-600 font-medium">
+                    Total Monthly Premium
+                  </div>
                   <div className="text-2xl font-bold text-gray-900">
                     {formatCurrency(overview.totalMonthlyPremium)}
                   </div>
                 </div>
-                
+
                 {/* Breakdown */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
@@ -977,16 +1119,24 @@ export function PremiumComparisonTable({
                 {/* Rate Guarantee */}
                 {overview.rateGuarantee && (
                   <div className="bg-blue-50 rounded p-2">
-                    <div className="text-xs font-medium text-blue-800 mb-1">Rate Guarantee</div>
-                    <div className="text-xs text-blue-700">{overview.rateGuarantee}</div>
+                    <div className="text-xs font-medium text-blue-800 mb-1">
+                      Rate Guarantee
+                    </div>
+                    <div className="text-xs text-blue-700">
+                      {overview.rateGuarantee}
+                    </div>
                   </div>
                 )}
 
                 {/* Key Highlights */}
                 {overview.keyHighlights && (
                   <div className="bg-amber-50 rounded p-2">
-                    <div className="text-xs font-medium text-amber-800 mb-1">Key Highlights</div>
-                    <div className="text-xs text-amber-700">{overview.keyHighlights}</div>
+                    <div className="text-xs font-medium text-amber-800 mb-1">
+                      Key Highlights
+                    </div>
+                    <div className="text-xs text-amber-700">
+                      {overview.keyHighlights}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -1006,20 +1156,28 @@ export function PremiumComparisonTable({
         <HighLevelOverviewSection />
         {highLevelOverview && highLevelOverview.length > 0 && (
           <div className="border-t border-gray-200 pt-6 mt-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Detailed Breakdown</h3>
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">
+              Detailed Breakdown
+            </h3>
           </div>
         )}
         <div className="overflow-x-auto border rounded-lg shadow-sm w-full">
           <Table className="table-fixed text-sm w-full">
             <TableHeader>
               <TableRow>
-                <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`} colSpan={2}>
-                  <div className="font-semibold text-base text-sky-600">Carrier</div>
+                <TableHead
+                  className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`}
+                  colSpan={2}
+                >
+                  <div className="font-semibold text-base text-sky-600">
+                    Carrier
+                  </div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
                   const selectedPlan = selectedPlanOptions[carrier.name];
-                  const availableOptions = carrierPlanOptions[carrier.name] || [];
-                  
+                  const availableOptions =
+                    carrierPlanOptions[carrier.name] || [];
+
                   return (
                     <TableHead
                       key={`header-carrier-${index}`}
@@ -1027,23 +1185,34 @@ export function PremiumComparisonTable({
                       colSpan={2}
                     >
                       <div className="flex flex-col items-center gap-2">
-                        <span className="font-semibold text-base text-sky-600 text-center leading-tight">{carrier.name || 'Unknown Carrier'}</span>
+                        <span className="font-semibold text-base text-sky-600 text-center leading-tight">
+                          {carrier.name || 'Unknown Carrier'}
+                        </span>
                         {availableOptions.length > 0 && (
                           <div className="w-full max-w-[180px]">
                             <Select
                               value={selectedPlan || ''}
-                              onValueChange={(value: string) => updateCarrierPlanOption(carrier.name, value)}
+                              onValueChange={(value: string) =>
+                                updateCarrierPlanOption(carrier.name, value)
+                              }
                             >
                               <SelectTrigger className="w-full h-8 text-xs bg-white border-gray-300 hover:border-gray-400 focus:border-sky-500">
-                                <SelectValue 
-                                  placeholder="Select plan" 
+                                <SelectValue
+                                  placeholder="Select plan"
                                   className="text-xs truncate"
                                 />
                               </SelectTrigger>
                               <SelectContent className="max-w-[250px]">
                                 {availableOptions.map((option) => (
-                                  <SelectItem key={option} value={option} className="text-xs">
-                                    <span className="truncate max-w-[220px] block" title={option}>
+                                  <SelectItem
+                                    key={option}
+                                    value={option}
+                                    className="text-xs"
+                                  >
+                                    <span
+                                      className="truncate max-w-[220px] block"
+                                      title={option}
+                                    >
                                       {option}
                                     </span>
                                   </SelectItem>
@@ -1058,7 +1227,9 @@ export function PremiumComparisonTable({
                 })}
               </TableRow>
               <TableRow>
-                <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`}>
+                <TableHead
+                  className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`}
+                >
                   <div className="font-semibold text-sm">Benefit</div>
                 </TableHead>
                 <TableHead className="border-b-2 border-b-sky-500 text-center px-3 py-3 bg-slate-100">
@@ -1066,162 +1237,252 @@ export function PremiumComparisonTable({
                 </TableHead>
                 {carriers.map((_, index) => (
                   <React.Fragment key={`subheader-${index}`}>
-                    <TableHead className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Unit Rate</TableHead>
-                    <TableHead className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Monthly Premium</TableHead>
+                    <TableHead
+                      className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
+                    >
+                      Unit Rate
+                    </TableHead>
+                    <TableHead
+                      className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
+                    >
+                      Monthly Premium
+                    </TableHead>
                   </React.Fragment>
                 ))}
               </TableRow>
             </TableHeader>
-          <TableBody>
-            {orderedRows.map((row, index) => {
-              // Apply special styling based on row type
-              let rowClassName = '';
-              
-              if (row.type === 'header') {
-                // CHANGE 2: No background color for headers
-                rowClassName = '';
-              } else if (row.type === 'total') {
-                rowClassName = 'font-bold bg-muted border-t-2 border-t-slate-300';
-              } else if (row.type === 'rateGuarantee') {
-                rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-muted/20`;
-              } else if (row.type === 'subtotal') {
-                rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-blue-200 border-t border-t-blue-300`;
-              } else if (row.type === 'subBenefit') {
-                rowClassName = 'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
-              } else {
-                rowClassName = 'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
-              }
-              
-              // Enhanced styling for header rows
-              if (row.type === 'header') {
-                return (
-                  <TableRow key={`row-${index}-${row.label}`}>
-                    <TableCell className="font-bold text-sm border-y bg-muted/30 py-3 sticky left-0 z-10" colSpan={2 + carriers.length * 2}>
-                      <div className="text-sm break-words leading-relaxed">{row.label}</div>
-                    </TableCell>
-                  </TableRow>
-                );
-              }
-              
-              if (row.type === 'rateGuarantee') {
-                // Special rendering for Rate Guarantees row with proper spanning
-                return (
-                  <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                    <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-10 px-3 py-3 align-top ${row.isBold ? 'font-bold' : 'font-medium'}`} colSpan={2}>
-                      <div className="text-sm break-words leading-relaxed">{row.label}</div>
-                    </TableCell>
-                    {carriers.map((_, carrierIndex) => (
+            <TableBody>
+              {orderedRows.map((row, index) => {
+                // Apply special styling based on row type
+                let rowClassName = '';
+
+                if (row.type === 'header') {
+                  // CHANGE 2: No background color for headers
+                  rowClassName = '';
+                } else if (row.type === 'total') {
+                  rowClassName =
+                    'font-bold bg-muted border-t-2 border-t-slate-300';
+                } else if (row.type === 'rateGuarantee') {
+                  rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-muted/20`;
+                } else if (row.type === 'subtotal') {
+                  rowClassName = `${row.isBold ? 'font-bold' : 'font-medium'} bg-blue-200 border-t border-t-blue-300`;
+                } else if (row.type === 'subBenefit') {
+                  rowClassName =
+                    'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
+                } else {
+                  rowClassName =
+                    'hover:bg-blue-50/50 transition-colors duration-200 cursor-pointer';
+                }
+
+                // Enhanced styling for header rows
+                if (row.type === 'header') {
+                  return (
+                    <TableRow key={`row-${index}-${row.label}`}>
                       <TableCell
-                        key={`rate-guarantee-${carrierIndex}`}
-                        colSpan={2}
-                        className={`text-center px-3 py-3 border-l align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100' : ''}`}
+                        className="font-bold text-sm border-y bg-muted/30 py-3 sticky left-0 z-10"
+                        colSpan={2 + carriers.length * 2}
                       >
-                        <div className={`break-words leading-relaxed ${row.isBold ? 'text-sm font-bold' : 'text-sm'}`}>
-                          <span className="text-slate-600">
-                            {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
-                          </span>
-                        </div>
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              }
-              
-              return (
-                <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
-                  {row.label === 'Sub-total - Pooled Coverage' || row.label === 'Sub-total - Experience Rated Benefits' || row.label === 'TOTAL MONTHLY PREMIUM*' ? (
-                    <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
-                      <div className="text-sm break-words leading-relaxed">
-                        {row.label}
-                      </div>
-                    </TableCell>
-                  ) : (
-                    <>
-                      <TableCell className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
                         <div className="text-sm break-words leading-relaxed">
                           {row.label}
                         </div>
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-slate-100 hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        {(row.type === 'benefit' || row.type === 'subBenefit') && row.volume && row.volume !== '-' ? (
-                          <EditableTableCell
-                            value={getEditedValue(`${row.key}-volume`, row.volume || '-')}
-                            onUpdate={(value) => updateEditedValue(`${row.key}-volume`, value)}
-                            isNumeric={true}
-                            className="text-sm"
-                          />
-                        ) : (
-                          <div className="text-sm break-words leading-relaxed">
-                            {row.type !== 'subtotal' && 
-                             row.type !== 'total' && 
-                             row.type !== 'rateGuarantee' && 
-                             row.type !== 'header'
-                              ? row.volume || '-'
-                              : "-"}
-                          </div>
-                        )}
+                    </TableRow>
+                  );
+                }
+
+                if (row.type === 'rateGuarantee') {
+                  // Special rendering for Rate Guarantees row with proper spanning
+                  return (
+                    <TableRow
+                      key={`row-${index}-${row.label}`}
+                      className={rowClassName}
+                    >
+                      <TableCell
+                        className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-10 px-3 py-3 align-top ${row.isBold ? 'font-bold' : 'font-medium'}`}
+                        colSpan={2}
+                      >
+                        <div className="text-sm break-words leading-relaxed">
+                          {row.label}
+                        </div>
                       </TableCell>
-                    </>
-                  )}
-                  {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
-                    <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        {(row.type === 'benefit' || row.type === 'subBenefit') && cell?.unitRate && cell.unitRate !== '-' ? (
-                          <EditableTableCell
-                            value={getEditedValue(`${row.key}-${cellIdx}-unitRate`, cell?.unitRate || '-')}
-                            onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-unitRate`, value)}
-                            isNumeric={true}
-                            className="text-sm"
-                          />
-                        ) : (
-                          <div className="text-sm break-words leading-relaxed">
-                            {row.type !== 'subtotal' && 
-                             row.type !== 'total' && 
-                             row.type !== 'rateGuarantee' && 
-                             row.type !== 'header'
-                              ? cell?.unitRate || '-'
-                              : ""}
+                      {carriers.map((_, carrierIndex) => (
+                        <TableCell
+                          key={`rate-guarantee-${carrierIndex}`}
+                          colSpan={2}
+                          className={`text-center px-3 py-3 border-l align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100' : ''}`}
+                        >
+                          <div
+                            className={`break-words leading-relaxed ${row.isBold ? 'text-sm font-bold' : 'text-sm'}`}
+                          >
+                            <span className="text-slate-600">
+                              {(row.values &&
+                                row.values[carrierIndex]?.monthlyPremium) ||
+                                '-'}
+                            </span>
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                        {(row.type === 'benefit' || row.type === 'subBenefit' || row.type === 'subtotal' || row.type === 'total') && cell?.monthlyPremium && cell.monthlyPremium !== '-' ? (
-                          <EditableTableCell
-                            value={getEditedValue(`${row.key}-${cellIdx}-premium`, cell?.monthlyPremium || '-')}
-                            onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-premium`, value)}
-                            isNumeric={true}
-                            isCurrency={true}
-                            className={`${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'} ${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
-                          />
-                        ) : (
-                          <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
-                            {row.type !== 'header' ? (
-                              <span className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}>
-                                {cell?.monthlyPremium || '-'}
-                              </span>
-                            ) : "-"}
-                          </div>
-                        )}
-                      </TableCell>
-                    </React.Fragment>
-                  )) : (
-                    // Fallback for rows without values array
-                    carriers.map((_, cellIdx) => (
-                      <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                          <div className="text-sm">-</div>
                         </TableCell>
-                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                          <div className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}>-</div>
+                      ))}
+                    </TableRow>
+                  );
+                }
+
+                return (
+                  <TableRow
+                    key={`row-${index}-${row.label}`}
+                    className={rowClassName}
+                  >
+                    {row.label === 'Sub-total - Pooled Coverage' ||
+                    row.label === 'Sub-total - Experience Rated Benefits' ||
+                    row.label === 'TOTAL MONTHLY PREMIUM*' ? (
+                      <TableCell
+                        className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`}
+                        colSpan={2}
+                      >
+                        <div className="text-sm break-words leading-relaxed">
+                          {row.label}
+                        </div>
+                      </TableCell>
+                    ) : (
+                      <>
+                        <TableCell
+                          className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}
+                        >
+                          <div className="text-sm break-words leading-relaxed">
+                            {row.label}
+                          </div>
                         </TableCell>
-                      </React.Fragment>
-                    ))
-                  )}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                        <TableCell
+                          className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-slate-100 hover:bg-blue-50/50'} transition-colors duration-200`}
+                        >
+                          {(row.type === 'benefit' ||
+                            row.type === 'subBenefit') &&
+                          row.volume &&
+                          row.volume !== '-' ? (
+                            <EditableTableCell
+                              value={getEditedValue(
+                                `${row.key}-volume`,
+                                row.volume || '-'
+                              )}
+                              onUpdate={(value) =>
+                                updateEditedValue(`${row.key}-volume`, value)
+                              }
+                              isNumeric={true}
+                              className="text-sm"
+                            />
+                          ) : (
+                            <div className="text-sm break-words leading-relaxed">
+                              {row.type !== 'subtotal' &&
+                              row.type !== 'total' &&
+                              row.type !== 'rateGuarantee' &&
+                              row.type !== 'header'
+                                ? row.volume || '-'
+                                : '-'}
+                            </div>
+                          )}
+                        </TableCell>
+                      </>
+                    )}
+                    {row.values && Array.isArray(row.values)
+                      ? row.values.map((cell: any, cellIdx: number) => (
+                          <React.Fragment key={`${row.key}-${cellIdx}`}>
+                            <TableCell
+                              className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}
+                            >
+                              {(row.type === 'benefit' ||
+                                row.type === 'subBenefit') &&
+                              cell?.unitRate &&
+                              cell.unitRate !== '-' ? (
+                                <EditableTableCell
+                                  value={getEditedValue(
+                                    `${row.key}-${cellIdx}-unitRate`,
+                                    cell?.unitRate || '-'
+                                  )}
+                                  onUpdate={(value) =>
+                                    updateEditedValue(
+                                      `${row.key}-${cellIdx}-unitRate`,
+                                      value
+                                    )
+                                  }
+                                  isNumeric={true}
+                                  className="text-sm"
+                                />
+                              ) : (
+                                <div className="text-sm break-words leading-relaxed">
+                                  {row.type !== 'subtotal' &&
+                                  row.type !== 'total' &&
+                                  row.type !== 'rateGuarantee' &&
+                                  row.type !== 'header'
+                                    ? cell?.unitRate || '-'
+                                    : ''}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell
+                              className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}
+                            >
+                              {(row.type === 'benefit' ||
+                                row.type === 'subBenefit' ||
+                                row.type === 'subtotal' ||
+                                row.type === 'total') &&
+                              cell?.monthlyPremium &&
+                              cell.monthlyPremium !== '-' ? (
+                                <EditableTableCell
+                                  value={getEditedValue(
+                                    `${row.key}-${cellIdx}-premium`,
+                                    cell?.monthlyPremium || '-'
+                                  )}
+                                  onUpdate={(value) =>
+                                    updateEditedValue(
+                                      `${row.key}-${cellIdx}-premium`,
+                                      value
+                                    )
+                                  }
+                                  isNumeric={true}
+                                  isCurrency={true}
+                                  className={`${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'} ${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
+                                />
+                              ) : (
+                                <div
+                                  className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}
+                                >
+                                  {row.type !== 'header' ? (
+                                    <span
+                                      className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
+                                    >
+                                      {cell?.monthlyPremium || '-'}
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </div>
+                              )}
+                            </TableCell>
+                          </React.Fragment>
+                        ))
+                      : // Fallback for rows without values array
+                        carriers.map((_, cellIdx) => (
+                          <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
+                            <TableCell
+                              className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}
+                            >
+                              <div className="text-sm">-</div>
+                            </TableCell>
+                            <TableCell
+                              className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}
+                            >
+                              <div
+                                className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}
+                              >
+                                -
+                              </div>
+                            </TableCell>
+                          </React.Fragment>
+                        ))}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
