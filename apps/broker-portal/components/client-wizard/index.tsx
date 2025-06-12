@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -50,11 +50,11 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [policyError, setPolicyError] = useState<string | null>(null);
-  const [clientId, setClientId] = useState<string | null>(null);
   const [documents, setDocuments] = useState<File[]>([]);
 
-  const form = useForm<ClientFormData>({
+  const form = useForm<any>({
     resolver: zodResolver(clientSchema),
+    mode: 'onChange',
     defaultValues: {
       companyName: '',
       policyNumber: '',
@@ -67,13 +67,15 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
   });
 
   const checkPolicyNumber = async (policyNumber: string) => {
-    if (!policyNumber) return;
+    if (!policyNumber) {
+      return;
+    }
     
     try {
       const response = await fetch('/api/clients');
       const clients = await response.json();
       
-      const exists = clients.some((client: any) => 
+      const exists = clients.some((client: { policyNumber: string }) => 
         client.policyNumber === policyNumber
       );
       
@@ -82,21 +84,39 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
       } else {
         setPolicyError(null);
       }
-    } catch (err) {
-      console.error('Error checking policy number:', err);
+    } catch {
+      // Silently handle policy number check errors
     }
   };
 
-  const handleNext = async () => {
+  const handleNext = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (step === 1) {
-      const isValid = await form.trigger(['companyName', 'policyNumber', 'industry']);
-      if (isValid && !policyError) {
+      // Check individual field validity for step 1
+      const companyName = form.getValues('companyName');
+      const policyNumber = form.getValues('policyNumber');
+      const industry = form.getValues('industry');
+      
+      if (companyName && policyNumber && industry && !policyError) {
         setStep(2);
+      } else {
+        // Trigger validation to show errors
+        await form.trigger(['companyName', 'policyNumber', 'industry']);
       }
     } else if (step === 2) {
-      const isValid = await form.trigger(['renewalDate', 'headcount', 'premium', 'revenue']);
-      if (isValid) {
+      // Check individual field validity for step 2
+      const renewalDate = form.getValues('renewalDate');
+      const headcount = form.getValues('headcount');
+      const premium = form.getValues('premium');
+      const revenue = form.getValues('revenue');
+      
+      if (renewalDate && headcount > 0 && premium >= 0 && revenue >= 0) {
         setStep(3);
+      } else {
+        // Trigger validation to show errors
+        await form.trigger(['renewalDate', 'headcount', 'premium', 'revenue']);
       }
     }
   };
@@ -125,7 +145,6 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
       }
 
       const client = await response.json();
-      setClientId(client.id);
 
       // Upload documents if any
       if (documents.length > 0) {
@@ -133,7 +152,7 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
           const formData = new FormData();
           formData.append('file', doc);
           formData.append('documentType', 'general');
-          formData.append('description', `Uploaded during client creation`);
+          formData.append('description', 'Uploaded during client creation');
 
           await fetch(`/api/clients/${client.id}/documents`, {
             method: 'POST',
@@ -156,7 +175,6 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
     setStep(1);
     setError(null);
     setPolicyError(null);
-    setClientId(null);
     setDocuments([]);
     onClose();
   };
@@ -175,7 +193,15 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Only allow submission on step 3
+            if (step === 3) {
+              form.handleSubmit(handleSubmit)(e);
+            }
+          }} className="space-y-6">
             {/* Step 1: Basic Information */}
             {step === 1 && (
               <div className="space-y-4">
@@ -272,7 +298,7 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
                           {...field} 
                           type="number" 
                           placeholder="0"
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(Number.parseInt(e.target.value, 10) || 0)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -291,7 +317,7 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
                           {...field} 
                           type="number" 
                           placeholder="0.00"
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -310,7 +336,7 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
                           {...field} 
                           type="number" 
                           placeholder="0.00"
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
                       <FormMessage />

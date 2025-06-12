@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageLayout } from '../page-layout';
 import { ClientWizard } from '../../components/client-wizard';
+import { ClientDetailView } from '../../components/client-detail-view';
 
 interface Client {
   id: string;
@@ -52,6 +53,12 @@ export default function ClientListPage() {
   }>({ key: null, direction: 'ascending' });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15); // Default to 15
+  
+  // Client detail view state
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [showDetailView, setShowDetailView] = useState(false);
 
   // Fetch clients from API
   const fetchClients = async () => {
@@ -78,6 +85,37 @@ export default function ClientListPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fetch detailed client data
+  const fetchClientDetail = async (clientId: string) => {
+    try {
+      setIsLoadingDetail(true);
+      const response = await fetch(`/api/clients/${clientId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch client details');
+      }
+      const data = await response.json();
+      setSelectedClient(data);
+      setSelectedClientId(clientId);
+      setShowDetailView(true);
+    } catch (error) {
+      console.error('Error fetching client details:', error);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
+  // Handle client row click
+  const handleClientClick = (clientId: string) => {
+    fetchClientDetail(clientId);
+  };
+
+  // Handle back to listing
+  const handleBackToListing = () => {
+    setShowDetailView(false);
+    setSelectedClient(null);
+    setSelectedClientId(null);
   };
 
   useEffect(() => {
@@ -157,6 +195,19 @@ export default function ClientListPage() {
       <ChevronDown className="ml-2 h-4 w-4" />
     );
   };
+
+  // Show client detail view if selected
+  if (showDetailView && selectedClient) {
+    return (
+      <PageLayout>
+        <ClientDetailView 
+          client={selectedClient}
+          onBack={handleBackToListing}
+          isLoading={isLoadingDetail}
+        />
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>
@@ -239,7 +290,11 @@ export default function ClientListPage() {
                   </TableHeader>
                   <TableBody>
                     {paginatedClients.map((client) => (
-                      <TableRow key={client.id}>
+                      <TableRow 
+                        key={client.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleClientClick(client.id)}
+                      >
                         <TableCell className="font-medium">
                           {client.companyName}
                         </TableCell>
