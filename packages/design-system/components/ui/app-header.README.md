@@ -11,17 +11,24 @@ The AppHeader is a globally shared header component used across all Benee-fit po
 - Mobile-responsive design with hamburger menu for smaller screens
 - User authentication status and profile management
 - Customizable navigation links per portal
+- Support for primary action buttons
 - Proper authentication integration with Clerk
 
 ## Usage
 
 ```tsx
 import { AppHeader } from '@repo/design-system';
+import { FileText } from 'lucide-react';
 
 // Define portal-specific navigation items
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/settings', label: 'Settings' },
+];
+
+// Define primary action buttons (optional)
+const actionButtons = [
+  { href: '/create-report', label: 'New Report' },
 ];
 
 // Implement in your layout
@@ -30,7 +37,8 @@ export default function Layout({ children }) {
     <div className="flex min-h-screen flex-col">
       <AppHeader 
         portalName="Benee-fit Portal Name" 
-        navItems={navItems} 
+        navItems={navItems}
+        actionButtons={actionButtons}
         afterSignOutUrl="/sign-in" 
       />
       <main className="flex-grow">
@@ -47,6 +55,7 @@ export default function Layout({ children }) {
 |------|------|----------|-------------|
 | portalName | string | Yes | Name of the portal to display in the header |
 | navItems | Array<{ href: string; label: string }> | No | Navigation links to display |
+| actionButtons | Array<{ href: string; label: string; icon?: ReactNode }> | No | Primary action buttons to display prominently in the header |
 | afterSignOutUrl | string | No | URL to redirect to after signing out (defaults to "/sign-in") |
 | additionalElements | ReactNode | No | Additional elements to render in the header |
 

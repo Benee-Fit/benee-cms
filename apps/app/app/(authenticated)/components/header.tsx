@@ -17,7 +17,7 @@ type HeaderProps = {
 export const Header = ({ pages, page, children }: HeaderProps) => (
   <header
     className="flex h-16 shrink-0 items-center justify-between gap-2"
-    style={{ marginTop: '-80px', marginBottom: '20px' }}
+    style={{ marginTop: '-20px', marginBottom: '20px' }}
   >
     <div className="flex items-center">
       <Breadcrumb>
