@@ -68,7 +68,7 @@ const tiles: TileInfo[] = [
 export default function HomePage() {
   return (
     <PageLayout>
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto pt-12 px-6 pb-6 space-y-6">
         <section className="mt-10 mb-10 p-6 max-w-2xl mx-auto">
           <BenefitSearchForm />
         </section>

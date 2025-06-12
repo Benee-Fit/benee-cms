@@ -211,7 +211,7 @@ export default function ClientListPage() {
 
   return (
     <PageLayout>
-      <div className="container mx-auto pt-6">
+      <div className="container mx-auto pt-12">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Client List</h1>

@@ -23,7 +23,7 @@ function PageLayoutContent({ children }: PageLayoutProps) {
             <h1 className="text-2xl font-bold ml-2">{title}</h1>
           )}
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex flex-1 flex-col gap-4 pt-12 px-6 pb-6">
           {children}
         </div>
       </SidebarInset>

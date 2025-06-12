@@ -102,7 +102,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
   };
 
   return (
-    <div className="container mx-auto pt-6 pb-8">
+    <div className="container mx-auto pt-12 pb-8">
       {/* Header with Back Button */}
       <div className="flex justify-between items-start mb-6">
         <div>

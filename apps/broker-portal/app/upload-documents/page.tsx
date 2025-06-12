@@ -10,7 +10,7 @@ import { Upload } from 'lucide-react';
 export default function UploadDocumentsPage() {
   return (
     <PageLayout>
-      <div className="container mx-auto">
+      <div className="container mx-auto pt-12 px-6 pb-6">
         <h1 className="text-3xl font-bold mb-6">Upload Documents</h1>
         
         <Alert className="mb-6">
