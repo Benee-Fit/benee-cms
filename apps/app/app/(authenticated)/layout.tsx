@@ -24,9 +24,13 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
 
   // Define the navigation items for the app header
 const navItems = [
-  { href: '/quote-tool/document-parser', label: 'Quote Tool' },
   { href: '/broker-portal', label: 'Broker Portal' },
   { href: 'https://hr-portal.beneefitapp.com', label: 'HR Portal' }
+];
+
+  // Define action buttons for the app header
+const actionButtons = [
+  { href: '/quote-tool/document-parser', label: 'New Quote' }
 ];
 
 return (
@@ -34,7 +38,8 @@ return (
     <div className="flex min-h-screen flex-col">
       <AppHeader 
         portalName="Benee-fit Apps" 
-        navItems={navItems} 
+        navItems={navItems}
+        actionButtons={actionButtons}
         afterSignOutUrl="/sign-in" 
       />
       <div className="flex-grow p-4">
