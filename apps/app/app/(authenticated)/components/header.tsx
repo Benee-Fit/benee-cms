@@ -6,8 +6,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@repo/design-system/components/ui/breadcrumb';
-import { Separator } from '@repo/design-system/components/ui/separator';
-import { SidebarTrigger } from '@repo/design-system/components/ui/sidebar';
 import { Fragment, type ReactNode } from 'react';
 
 type HeaderProps = {
@@ -22,8 +20,6 @@ export const Header = ({ pages, page, children }: HeaderProps) => (
     style={{ marginTop: '-80px', marginBottom: '20px' }}
   >
     <div className="flex items-center">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
       <Breadcrumb>
         <BreadcrumbList>
           {pages.map((page, index) => (

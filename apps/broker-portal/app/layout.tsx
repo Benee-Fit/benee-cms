@@ -1,11 +1,11 @@
 import { env } from '@/env';
 import { ClerkProvider } from '@clerk/nextjs';
+import { AppHeader } from '@repo/design-system';
 import { secure } from '@repo/security';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import './globals.css';
-import { AppHeader } from './components/layout/AppHeader';
 import { PageLayout } from './components/layout/PageLayout';
 
 const inter = Inter({
@@ -27,12 +27,22 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     await secure(['CATEGORY:PREVIEW']);
   }
 
+  // Define navigation items for the broker portal
+  const navItems = [
+    { href: 'https://google.ca', label: 'Quoting' },
+    { href: '/client-list', label: 'Client List' },
+  ];
+
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body className={inter.className}>
           <div className="flex min-h-screen flex-col">
-            <AppHeader />
+            <AppHeader 
+              portalName="Benee-fit Broker Portal" 
+              navItems={navItems} 
+              afterSignOutUrl="/sign-in" 
+            />
             <div className="flex-grow">
               <PageLayout>{children}</PageLayout>
             </div>
