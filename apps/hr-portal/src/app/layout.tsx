@@ -1,9 +1,10 @@
 import './polyfill';
 import type { Metadata } from 'next';
 import './globals.css';
-import { AppHeader } from '@/components/layout/AppHeader';
+import { AppHeader } from '@repo/design-system';
 import { Toaster } from "@/components/ui/toaster";
 import { ClerkProvider } from '@clerk/nextjs';
+import type { ReactNode } from 'react';
 
 
 export const metadata: Metadata = {
@@ -14,14 +15,26 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
+  // Define navigation items for the HR portal
+  const navItems = [
+    { href: '/claims-history', label: 'Claims History' },
+    { href: '/employee-trends', label: 'Employee Trends' },
+    { href: '/enrolment', label: 'Enrolment' },
+    { href: '/document-library', label: 'Document Library' },
+  ];
+  
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body className="antialiased">
           <div className="flex min-h-screen flex-col">
-            <AppHeader />
+            <AppHeader
+              portalName="Benee-fit HR Portal"
+              navItems={navItems}
+              afterSignOutUrl="/sign-in"
+            />
             <main className="flex-grow">
               {children}
             </main>

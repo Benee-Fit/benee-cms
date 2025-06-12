@@ -1,0 +1,441 @@
+'use client';
+
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@repo/design-system/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
+import { Info, RefreshCw, Clipboard, Database } from 'lucide-react';
+import { Header } from '../../../components/header';
+// Import ComparisonContainer component
+import ComparisonContainer from './components/comparison-container';
+// Import Save and Share components
+import SaveReportModal from '../../../../../components/save-report-modal';
+import ShareReportModal from '../../../../../components/share-report-modal';
+
+// Define the parsed document type
+interface ParsedDocument {
+  originalFileName: string;
+  category: string;
+  processedData?: {
+    metadata: {
+      documentType: string;
+      clientName: string;
+      carrierName: string;
+      primaryCarrierName?: string;
+      effectiveDate: string;
+      quoteDate: string;
+      policyNumber?: string;
+      planOptionName?: string;
+      totalProposedMonthlyPlanPremium?: number;
+      fileName: string;
+      fileCategory: string;
+      planOptionTotals?: {
+        planOptionName: string;
+        totalMonthlyPremium: number;
+      }[];
+      rateGuarantees?: string;
+    };
+    coverages: {
+      coverageType: string;
+      carrierName: string;
+      planOptionName: string;
+      premium: number;
+      monthlyPremium: number;
+      unitRate: number;
+      unitRateBasis: string;
+      volume: number;
+      lives: number;
+      benefitDetails: Record<string, unknown>;
+    }[];
+    planNotes: { note: string }[];
+  };
+  metadata: {
+    documentType: string;
+    clientName: string;
+    carrierName: string;
+    primaryCarrierName?: string;
+    effectiveDate: string;
+    quoteDate: string;
+    policyNumber?: string;
+    planOptionName?: string;
+    totalProposedMonthlyPlanPremium?: number;
+    fileName: string;
+    fileCategory: string;
+    planOptionTotals?: {
+      planOptionName: string;
+      totalMonthlyPremium: number;
+    }[];
+    rateGuarantees?: string;
+  };
+  coverages: {
+    coverageType: string;
+    carrierName: string;
+    planOptionName: string;
+    premium: number;
+    monthlyPremium: number;
+    unitRate: number;
+    unitRateBasis: string;
+    volume: number;
+    lives: number;
+    benefitDetails: Record<string, unknown>;
+  }[];
+  planNotes: { note: string }[];
+}
+
+export default function DocumentParserResultsPage() {
+  
+  const router = useRouter();
+  const [parsedDocuments, setParsedDocuments] = useState<ParsedDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showRawData, setShowRawData] = useState(false);
+  const [companyName, setCompanyName] = useState<string>('');
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [savedReportTitle, setSavedReportTitle] = useState<string>('');
+
+  useEffect(() => {
+    console.log('[DEBUG] ===== Document Parser Results Page =====');
+    console.log('[DEBUG] Checking localStorage for parsed documents');
+    
+    try {
+      const storedData = localStorage.getItem('parsedBenefitsDocuments');
+      const questionnaireData = localStorage.getItem('quoteQuestionnaireResults');
+      
+      // Load company name from questionnaire data
+      if (questionnaireData) {
+        try {
+          const questionnaire = JSON.parse(questionnaireData);
+          if (questionnaire.companyName) {
+            setCompanyName(questionnaire.companyName);
+          }
+        } catch (e) {
+          // Error parsing questionnaire data - ignore silently
+        }
+      }
+      
+      if (storedData) {
+        const parsedDocuments = JSON.parse(storedData) as ParsedDocument[];
+        
+        // Normalize and repair documents if needed
+        const normalizedDocuments = parsedDocuments.map((doc, index) => {
+          // Handle nested structure - if data is under processedData, extract it
+          let actualDoc = doc;
+          if (doc.processedData) {
+            actualDoc = {
+              ...doc,
+              metadata: doc.processedData.metadata,
+              coverages: doc.processedData.coverages,
+              planNotes: doc.processedData.planNotes || []
+            };
+          }
+          
+          // Check for metadata and create default if missing
+          if (!actualDoc.metadata || typeof actualDoc.metadata !== 'object') {
+            actualDoc.metadata = {
+              documentType: 'Unknown',
+              clientName: 'Unknown',
+              carrierName: 'Unknown Carrier',
+              effectiveDate: new Date().toISOString().split('T')[0],
+              quoteDate: new Date().toISOString().split('T')[0],
+              fileName: actualDoc.originalFileName || `Unknown File ${index + 1}`,
+              fileCategory: actualDoc.category || 'Current'
+            };
+          } else {
+            // Map primaryCarrierName to carrierName if needed
+            if (actualDoc.metadata.primaryCarrierName && !actualDoc.metadata.carrierName) {
+              actualDoc.metadata.carrierName = actualDoc.metadata.primaryCarrierName;
+            }
+          }
+          
+          // Check for coverages and create default if missing
+          if (!actualDoc.coverages) {
+            actualDoc.coverages = [
+              {
+                coverageType: 'Basic Life',
+                carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                  ? String(actualDoc.metadata.carrierName) 
+                  : 'Unknown Carrier',
+                planOptionName: 'Default Plan',
+                premium: 0,
+                monthlyPremium: 0,
+                unitRate: 0,
+                unitRateBasis: 'per $1,000',
+                volume: 0,
+                lives: 0,
+                benefitDetails: {
+                  note: 'Coverage details could not be extracted from document'
+                }
+              }
+            ];
+          } else if (!Array.isArray(actualDoc.coverages)) {
+            actualDoc.coverages = [
+              {
+                coverageType: 'Basic Life',
+                carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                  ? String(actualDoc.metadata.carrierName) 
+                  : 'Unknown Carrier',
+                planOptionName: 'Default Plan',
+                premium: 0,
+                monthlyPremium: 0,
+                unitRate: 0,
+                unitRateBasis: 'per $1,000',
+                volume: 0,
+                lives: 0,
+                benefitDetails: {
+                  note: 'Coverage details could not be extracted from document'
+                }
+              }
+            ];
+          } else if (actualDoc.coverages.length === 0) {
+            actualDoc.coverages.push({
+              coverageType: 'Basic Life',
+              carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                ? String(actualDoc.metadata.carrierName) 
+                : 'Unknown Carrier',
+              planOptionName: 'Default Plan',
+              premium: 0,
+              monthlyPremium: 0,
+              unitRate: 0,
+              unitRateBasis: 'per $1,000',
+              volume: 0,
+              lives: 0,
+              benefitDetails: {
+                note: 'Coverage details could not be extracted from document'
+              }
+            });
+          } else {
+            // Validate each coverage has required fields
+            actualDoc.coverages = actualDoc.coverages.map(coverage => {
+              if (!coverage || typeof coverage !== 'object') {
+                return {
+                  coverageType: 'Basic Life',
+                  carrierName: (actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                    ? String(actualDoc.metadata.carrierName) 
+                    : 'Unknown Carrier',
+                  planOptionName: 'Default Plan',
+                  premium: 0,
+                  monthlyPremium: 0,
+                  unitRate: 0,
+                  unitRateBasis: 'per $1,000',
+                  volume: 0,
+                  lives: 0,
+                  benefitDetails: { note: 'Coverage details could not be extracted from document' }
+                };
+              } else {
+                // Ensure all required fields exist and map carrier name properly
+                return {
+                  coverageType: coverage.coverageType || 'Basic Life',
+                  carrierName: coverage.carrierName || ((actualDoc.metadata && typeof actualDoc.metadata === 'object' && 'carrierName' in actualDoc.metadata) 
+                    ? String(actualDoc.metadata.carrierName) 
+                    : 'Unknown Carrier'),
+                  planOptionName: coverage.planOptionName || 'Default Plan',
+                  premium: coverage.premium || 0,
+                  monthlyPremium: coverage.monthlyPremium || 0,
+                  unitRate: coverage.unitRate || 0,
+                  unitRateBasis: coverage.unitRateBasis || 'per $1,000',
+                  volume: coverage.volume || 0,
+                  lives: coverage.lives || 0,
+                  benefitDetails: coverage.benefitDetails || { note: 'Limited coverage details were extracted' }
+                };
+              }
+            });
+          }
+          
+          return actualDoc;
+        });
+        
+        // Update state with normalized documents
+        setParsedDocuments(normalizedDocuments);
+        
+        // Check if we actually have coverage data in any document
+        const hasCoverages = normalizedDocuments.some(
+          doc => Array.isArray(doc.coverages) && doc.coverages.length > 0
+        );
+        
+        if (!hasCoverages) {
+          setError('Documents found, but no coverage data detected in parsed results.');
+        }
+      } else {
+        console.log('[DEBUG] No stored parsed documents found in localStorage');
+        setError('No parsed document data found in storage.');
+      }
+    } catch (e) {
+      setError('Failed to load parsed data. It might be corrupted.');
+    } finally {
+      setIsLoading(false);
+      console.log('[DEBUG] ===== End Document Parser Results Page Initialization =====');
+    }
+  }, []);
+
+  // Navigate back to parser page
+  const handleReturnToParser = () => {
+    router.push('/quote-tool/document-parser');
+  };
+
+  // Clear results and return to parser
+  const handleClearAndReturn = () => {
+    localStorage.removeItem('parsedBenefitsDocuments');
+    router.push('/quote-tool/document-parser');
+  };
+
+
+  // Toggle raw data view
+  const toggleRawData = () => {
+    setShowRawData(!showRawData);
+  };
+
+  // Handle successful report save
+  const handleReportSaved = (reportId: string) => {
+    setSavedReportId(reportId);
+    setSavedReportTitle(companyName ? `${companyName} Market Comparison` : 'Market Comparison Report');
+  };
+
+  // Get document IDs for the report
+  const getDocumentIds = () => {
+    return parsedDocuments.map((doc, index) => `doc-${index}-${doc.originalFileName}`);
+  };
+
+  // Prepare report data for saving
+  const getReportData = () => {
+    return {
+      documents: parsedDocuments,
+      companyName,
+      analysisDate: new Date().toISOString(),
+      documentCount: parsedDocuments.length,
+      totalCoverages: parsedDocuments.reduce((total, doc) => total + (doc.coverages?.length || 0), 0),
+      carriers: [...new Set(parsedDocuments.map(doc => doc.metadata?.carrierName).filter(Boolean))]
+    };
+  };
+
+
+  if (isLoading) {
+    return (
+      <>
+        <Header pages={["Quote Tool"]} page="Document Parser Results">
+          <h2 className="text-xl font-semibold">Results</h2>
+        </Header>
+        
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl p-6">
+            <div className="flex justify-center items-center h-40">
+              <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2">Loading results...</span>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+
+  return (
+    <>
+      <Header pages={["Quote Tool"]} page="Document Parser Results">
+        <h2 className="text-xl font-semibold">Market Comparison</h2>
+      </Header>
+      
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl p-6">
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Empty Results Notice */}
+          {parsedDocuments.length === 0 && !error && (
+            <Alert className="mb-6">
+              <Info className="h-4 w-4" />
+              <AlertTitle>No Results</AlertTitle>
+              <AlertDescription>
+                No parsed document data found. Please upload and process documents first.
+              </AlertDescription>
+            </Alert>
+          )}
+      
+          {/* Results Summary */}
+          {parsedDocuments.length > 0 && (
+            <div className="mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    {companyName || 'Market Comparison'}
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {parsedDocuments.length} document{parsedDocuments.length !== 1 ? 's' : ''} analyzed
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {/* Save Report Button */}
+                  <SaveReportModal
+                    reportData={getReportData()}
+                    documentIds={getDocumentIds()}
+                    onSaved={handleReportSaved}
+                  />
+                  
+                  {/* Share Report Button - only show if report is saved */}
+                  {savedReportId && (
+                    <ShareReportModal
+                      reportId={savedReportId}
+                      reportTitle={savedReportTitle}
+                    />
+                  )}
+                  
+                  <Button variant="outline" size="sm" onClick={toggleRawData}>
+                    {showRawData ? (
+                      <>
+                        <Database className="h-4 w-4 mr-2" />
+                        <span>Show Comparison View</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clipboard className="h-4 w-4 mr-2" />
+                        <span>Show Raw JSON</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleReturnToParser}>
+                    Upload More
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={handleClearAndReturn}>
+                    Clear & Return
+                  </Button>
+                </div>
+              </div>
+              
+              {showRawData ? (
+                // Raw JSON Data View
+                <div className="mt-6 space-y-6">
+                  {parsedDocuments.map((doc, index) => (
+                    <details key={index} className="bg-white rounded-lg shadow-sm open:shadow-md transition-all duration-200">
+                      <summary className="text-lg font-medium p-4 cursor-pointer hover:bg-gray-50">
+                        {doc.metadata?.carrierName || 'Unknown Carrier'} - {doc.originalFileName || 'Unnamed Document'}
+                        <span className="ml-2 text-sm px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          {doc.category || 'Uncategorized'}
+                        </span>
+                      </summary>
+                      <div className="p-4 pt-0 border-t">
+                        <pre className="text-xs overflow-auto bg-muted/10 p-4 rounded-md max-h-96">
+                          {JSON.stringify(doc, null, 2)}
+                        </pre>
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              ) : (
+                // Comparison View
+                <div className="bg-white p-6 rounded-lg shadow-sm">
+                  <ComparisonContainer />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

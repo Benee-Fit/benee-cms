@@ -45,8 +45,10 @@ model User {
   deletedAt         DateTime?
   
   // Relationships
-  managedClients    BrokerClient[]  @relation("BrokerToClients")
-  uploadedDocuments ClientDocument[] @relation("DocumentUploader")
+  managedClients    BrokerClient[]    @relation("BrokerToClients")
+  uploadedDocuments ClientDocument[]  @relation("DocumentUploader")
+  createdReports    QuoteReport[]     @relation("ReportCreator")
+  createdShareLinks ReportShareLink[] @relation("ShareLinkCreator")
   
   @@index([clerkId])
   @@index([email])
@@ -81,6 +83,7 @@ model BrokerClient {
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
   documents    ClientDocument[]
+  reports      QuoteReport[]
 
   @@index([policyNumber])
   @@index([renewalDate])
@@ -104,4 +107,45 @@ model ClientDocument {
 
   @@index([clientId])
   @@index([uploadedById])
+}
+
+// For storing the quote tool report data
+model QuoteReport {
+  id            String         @id @default(cuid())
+  title         String
+  clientId      String?        // Optional if reports can be created without associating with a client
+  client        BrokerClient?  @relation(fields: [clientId], references: [id])
+  createdById   String
+  createdBy     User           @relation("ReportCreator", fields: [createdById], references: [id])
+  data          Json           // The structured report data (coverages, premiums, etc.)
+  documentIds   String[]       // Array of document IDs used to generate this report
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relationships
+  shareLinks    ReportShareLink[]
+
+  @@index([clientId])
+  @@index([createdById])
+}
+
+// For managing shareable links to reports
+model ReportShareLink {
+  id              String      @id @default(cuid())
+  reportId        String
+  report          QuoteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  shareToken      String      @unique // Unique token for the link
+  createdById     String
+  createdBy       User        @relation("ShareLinkCreator", fields: [createdById], references: [id])
+  expiresAt       DateTime?   // Optional expiration date
+  password        String?     // Optional password protection
+  accessCount     Int         @default(0) // Track number of times accessed
+  lastAccessedAt  DateTime?   // Last time the link was accessed
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([reportId])
+  @@index([shareToken])
+  @@index([createdById])
 }
