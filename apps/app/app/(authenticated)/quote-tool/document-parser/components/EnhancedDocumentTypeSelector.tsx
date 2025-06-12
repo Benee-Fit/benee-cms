@@ -55,7 +55,7 @@ const documentTypes: DocumentType[] = [
     description: 'Updated terms from current carrier',
     detailedDescription: 'Upload renegotiated quotes from your current insurance carrier. These represent improved terms, adjusted pricing, or modified coverage options from your existing provider.',
     icon: <RefreshCw className="h-6 w-6" />,
-    color: 'orange',
+    color: 'green',
     examples: [
       'Renegotiated renewal quotes',
       'Updated pricing proposals',
@@ -101,11 +101,11 @@ export default function EnhancedDocumentTypeSelector({
         icon: isActive ? 'text-blue-600' : 'text-blue-500',
         badge: 'bg-blue-100 text-blue-800'
       },
-      orange: {
-        border: isActive ? 'border-orange-500' : 'border-gray-200 hover:border-orange-300',
-        bg: isActive ? 'bg-orange-50' : 'hover:bg-orange-25',
-        icon: isActive ? 'text-orange-600' : 'text-orange-500',
-        badge: 'bg-orange-100 text-orange-800'
+      green: {
+        border: isActive ? 'border-green-500' : 'border-gray-200 hover:border-green-300',
+        bg: isActive ? 'bg-green-50' : 'hover:bg-green-25',
+        icon: isActive ? 'text-green-600' : 'text-green-500',
+        badge: 'bg-green-100 text-green-800'
       },
       purple: {
         border: isActive ? 'border-purple-500' : 'border-gray-200 hover:border-purple-300',
@@ -146,9 +146,9 @@ export default function EnhancedDocumentTypeSelector({
                     className={`cursor-pointer transition-all duration-200 border-2 ${colorClasses.border} ${colorClasses.bg}`}
                     onClick={() => onCategoryChange(type.id)}
                   >
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
+                    <CardContent className="p-3">
+                      <div className="space-y-2 text-center">
+                        <div className="flex flex-col items-center space-y-1">
                           <div className={`${colorClasses.icon}`}>
                             {type.icon}
                           </div>
@@ -156,9 +156,6 @@ export default function EnhancedDocumentTypeSelector({
                             <Badge className={colorClasses.badge}>
                               {count} file{count !== 1 ? 's' : ''}
                             </Badge>
-                          )}
-                          {isActive && (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
                           )}
                         </div>
                         
