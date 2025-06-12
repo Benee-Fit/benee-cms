@@ -41,10 +41,10 @@ const transformReportDataToParsedDocuments = (reportData: any): ParsedDocument[]
           if (coverage.coverageType === 'Extended Healthcare' || coverage.coverageType === 'Dental Care') {
             // If we have lives data, assume it's all family (since single would be 0 premium typically)
             if (coverage.lives && coverage.lives > 0) {
-              enhanced.livesFamily = coverage.lives;
-              enhanced.livesSingle = 0;
-              enhanced.premiumPerFamily = coverage.monthlyPremium ? coverage.monthlyPremium / coverage.lives : 0;
-              enhanced.premiumPerSingle = 0;
+              (enhanced as any).livesFamily = coverage.lives;
+              (enhanced as any).livesSingle = 0;
+              (enhanced as any).premiumPerFamily = coverage.monthlyPremium ? coverage.monthlyPremium / coverage.lives : 0;
+              (enhanced as any).premiumPerSingle = 0;
             }
           }
 
@@ -174,7 +174,7 @@ export default function SharedReportView({ reportData }: SharedReportViewProps) 
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <SummaryStats parsedDocuments={transformedDocuments} />
+      <SummaryStats parsedDocuments={transformedDocuments as any} />
 
       {/* Professional Comparison Tables */}
       <div className="space-y-8">
@@ -204,14 +204,14 @@ export default function SharedReportView({ reportData }: SharedReportViewProps) 
         <div className="shared-report">
           {/* Professional Market Comparison */}
           <MarketComparisonView 
-            parsedDocuments={transformedDocuments}
+            parsedDocuments={transformedDocuments as any}
             carriersMap={carriersMap}
           />
           
           {/* Carrier Overview Cards */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
-            <CarrierOverviewCards parsedDocuments={transformedDocuments} />
+            <CarrierOverviewCards parsedDocuments={transformedDocuments as any} />
           </div>
         </div>
       </div>

@@ -283,9 +283,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(report, { status: 201 });
   } catch (error) {
     console.error('[DEBUG] Failed to create report - Full error:', error);
-    console.error('[DEBUG] Error name:', error?.name);
-    console.error('[DEBUG] Error message:', error?.message);
-    console.error('[DEBUG] Error stack:', error?.stack);
+    console.error('[DEBUG] Error name:', (error as any)?.name);
+    console.error('[DEBUG] Error message:', (error as any)?.message);
+    console.error('[DEBUG] Error stack:', (error as any)?.stack);
     
     // Return more specific error information
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

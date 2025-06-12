@@ -5,6 +5,9 @@ import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
 import { ThemeProvider } from './providers/theme';
 
+// Export the AppHeader component
+export { AppHeader } from './components/ui/app-header';
+
 type DesignSystemProviderProperties = ThemeProviderProps & {
   privacyUrl?: string;
   termsUrl?: string;

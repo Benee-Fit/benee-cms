@@ -51,8 +51,8 @@ export default function DocumentParserPage() {
   
   // Batch processing state
   const [processingIndex, setProcessingIndex] = useState(0);
-  const [completedFiles, setCompletedFiles] = useState<Array<{file: FileWithPreview; result: Record<string, unknown>}>>([]);
-  const [failedFiles, setFailedFiles] = useState<Array<{file: FileWithPreview; error: string}>>([]);
+  const [completedFiles, setCompletedFiles] = useState<Array<{file: FileWithPreview; status: 'completed'; result: Record<string, unknown>}>>([]);
+  const [failedFiles, setFailedFiles] = useState<Array<{file: FileWithPreview; status: 'failed'; error: string}>>([]);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
 
   // Check for existing data on mount and reset questionnaire if no parsed documents
@@ -384,14 +384,14 @@ export default function DocumentParserPage() {
           const normalizedResult = normalizeResult(processedResult, file);
           
           // Add to completed files
-          setCompletedFiles(prev => [...prev, { file, result: normalizedResult }]);
+          setCompletedFiles(prev => [...prev, { file, status: 'completed', result: normalizedResult }]);
           results.push(normalizedResult);
         } catch (fileError) {
           const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error';
           console.error(`[DEBUG] Failed to process file ${file.name}:`, errorMessage);
           
           // Add to failed files
-          setFailedFiles(prev => [...prev, { file, error: errorMessage }]);
+          setFailedFiles(prev => [...prev, { file, status: 'failed', error: errorMessage }]);
           
           // Continue processing other files instead of stopping
           continue;
@@ -717,7 +717,7 @@ export default function DocumentParserPage() {
               completedFiles={completedFiles}
               failedFiles={failedFiles}
               currentStages={processingStages}
-              estimatedTimeRemaining={estimatedTimeRemaining || undefined}
+              estimatedTimeRemaining={estimatedTimeRemaining ?? undefined}
               onRetryFile={(fileIndex) => {
                 // TODO: Implement individual file retry
                 console.log(`Retry file at index ${fileIndex}`);
@@ -728,8 +728,8 @@ export default function DocumentParserPage() {
               <ProcessingStatus
                 fileName={currentProcessingFile}
                 stages={processingStages}
-                currentStage={processingStages.find(stage => stage.status === 'in_progress')?.id}
-                error={processingError}
+                currentStage={processingStages.find(stage => stage.status === 'in_progress')?.id || undefined}
+                error={processingError || undefined}
                 onRetry={() => {
                   // Reset processing state for retry
                   setIsLoading(false);
