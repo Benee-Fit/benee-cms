@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
           revenue: client.planManagementFee * 100, // Estimate
           industry: 'Unknown', // Will be updated later
           // Use CSV data if available
-          planManagementFee: client.planManagementFee || undefined,
+          planManagementFee: client.planManagementFee ? client.planManagementFee : undefined,
           splitWithAnotherBroker: client.hasBrokerSplit || false,
-          brokerCommissionSplit: client.brokerSplit || undefined,
+          brokerCommissionSplit: client.brokerSplit ? client.brokerSplit : undefined,
         },
       });
       createdClients.set(client.policyNumber, created.id);
