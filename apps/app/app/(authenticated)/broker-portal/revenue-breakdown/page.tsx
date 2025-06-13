@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 // Dynamically import the Revenue Breakdown page from broker-portal app

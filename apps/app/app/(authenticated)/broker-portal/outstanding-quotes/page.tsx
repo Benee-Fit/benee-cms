@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 // Dynamically import the Outstanding Quotes page from broker-portal app
