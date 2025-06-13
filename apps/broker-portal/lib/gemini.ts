@@ -27,6 +27,7 @@ export interface DocumentAnalysisResult {
   matchedPolicyNumber?: string;
   matchedCompanyName?: string;
   summary?: string;
+  [key: string]: string | number | undefined;
 }
 
 export async function analyzeInsuranceDocument(
