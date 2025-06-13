@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Badge } from '@repo/design-system/components/ui/badge';
@@ -21,6 +21,8 @@ import {
   Briefcase,
   Shield
 } from 'lucide-react';
+import { DocumentUpload } from './document-library/DocumentUpload';
+import { DocumentList } from './document-library/DocumentList';
 
 // Extended interface for detailed client view
 interface DetailedClient {
@@ -76,6 +78,12 @@ interface ClientDetailViewProps {
 }
 
 export function ClientDetailView({ client, onBack, isLoading }: ClientDetailViewProps) {
+  const [refreshCounter, setRefreshCounter] = useState(0);
+
+  const handleUploadComplete = () => {
+    setRefreshCounter(prev => prev + 1);
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto pt-6">
@@ -342,6 +350,26 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           </CardContent>
         </Card>
 
+      </div>
+
+      {/* 📄 Document Library */}
+      <div className="mt-6">
+        <h2 className="text-2xl font-bold mb-4">Document Library</h2>
+        <p className="text-muted-foreground mb-6">
+          Access all important documents related to {client.companyName}. This library contains plan booklets, invoices, renewal documents, compliance notices, and other essential files.
+        </p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Document upload section */}
+          <div className="lg:col-span-1">
+            <DocumentUpload clientId={client.id} onUploadComplete={handleUploadComplete} />
+          </div>
+          
+          {/* Document list section */}
+          <div className="lg:col-span-2">
+            <DocumentList clientId={client.id} refreshTrigger={refreshCounter} />
+          </div>
+        </div>
       </div>
     </div>
   );
