@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -26,7 +27,7 @@ type MonthData = {
   revenue: number;
 };
 
-// Generate mock data for the next 12 months
+// Generate mock data for the next 12 months using deterministic values
 const generateMockData = (): MonthData[] => {
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth();
@@ -52,19 +53,51 @@ const generateMockData = (): MonthData[] => {
     const monthIndex = (currentMonth + index) % 12;
     const year = currentYear + Math.floor((currentMonth + index) / 12);
 
-    // Generate random data for demonstration
+    // Use deterministic values based on month index to avoid hydration mismatch
+    const seed = (monthIndex + year) % 12;
     return {
       month: monthNames[monthIndex],
       year,
-      renewals: Math.floor(Math.random() * 20) + 5, // 5-25 renewals
-      headcount: Math.floor(Math.random() * 500) + 200, // 200-700 headcount
-      revenue: Math.floor(Math.random() * 100000) + 50000, // $50k-$150k
+      renewals: 5 + (seed * 2), // Deterministic: 5-25 renewals
+      headcount: 200 + (seed * 45), // Deterministic: 200-695 headcount
+      revenue: 50000 + (seed * 8500), // Deterministic: $50k-$143.5k
     };
   });
 };
 
 export function CalendarGrid() {
-  const calendarData = generateMockData();
+  const [calendarData, setCalendarData] = useState<MonthData[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setCalendarData(generateMockData());
+  }, []);
+
+  // Show loading state during hydration
+  if (!isClient) {
+    return (
+      <div className="space-y-4 p-6 bg-muted/30 rounded-lg border">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-semibold">12-Month Forecast</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <Card key={i} className="border border-primary/20 h-full animate-pulse">
+              <CardHeader className="py-0 px-3 bg-muted/20">
+                <div className="h-6 bg-muted rounded"></div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3 border-t">
+                <div className="h-4 bg-muted rounded"></div>
+                <div className="h-4 bg-muted rounded"></div>
+                <div className="h-4 bg-muted rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 p-6 bg-muted/30 rounded-lg border">
