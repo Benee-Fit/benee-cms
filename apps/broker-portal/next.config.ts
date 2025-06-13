@@ -3,7 +3,10 @@ import { config, withAnalyzer } from '@repo/next-config';
 import { withLogging, withSentry } from '@repo/observability/next-config';
 import type { NextConfig } from 'next';
 
-let nextConfig: NextConfig = withLogging(config);
+// Configure the base Next.js config
+let nextConfig: NextConfig = {
+  ...withLogging(config),
+};
 
 if (env.VERCEL) {
   nextConfig = withSentry(nextConfig);

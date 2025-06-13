@@ -22,12 +22,18 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Upload,
+  Edit,
+  Trash,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageLayout } from '../page-layout';
 import { ClientWizard } from '../../components/client-wizard';
 import { ClientDetailView } from '../../components/client-detail-view';
+import { MassUploadWizard } from '../../components/mass-upload-wizard';
+import { Checkbox } from '@repo/design-system/components/ui/checkbox';
+import { Alert, AlertDescription } from '@repo/design-system/components/ui/alert';
 
 interface Client {
   id: string;
@@ -47,6 +53,7 @@ export default function ClientListPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
+  const [showMassUpload, setShowMassUpload] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Client | null;
     direction: 'ascending' | 'descending';
@@ -59,6 +66,16 @@ export default function ClientListPage() {
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [showDetailView, setShowDetailView] = useState(false);
+  
+  // Bulk edit state
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Alert state
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'success' | 'error'>('success');
 
   // Fetch clients from API
   const fetchClients = async () => {
@@ -108,7 +125,9 @@ export default function ClientListPage() {
 
   // Handle client row click
   const handleClientClick = (clientId: string) => {
-    fetchClientDetail(clientId);
+    if (!isEditMode) {
+      fetchClientDetail(clientId);
+    }
   };
 
   // Handle back to listing
@@ -116,6 +135,75 @@ export default function ClientListPage() {
     setShowDetailView(false);
     setSelectedClient(null);
     setSelectedClientId(null);
+  };
+
+  // Toggle select all
+  const toggleSelectAll = () => {
+    if (selectedClients.size === sortedClients.length) {
+      setSelectedClients(new Set());
+    } else {
+      setSelectedClients(new Set(sortedClients.map(client => client.id)));
+    }
+  };
+
+  // Toggle individual client selection
+  const toggleClientSelection = (clientId: string) => {
+    const newSelection = new Set(selectedClients);
+    if (newSelection.has(clientId)) {
+      newSelection.delete(clientId);
+    } else {
+      newSelection.add(clientId);
+    }
+    setSelectedClients(newSelection);
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedClients.size === 0) return;
+
+    const deleteCount = selectedClients.size;
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete ${deleteCount} client${deleteCount > 1 ? 's' : ''}? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete each selected client
+      const deletePromises = Array.from(selectedClients).map(clientId =>
+        fetch(`/api/clients/${clientId}`, { method: 'DELETE' })
+      );
+
+      await Promise.all(deletePromises);
+
+      // Refresh client list
+      await fetchClients();
+      
+      // Clear selection and exit edit mode
+      setSelectedClients(new Set());
+      setIsEditMode(false);
+      
+      // Show success alert
+      setAlertMessage(`${deleteCount} client${deleteCount > 1 ? 's' : ''} deleted successfully`);
+      setAlertType('success');
+      setShowAlert(true);
+      
+      // Hide alert after 3 seconds
+      setTimeout(() => setShowAlert(false), 3000);
+    } catch (error) {
+      console.error('Error deleting clients:', error);
+      
+      // Show error alert
+      setAlertMessage('Failed to delete clients. Please try again.');
+      setAlertType('error');
+      setShowAlert(true);
+      
+      // Hide alert after 5 seconds
+      setTimeout(() => setShowAlert(false), 5000);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -212,6 +300,15 @@ export default function ClientListPage() {
   return (
     <PageLayout>
       <div className="container mx-auto pt-12">
+        {showAlert && (
+          <Alert 
+            variant={alertType === 'error' ? 'destructive' : 'default'}
+            className="mb-4"
+          >
+            <AlertDescription>{alertMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Client List</h1>
@@ -221,13 +318,52 @@ export default function ClientListPage() {
               </p>
             )}
           </div>
-          <Button onClick={() => setShowWizard(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Client
-          </Button>
+          <div className="flex gap-2">
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                  disabled={selectedClients.size === 0 || isDeleting}
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Selected ({selectedClients.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setSelectedClients(new Set());
+                  }}
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={() => setShowWizard(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Add Client
+                </Button>
+                <Button variant="outline" onClick={() => setShowMassUpload(true)}>
+                  <Upload className="mr-2 h-4 w-4" /> Mass Upload
+                </Button>
+                <Button variant="outline" onClick={() => setIsEditMode(true)}>
+                  <Edit className="mr-2 h-4 w-4" /> Edit Client List
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
-        <Card className="mb-6">
+        <Card className={`mb-6 ${isEditMode ? 'border-orange-500' : ''}`}>
           <div className="p-6">
+            {isEditMode && (
+              <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
+                <p className="text-sm text-orange-800 dark:text-orange-200 font-medium">
+                  Edit mode is active. Select clients to delete them.
+                </p>
+              </div>
+            )}
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
                 <p className="text-muted-foreground">Loading clients...</p>
@@ -244,6 +380,14 @@ export default function ClientListPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {isEditMode && (
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectedClients.size === sortedClients.length && sortedClients.length > 0}
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </TableHead>
+                      )}
                       <TableHead
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleSortRequest('companyName')}
@@ -292,9 +436,17 @@ export default function ClientListPage() {
                     {paginatedClients.map((client) => (
                       <TableRow 
                         key={client.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        className={`${!isEditMode ? 'cursor-pointer' : ''} hover:bg-muted/50 transition-colors`}
                         onClick={() => handleClientClick(client.id)}
                       >
+                        {isEditMode && (
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedClients.has(client.id)}
+                              onCheckedChange={() => toggleClientSelection(client.id)}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="font-medium">
                           {client.companyName}
                         </TableCell>
@@ -358,6 +510,15 @@ export default function ClientListPage() {
         onClose={() => setShowWizard(false)}
         onSuccess={() => {
           setShowWizard(false);
+          fetchClients();
+        }}
+      />
+
+      <MassUploadWizard
+        open={showMassUpload}
+        onClose={() => setShowMassUpload(false)}
+        onSuccess={() => {
+          setShowMassUpload(false);
           fetchClients();
         }}
       />
