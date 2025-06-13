@@ -138,14 +138,14 @@ CRITICAL REQUIREMENTS:
     
     // Return a fallback result
     return {
-      carrier: null,
-      renewalDate: null,
-      premium: null,
-      headcount: null,
+      carrier: undefined,
+      renewalDate: undefined,
+      premium: undefined,
+      headcount: undefined,
       documentType: 'Other',
       confidence: 0,
-      matchedPolicyNumber: null,
-      matchedCompanyName: null,
+      matchedPolicyNumber: undefined,
+      matchedCompanyName: undefined,
     };
   }
 }
