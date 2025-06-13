@@ -27,6 +27,18 @@ export interface DocumentAnalysisResult {
   matchedPolicyNumber?: string;
   matchedCompanyName?: string;
   summary?: string;
+  // New fields
+  companySize?: string;
+  companyLocation?: string;
+  leadershipCEO?: string;
+  leadershipCFO?: string;
+  leadershipCHRO?: string;
+  planAdmin?: string;
+  currentCarrier?: string;
+  withCarrierSince?: string;
+  planType?: string;
+  planManagementFee?: number;
+  brokerCommissionSplit?: number;
   [key: string]: string | number | undefined;
 }
 
@@ -49,6 +61,15 @@ TASKS:
    - Renewal Date (format: YYYY-MM-DD)
    - Premium amount (numbers only, no currency symbols)
    - Headcount/Employee count (numbers only)
+   - Company size (return "Small (1-49)", "Medium (50-199)", or "Large (200+)" based on headcount)
+   - Company location (city, state if available)
+   - Leadership names (CEO, CFO, CHRO - extract full names if found)
+   - Plan Administrator name
+   - Current carrier name
+   - With carrier since date (format: YYYY-MM-DD if found)
+   - Plan type (e.g., PPO, HMO, HDHP, etc.)
+   - Plan management fee (numbers only)
+   - Broker commission split (percentage as number, e.g., 50 for 50%)
 
 2. Determine the document type from these categories:
    ${DOCUMENT_TYPES.join(', ')}
@@ -73,7 +94,18 @@ You must respond with ONLY a valid JSON object in this exact format:
   "confidence": number between 0-100,
   "matchedPolicyNumber": "policy number or null",
   "matchedCompanyName": "company name or null",
-  "summary": "Brief 2-3 sentence summary of the document"
+  "summary": "Brief 2-3 sentence summary of the document",
+  "companySize": "Small (1-49), Medium (50-199), or Large (200+) or null",
+  "companyLocation": "City, State or null",
+  "leadershipCEO": "Full name or null",
+  "leadershipCFO": "Full name or null", 
+  "leadershipCHRO": "Full name or null",
+  "planAdmin": "Full name or null",
+  "currentCarrier": "Carrier name or null",
+  "withCarrierSince": "YYYY-MM-DD or null",
+  "planType": "Plan type or null",
+  "planManagementFee": number or null,
+  "brokerCommissionSplit": number or null
 }
 
 CRITICAL REQUIREMENTS:
@@ -156,6 +188,17 @@ CRITICAL REQUIREMENTS:
       matchedPolicyNumber: undefined,
       matchedCompanyName: undefined,
       summary: 'Unable to analyze document content.',
+      companySize: undefined,
+      companyLocation: undefined,
+      leadershipCEO: undefined,
+      leadershipCFO: undefined,
+      leadershipCHRO: undefined,
+      planAdmin: undefined,
+      currentCarrier: undefined,
+      withCarrierSince: undefined,
+      planType: undefined,
+      planManagementFee: undefined,
+      brokerCommissionSplit: undefined,
     };
   }
 }

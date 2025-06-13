@@ -38,9 +38,7 @@ export async function GET(
       );
     }
 
-    // Transform the data to include additional fields for the detailed view
-    // Note: Many of these fields don't exist in the current schema
-    // They would need to be added to support the full detailed view
+    // Transform the data to include all fields
     const detailedClient = {
       id: client.id,
       companyName: client.companyName,
@@ -52,8 +50,24 @@ export async function GET(
       industry: client.industry,
       createdAt: client.createdAt.toISOString(),
       
-      // Broker information
-      assignedBroker: client.broker?.email || null,
+      // New fields from schema
+      companySize: client.companySize || null,
+      companyLocation: client.companyLocation || null,
+      leadershipCEO: client.leadershipCEO || null,
+      leadershipCFO: client.leadershipCFO || null,
+      leadershipCHRO: client.leadershipCHRO || null,
+      planAdmin: client.planAdmin || null,
+      assignedBroker: client.assignedBroker || client.broker?.email || null,
+      leadSource: client.leadSource || null,
+      brokerCommissionSplit: client.brokerCommissionSplit ? Number(client.brokerCommissionSplit) : null,
+      individualSplits: client.individualSplits || null,
+      planManagementFee: client.planManagementFee ? Number(client.planManagementFee) : null,
+      splitWithAnotherBroker: client.splitWithAnotherBroker || false,
+      currentCarrier: client.currentCarrier || null,
+      withCarrierSince: client.withCarrierSince ? client.withCarrierSince.toISOString() : null,
+      planType: client.planType || null,
+      
+      // Broker email for UI
       brokerEmail: client.broker?.email || null,
       
       // Documents
@@ -65,32 +79,25 @@ export async function GET(
         uploadDate: doc.uploadDate.toISOString(),
         documentType: doc.documentType,
         description: doc.description,
+        documentTitle: doc.documentTitle,
         uploadedBy: doc.uploadedBy?.email || null,
       })),
       
-      // Placeholder fields for extended client data
-      // These would be populated once the database schema is extended
-      location: null,
-      companySize: null,
-      ceoName: null,
-      ceoEmail: null,
-      cfoName: null,
-      cfoEmail: null,
-      chroName: null,
-      chroEmail: null,
-      planAdminName: null,
-      planAdminEmail: null,
-      leadSource: null,
-      brokerCommissionSplit: null,
-      individualSplits: null,
-      planManagementFee: null,
-      splitWithAnotherBroker: null,
-      currentCarrier: null,
-      withCarrierSince: null,
-      planType: null,
+      // Calculated fields (these would need business logic)
       totalRevenueLTD: null,
       yoyRevenueGrowth: null,
       yoyHeadcountGrowth: null,
+      
+      // For backward compatibility with old UI
+      location: client.companyLocation || null,
+      ceoName: client.leadershipCEO || null,
+      ceoEmail: null, // Email fields can be added later
+      cfoName: client.leadershipCFO || null,
+      cfoEmail: null,
+      chroName: client.leadershipCHRO || null,
+      chroEmail: null,
+      planAdminName: client.planAdmin || null,
+      planAdminEmail: null,
     };
 
     return NextResponse.json(detailedClient);
@@ -112,17 +119,45 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     
+    // Build update data object
+    const updateData: any = {};
+    
+    // Basic fields
+    if (body.companyName !== undefined) updateData.companyName = body.companyName;
+    if (body.policyNumber !== undefined) updateData.policyNumber = body.policyNumber;
+    if (body.renewalDate !== undefined) updateData.renewalDate = new Date(body.renewalDate);
+    if (body.headcount !== undefined) updateData.headcount = body.headcount;
+    if (body.premium !== undefined) updateData.premium = body.premium;
+    if (body.revenue !== undefined) updateData.revenue = body.revenue;
+    if (body.industry !== undefined) updateData.industry = body.industry;
+    
+    // New fields
+    if (body.companySize !== undefined) updateData.companySize = body.companySize;
+    if (body.companyLocation !== undefined) updateData.companyLocation = body.companyLocation;
+    if (body.leadershipCEO !== undefined) updateData.leadershipCEO = body.leadershipCEO;
+    if (body.leadershipCFO !== undefined) updateData.leadershipCFO = body.leadershipCFO;
+    if (body.leadershipCHRO !== undefined) updateData.leadershipCHRO = body.leadershipCHRO;
+    if (body.planAdmin !== undefined) updateData.planAdmin = body.planAdmin;
+    if (body.assignedBroker !== undefined) updateData.assignedBroker = body.assignedBroker;
+    if (body.leadSource !== undefined) updateData.leadSource = body.leadSource;
+    if (body.brokerCommissionSplit !== undefined) updateData.brokerCommissionSplit = body.brokerCommissionSplit;
+    if (body.individualSplits !== undefined) updateData.individualSplits = body.individualSplits;
+    if (body.planManagementFee !== undefined) updateData.planManagementFee = body.planManagementFee;
+    if (body.splitWithAnotherBroker !== undefined) updateData.splitWithAnotherBroker = body.splitWithAnotherBroker;
+    if (body.currentCarrier !== undefined) updateData.currentCarrier = body.currentCarrier;
+    if (body.withCarrierSince !== undefined) updateData.withCarrierSince = body.withCarrierSince ? new Date(body.withCarrierSince) : null;
+    if (body.planType !== undefined) updateData.planType = body.planType;
+    
+    // Handle backward compatibility fields
+    if (body.location !== undefined && !body.companyLocation) updateData.companyLocation = body.location;
+    if (body.ceoName !== undefined && !body.leadershipCEO) updateData.leadershipCEO = body.ceoName;
+    if (body.cfoName !== undefined && !body.leadershipCFO) updateData.leadershipCFO = body.cfoName;
+    if (body.chroName !== undefined && !body.leadershipCHRO) updateData.leadershipCHRO = body.chroName;
+    if (body.planAdminName !== undefined && !body.planAdmin) updateData.planAdmin = body.planAdminName;
+    
     const updatedClient = await database.brokerClient.update({
       where: { id },
-      data: {
-        companyName: body.companyName,
-        policyNumber: body.policyNumber,
-        renewalDate: new Date(body.renewalDate),
-        headcount: body.headcount,
-        premium: body.premium,
-        revenue: body.revenue,
-        industry: body.industry,
-      },
+      data: updateData,
     });
     
     return NextResponse.json(updatedClient);

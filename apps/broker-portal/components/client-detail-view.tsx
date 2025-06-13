@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
-import { Badge } from '@repo/design-system/components/ui/badge';
 import { Separator } from '@repo/design-system/components/ui/separator';
+import { Input } from '@repo/design-system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
+import { Switch } from '@repo/design-system/components/ui/switch';
 import { 
   ArrowLeft, 
   Building2, 
@@ -37,12 +39,25 @@ interface DetailedClient {
   industry: string;
   createdAt: string;
   
-  // Additional fields for detailed view
-  // These will need to be added to the database model
-  location?: string;
+  // New database fields
+  companyLocation?: string;
   companySize?: string;
+  leadershipCEO?: string;
+  leadershipCFO?: string;
+  leadershipCHRO?: string;
+  planAdmin?: string;
+  assignedBroker?: string;
+  leadSource?: string;
+  brokerCommissionSplit?: number;
+  individualSplits?: any;
+  planManagementFee?: number;
+  splitWithAnotherBroker?: boolean;
+  currentCarrier?: string;
+  withCarrierSince?: string;
+  planType?: string;
   
-  // Leadership Contacts
+  // Additional fields for UI (backward compatibility)
+  location?: string;
   ceoName?: string;
   ceoEmail?: string;
   cfoName?: string;
@@ -52,23 +67,16 @@ interface DetailedClient {
   planAdminName?: string;
   planAdminEmail?: string;
   
-  // Broker Details
-  assignedBroker?: string;
-  leadSource?: string;
-  brokerCommissionSplit?: number;
-  individualSplits?: string;
-  
-  // Plan Insights
-  planManagementFee?: number;
-  splitWithAnotherBroker?: boolean;
-  currentCarrier?: string;
-  withCarrierSince?: string;
-  planType?: string;
-  
   // Revenue & Growth
   totalRevenueLTD?: number;
   yoyRevenueGrowth?: number;
   yoyHeadcountGrowth?: number;
+  
+  // Documents
+  documents?: any[];
+  
+  // Additional metadata
+  brokerEmail?: string;
 }
 
 interface ClientDetailViewProps {
@@ -79,9 +87,95 @@ interface ClientDetailViewProps {
 
 export function ClientDetailView({ client, onBack, isLoading }: ClientDetailViewProps) {
   const [refreshCounter, setRefreshCounter] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedClient, setEditedClient] = useState(client);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setEditedClient(client);
+  }, [client]);
 
   const handleUploadComplete = () => {
     setRefreshCounter(prev => prev + 1);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedClient(client);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editedClient),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update client');
+      }
+
+      // Refresh the client data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error saving client:', error);
+      alert('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    setEditedClient(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const renderEditableField = (field: keyof DetailedClient, label: string, type: 'text' | 'select' | 'date' = 'text', options?: string[]) => {
+    if (isEditing) {
+      if (type === 'select' && options) {
+        return (
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+            <Select value={editedClient[field]?.toString() || ''} onValueChange={(value) => handleFieldChange(field, value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map(opt => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      }
+      return (
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+          <Input 
+            type={type}
+            value={editedClient[field]?.toString() || ''} 
+            onChange={(e) => handleFieldChange(field, e.target.value)}
+          />
+        </div>
+      );
+    }
+    return (
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <p className="font-medium">{editedClient[field] || 'Not specified'}</p>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -117,13 +211,41 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           <h1 className="text-3xl font-bold">{client.companyName}</h1>
           <p className="text-muted-foreground">Policy #{client.policyNumber}</p>
         </div>
-        <Button 
-          onClick={onBack}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Client Listing
-        </Button>
+        <div className="flex gap-2">
+          {!isEditing ? (
+            <>
+              <Button 
+                onClick={handleEdit}
+                variant="outline"
+              >
+                Edit Client
+              </Button>
+              <Button 
+                onClick={onBack}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Client Listing
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <Button 
+                onClick={handleCancel}
+                variant="outline"
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* 💰 Revenue & Growth - Top Section */}
@@ -179,38 +301,31 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Company Name</p>
-                <p className="font-medium">{client.companyName}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Industry</p>
-                <Badge variant="secondary">{client.industry}</Badge>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Location</p>
-                <p className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  {client.location || 'Not specified'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Company Size</p>
-                <p>{client.companySize || 'Not specified'}</p>
-              </div>
+              {renderEditableField('companyName', 'Company Name')}
+              {renderEditableField('industry', 'Industry')}
+              {renderEditableField('companyLocation', 'Location')}
+              {renderEditableField('companySize', 'Company Size', 'select', ['Small (1-49)', 'Medium (50-199)', 'Large (200+)'])}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Date Added</p>
                 <p className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(client.createdAt)}
+                  {formatDate(editedClient.createdAt)}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Headcount</p>
-                <p className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {client.headcount}
-                </p>
+                {isEditing ? (
+                  <Input 
+                    type="number"
+                    value={editedClient.headcount} 
+                    onChange={(e) => handleFieldChange('headcount', parseInt(e.target.value) || 0)}
+                  />
+                ) : (
+                  <p className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    {editedClient.headcount}
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -226,37 +341,13 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">CEO</p>
-                <p className="font-medium">{client.ceoName || 'Not specified'}</p>
-                {client.ceoEmail && (
-                  <p className="text-sm text-muted-foreground">{client.ceoEmail}</p>
-                )}
-              </div>
+              {renderEditableField('leadershipCEO', 'CEO')}
               <Separator />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">CFO</p>
-                <p className="font-medium">{client.cfoName || 'Not specified'}</p>
-                {client.cfoEmail && (
-                  <p className="text-sm text-muted-foreground">{client.cfoEmail}</p>
-                )}
-              </div>
+              {renderEditableField('leadershipCFO', 'CFO')}
               <Separator />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">CHRO / Head of People</p>
-                <p className="font-medium">{client.chroName || 'Not specified'}</p>
-                {client.chroEmail && (
-                  <p className="text-sm text-muted-foreground">{client.chroEmail}</p>
-                )}
-              </div>
+              {renderEditableField('leadershipCHRO', 'CHRO / Head of People')}
               <Separator />
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Plan Administrator</p>
-                <p className="font-medium">{client.planAdminName || 'Not specified'}</p>
-                {client.planAdminEmail && (
-                  <p className="text-sm text-muted-foreground">{client.planAdminEmail}</p>
-                )}
-              </div>
+              {renderEditableField('planAdmin', 'Plan Administrator')}
             </div>
           </CardContent>
         </Card>
@@ -271,24 +362,31 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Assigned Broker</p>
-                <p className="flex items-center gap-1">
-                  <UserCheck className="h-4 w-4" />
-                  {client.assignedBroker || 'Not assigned'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Lead Source</p>
-                <p>{client.leadSource || 'Not specified'}</p>
-              </div>
+              {renderEditableField('assignedBroker', 'Assigned Broker')}
+              {renderEditableField('leadSource', 'Lead Source')}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Broker Commission Split</p>
-                <p>{client.brokerCommissionSplit ? `${client.brokerCommissionSplit}%` : 'Not specified'}</p>
+                {isEditing ? (
+                  <Input 
+                    type="number"
+                    value={editedClient.brokerCommissionSplit || ''} 
+                    onChange={(e) => handleFieldChange('brokerCommissionSplit', parseFloat(e.target.value) || null)}
+                    placeholder="Enter percentage"
+                  />
+                ) : (
+                  <p>{editedClient.brokerCommissionSplit ? `${editedClient.brokerCommissionSplit}%` : 'Not specified'}</p>
+                )}
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Individual Splits</p>
-                <p>{client.individualSplits || 'Not specified'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Split With Another Broker</p>
+                {isEditing ? (
+                  <Switch 
+                    checked={editedClient.splitWithAnotherBroker || false} 
+                    onCheckedChange={(checked) => handleFieldChange('splitWithAnotherBroker', checked)}
+                  />
+                ) : (
+                  <p>{editedClient.splitWithAnotherBroker ? 'Yes' : 'No'}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -306,39 +404,31 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Plan Management Fee</p>
-                <p>{formatCurrency(client.planManagementFee)}</p>
+                {isEditing ? (
+                  <Input 
+                    type="number"
+                    value={editedClient.planManagementFee || ''} 
+                    onChange={(e) => handleFieldChange('planManagementFee', parseFloat(e.target.value) || null)}
+                    placeholder="Enter amount"
+                  />
+                ) : (
+                  <p>{formatCurrency(editedClient.planManagementFee)}</p>
+                )}
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Split With Another Broker</p>
-                <p className="flex items-center gap-2">
-                  {client.splitWithAnotherBroker ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span>Yes</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 text-red-600" />
-                      <span>No</span>
-                    </>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Current Carrier</p>
-                <p className="flex items-center gap-1">
-                  <Shield className="h-4 w-4" />
-                  {client.currentCarrier || 'Not specified'}
-                </p>
-              </div>
+              {renderEditableField('currentCarrier', 'Current Carrier')}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">With Carrier Since</p>
-                <p>{formatDate(client.withCarrierSince)}</p>
+                {isEditing ? (
+                  <Input 
+                    type="date"
+                    value={editedClient.withCarrierSince ? new Date(editedClient.withCarrierSince).toISOString().split('T')[0] : ''} 
+                    onChange={(e) => handleFieldChange('withCarrierSince', e.target.value)}
+                  />
+                ) : (
+                  <p>{formatDate(editedClient.withCarrierSince)}</p>
+                )}
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Plan Type</p>
-                <Badge variant="outline">{client.planType || 'Not specified'}</Badge>
-              </div>
+              {renderEditableField('planType', 'Plan Type', 'select', ['PPO', 'HMO', 'HDHP', 'EPO', 'POS', 'Other'])}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Renewal Date</p>
                 <p className="flex items-center gap-1">

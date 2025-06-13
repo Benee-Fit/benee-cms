@@ -70,20 +70,38 @@ model Post {
 }
 
 model BrokerClient {
-  id           String           @id @default(cuid())
+  id           String   @id @default(cuid())
   companyName  String
-  policyNumber String           @unique
+  policyNumber String   @unique
   renewalDate  DateTime
   headcount    Int
-  premium      Decimal          @db.Decimal(10, 2)
-  revenue      Decimal          @db.Decimal(10, 2)
+  premium      Decimal  @db.Decimal(10, 2)
+  revenue      Decimal  @db.Decimal(10, 2)
   industry     String
   brokerId     String? // Reference to the broker managing this client
-  broker       User?            @relation("BrokerToClients", fields: [brokerId], references: [id])
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  documents    ClientDocument[]
-  reports      QuoteReport[]
+  broker       User?    @relation("BrokerToClients", fields: [brokerId], references: [id])
+
+  // New fields
+  companySize            String? // Small (1-49), Medium (50-199), Large (200+)
+  companyLocation        String?
+  leadershipCEO          String?
+  leadershipCFO          String?
+  leadershipCHRO         String?
+  planAdmin              String?
+  assignedBroker         String?
+  leadSource             String?
+  brokerCommissionSplit  Decimal?  @db.Decimal(5, 2) // Percentage
+  individualSplits       Json? // Structured JSON for splits
+  planManagementFee      Decimal?  @db.Decimal(10, 2)
+  splitWithAnotherBroker Boolean   @default(false)
+  currentCarrier         String?
+  withCarrierSince       DateTime?
+  planType               String?
+
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  documents ClientDocument[]
+  reports   QuoteReport[]
 
   @@index([policyNumber])
   @@index([renewalDate])
