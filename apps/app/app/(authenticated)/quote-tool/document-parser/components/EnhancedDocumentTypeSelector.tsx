@@ -1,16 +1,21 @@
 'use client';
 
-import React from 'react';
+import type React from 'react';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
 import { Badge } from '@repo/design-system/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@repo/design-system/components/ui/tooltip';
-import { 
-  FileText, 
-  RefreshCw, 
-  TrendingUp, 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@repo/design-system/components/ui/tooltip';
+import {
+  FileText,
+  RefreshCw,
+  TrendingUp,
   Info,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 
 interface DocumentType {
@@ -26,7 +31,9 @@ interface DocumentType {
 
 interface EnhancedDocumentTypeSelectorProps {
   activeCategory: 'Current' | 'Renegotiated' | 'Alternative';
-  onCategoryChange: (category: 'Current' | 'Renegotiated' | 'Alternative') => void;
+  onCategoryChange: (
+    category: 'Current' | 'Renegotiated' | 'Alternative'
+  ) => void;
   fileCount: Record<string, number>;
 }
 
@@ -35,86 +42,94 @@ const documentTypes: DocumentType[] = [
     id: 'Current',
     name: 'Current Plan',
     description: 'Existing baseline coverage documents',
-    detailedDescription: 'Upload your current insurance plan documents to establish a baseline for comparison. These documents represent your existing coverage terms, premiums, and benefits.',
+    detailedDescription:
+      'Upload your current insurance plan documents to establish a baseline for comparison. These documents represent your existing coverage terms, premiums, and benefits.',
     icon: <FileText className="h-6 w-6" />,
     color: 'blue',
     examples: [
       'Current policy renewal quotes',
       'Existing plan summaries',
-      'Active coverage documents'
+      'Active coverage documents',
     ],
     tips: [
       'Include all current carrier documents',
       'Ensure documents are from the current policy period',
-      'Multiple plan options can be uploaded'
-    ]
+      'Multiple plan options can be uploaded',
+    ],
   },
   {
     id: 'Renegotiated',
     name: 'Renegotiated',
     description: 'Updated terms from current carrier',
-    detailedDescription: 'Upload renegotiated quotes from your current insurance carrier. These represent improved terms, adjusted pricing, or modified coverage options from your existing provider.',
+    detailedDescription:
+      'Upload renegotiated quotes from your current insurance carrier. These represent improved terms, adjusted pricing, or modified coverage options from your existing provider.',
     icon: <RefreshCw className="h-6 w-6" />,
     color: 'orange',
     examples: [
       'Renegotiated renewal quotes',
       'Updated pricing proposals',
-      'Modified benefit structures'
+      'Modified benefit structures',
     ],
     tips: [
       'Compare against current plan documents',
       'Look for pricing improvements',
-      'Note any benefit changes'
-    ]
+      'Note any benefit changes',
+    ],
   },
   {
     id: 'Alternative',
     name: 'Alternative',
     description: 'Competitive quotes from other carriers',
-    detailedDescription: 'Upload quotes from alternative insurance carriers for competitive analysis. These documents help you evaluate market options and negotiate better terms.',
+    detailedDescription:
+      'Upload quotes from alternative insurance carriers for competitive analysis. These documents help you evaluate market options and negotiate better terms.',
     icon: <TrendingUp className="h-6 w-6" />,
     color: 'purple',
     examples: [
       'Competitor carrier quotes',
       'Market alternative proposals',
-      'New carrier options'
+      'New carrier options',
     ],
     tips: [
       'Include quotes from multiple carriers',
       'Ensure coverage levels are comparable',
-      'Note any unique benefits or features'
-    ]
-  }
+      'Note any unique benefits or features',
+    ],
+  },
 ];
 
 export default function EnhancedDocumentTypeSelector({
   activeCategory,
   onCategoryChange,
-  fileCount
+  fileCount,
 }: EnhancedDocumentTypeSelectorProps) {
-  
   const getColorClasses = (color: string, isActive: boolean) => {
     const colors = {
       blue: {
-        border: isActive ? 'border-blue-500' : 'border-gray-200 hover:border-blue-300',
+        border: isActive
+          ? 'border-blue-500'
+          : 'border-gray-200 hover:border-blue-300',
         bg: isActive ? 'bg-blue-50' : 'hover:bg-blue-25',
         icon: isActive ? 'text-blue-600' : 'text-blue-500',
-        badge: 'bg-blue-100 text-blue-800'
+        badge: 'bg-blue-100 text-blue-800',
       },
       orange: {
-        border: isActive ? 'border-orange-500' : 'border-gray-200 hover:border-orange-300',
+        border: isActive
+          ? 'border-orange-500'
+          : 'border-gray-200 hover:border-orange-300',
         bg: isActive ? 'bg-orange-50' : 'hover:bg-orange-25',
         icon: isActive ? 'text-orange-600' : 'text-orange-500',
-        badge: 'bg-orange-100 text-orange-800'
+        badge: 'bg-orange-100 text-orange-800',
       },
       purple: {
-        border: isActive ? 'border-purple-500' : 'border-gray-200 hover:border-purple-300',
+        border: isActive
+          ? 'border-purple-500'
+          : 'border-gray-200 hover:border-purple-300',
         bg: isActive ? 'bg-purple-50' : 'hover:bg-purple-25',
         icon: isActive ? 'text-purple-600' : 'text-purple-500',
-        badge: 'bg-purple-100 text-purple-800'
-      }
+        badge: 'bg-purple-100 text-purple-800',
+      },
     };
-    
+
     return colors[color as keyof typeof colors] || colors.blue;
   };
 
@@ -128,17 +143,21 @@ export default function EnhancedDocumentTypeSelector({
               <Info className="h-4 w-4 text-gray-400" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-sm">
-              <p>Choose the appropriate category for your documents. This helps the AI parser understand the context and provide better analysis.</p>
+              <p>
+                Choose the appropriate category for your documents. This helps
+                the AI parser understand the context and provide better
+                analysis.
+              </p>
             </TooltipContent>
           </Tooltip>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {documentTypes.map((type) => {
             const isActive = activeCategory === type.id;
             const count = fileCount[type.id] || 0;
             const colorClasses = getColorClasses(type.color, isActive);
-            
+
             return (
               <Tooltip key={type.id}>
                 <TooltipTrigger asChild>
@@ -161,7 +180,7 @@ export default function EnhancedDocumentTypeSelector({
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
                           )}
                         </div>
-                        
+
                         <div>
                           <h4 className="font-semibold text-gray-900">
                             {type.name}
@@ -170,7 +189,7 @@ export default function EnhancedDocumentTypeSelector({
                             {type.description}
                           </p>
                         </div>
-                        
+
                         {isActive && (
                           <div className="text-xs text-gray-500">
                             Click to upload {type.name.toLowerCase()} documents
@@ -180,9 +199,9 @@ export default function EnhancedDocumentTypeSelector({
                     </CardContent>
                   </Card>
                 </TooltipTrigger>
-                
-                <TooltipContent 
-                  side="bottom" 
+
+                <TooltipContent
+                  side="bottom"
                   className="max-w-md p-4 bg-white border border-gray-200 shadow-lg"
                   sideOffset={8}
                   avoidCollisions={true}
@@ -196,28 +215,34 @@ export default function EnhancedDocumentTypeSelector({
                         {type.detailedDescription}
                       </p>
                     </div>
-                    
+
                     <div>
                       <h5 className="text-xs font-medium text-gray-900 mb-1">
                         Examples:
                       </h5>
                       <ul className="text-xs text-gray-700 space-y-0.5">
                         {type.examples.map((example, index) => (
-                          <li key={index} className="flex items-center space-x-1">
+                          <li
+                            key={index}
+                            className="flex items-center space-x-1"
+                          >
                             <span className="w-1 h-1 bg-gray-500 rounded-full"></span>
                             <span>{example}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
-                    
+
                     <div>
                       <h5 className="text-xs font-medium text-gray-900 mb-1">
                         Tips:
                       </h5>
                       <ul className="text-xs text-gray-700 space-y-0.5">
                         {type.tips.map((tip, index) => (
-                          <li key={index} className="flex items-center space-x-1">
+                          <li
+                            key={index}
+                            className="flex items-center space-x-1"
+                          >
                             <AlertCircle className="h-3 w-3 text-blue-600 flex-shrink-0" />
                             <span>{tip}</span>
                           </li>
