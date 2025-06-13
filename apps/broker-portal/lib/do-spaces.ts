@@ -8,6 +8,7 @@ export const spacesClient = new S3Client({
     accessKeyId: env.DO_SPACES_KEY,
     secretAccessKey: env.DO_SPACES_SECRET,
   },
+  forcePathStyle: false, // Use virtual-hosted-style URLs
 });
 
 export async function uploadToSpaces(
