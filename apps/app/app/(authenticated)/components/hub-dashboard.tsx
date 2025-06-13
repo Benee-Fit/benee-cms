@@ -48,7 +48,7 @@ const favoriteApps: FavoriteApp[] = [
     icon: FileText,
   },
   {
-    title: 'Reports',
+    title: 'Saved Quotes',
     href: '/quote-tool/reports',
     icon: FileCheck,
   },
