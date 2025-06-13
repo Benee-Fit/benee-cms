@@ -14,7 +14,7 @@ export const DOCUMENT_TYPES = [
   'Invoice',
   'Renewal',
   'Policy',
-  'Other'
+  'Other',
 ];
 
 export interface DocumentAnalysisResult {
@@ -33,13 +33,13 @@ export async function analyzeInsuranceDocument(
   fileName: string,
   clientData: Array<{ companyName: string; policyNumber: string }>
 ): Promise<DocumentAnalysisResult> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const prompt = `
 You are an expert insurance document processor. Analyze the uploaded PDF document and extract key information.
 
 AVAILABLE CLIENTS:
-${clientData.map(c => `- ${c.companyName} (Policy: ${c.policyNumber})`).join('\n')}
+${clientData.map((c) => `- ${c.companyName} (Policy: ${c.policyNumber})`).join('\n')}
 
 TASKS:
 1. Extract the following information from the PDF:
@@ -81,36 +81,36 @@ CRITICAL REQUIREMENTS:
 
   let text = '';
   let jsonText = '';
-  
+
   try {
     // Convert buffer to base64 for Gemini
     const base64Data = pdfBuffer.toString('base64');
-    
+
     const result = await model.generateContent([
       {
         inlineData: {
           data: base64Data,
-          mimeType: 'application/pdf'
-        }
+          mimeType: 'application/pdf',
+        },
       },
-      prompt
+      prompt,
     ]);
-    
+
     const response = await result.response;
     text = response.text();
-    
+
     // Extract JSON from markdown code blocks if present
     jsonText = text;
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       jsonText = jsonMatch[1];
     }
-    
+
     // Clean up any remaining markdown or extra whitespace
     jsonText = jsonText.trim();
-    
+
     const parsed = JSON.parse(jsonText);
-    
+
     // Validate the response format
     if (typeof parsed !== 'object') {
       throw new Error('Invalid response format');
@@ -122,20 +122,24 @@ CRITICAL REQUIREMENTS:
     }
 
     // Ensure confidence is a number between 0-100
-    if (typeof parsed.confidence !== 'number' || parsed.confidence < 0 || parsed.confidence > 100) {
+    if (
+      typeof parsed.confidence !== 'number' ||
+      parsed.confidence < 0 ||
+      parsed.confidence > 100
+    ) {
       parsed.confidence = 50;
     }
 
     return parsed as DocumentAnalysisResult;
   } catch (error) {
     console.error('Error analyzing document:', error);
-    
+
     // Log the actual response for debugging
     if (error instanceof SyntaxError) {
       console.error('Gemini response that failed to parse:', text);
       console.error('Extracted JSON text:', jsonText);
     }
-    
+
     // Return a fallback result
     return {
       carrier: undefined,
