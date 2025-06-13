@@ -202,6 +202,9 @@ export async function POST(request: NextRequest) {
               const fileKey = `client-documents/${matchedClientId}/${Date.now()}-${entry.entryName}`;
               const fileUrl = await uploadToSpaces(fileKey, pdfBuffer, 'application/pdf');
 
+              // Generate document title from filename (remove extension)
+              const documentTitle = entry.entryName.replace(/\.[^/.]+$/, '');
+
               // Save to database
               await database.clientDocument.create({
                 data: {
@@ -210,7 +213,9 @@ export async function POST(request: NextRequest) {
                   fileType: 'application/pdf',
                   fileUrl: fileUrl,
                   documentType: analysis.documentType,
-                  description: `Extracted data: ${JSON.stringify(analysis)}`,
+                  description: analysis.summary || 'Document processed via mass upload',
+                  documentTitle,
+                  jsonData: analysis,
                 },
               });
 

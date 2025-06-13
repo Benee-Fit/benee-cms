@@ -31,25 +31,25 @@ enum AccessLevel {
 
 // User model
 model User {
-  id                String       @id @default(cuid())
-  clerkId           String       @unique
-  email             String       @unique
-  userType          UserType
-  accessLevel       AccessLevel
-  emailVerified     Boolean      @default(false)
-  isActive          Boolean      @default(true)
-  avatarUrl         String?
-  lastLoginAt       DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  deletedAt         DateTime?
-  
+  id            String      @id @default(cuid())
+  clerkId       String      @unique
+  email         String      @unique
+  userType      UserType
+  accessLevel   AccessLevel
+  emailVerified Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  avatarUrl     String?
+  lastLoginAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
   // Relationships
   managedClients    BrokerClient[]    @relation("BrokerToClients")
   uploadedDocuments ClientDocument[]  @relation("DocumentUploader")
   createdReports    QuoteReport[]     @relation("ReportCreator")
   createdShareLinks ReportShareLink[] @relation("ShareLinkCreator")
-  
+
   @@index([clerkId])
   @@index([email])
 }
@@ -70,18 +70,18 @@ model Post {
 }
 
 model BrokerClient {
-  id           String                    @id @default(cuid())
+  id           String           @id @default(cuid())
   companyName  String
-  policyNumber String                    @unique
+  policyNumber String           @unique
   renewalDate  DateTime
   headcount    Int
-  premium      Decimal                   @db.Decimal(10, 2)
-  revenue      Decimal                   @db.Decimal(10, 2)
+  premium      Decimal          @db.Decimal(10, 2)
+  revenue      Decimal          @db.Decimal(10, 2)
   industry     String
-  brokerId     String?                   // Reference to the broker managing this client
-  broker       User?                     @relation("BrokerToClients", fields: [brokerId], references: [id])
-  createdAt    DateTime                  @default(now())
-  updatedAt    DateTime                  @updatedAt
+  brokerId     String? // Reference to the broker managing this client
+  broker       User?            @relation("BrokerToClients", fields: [brokerId], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
   documents    ClientDocument[]
   reports      QuoteReport[]
 
@@ -91,19 +91,21 @@ model BrokerClient {
 }
 
 model ClientDocument {
-  id           String       @id @default(cuid())
-  clientId     String
-  client       BrokerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  uploadedById String?      // Reference to the user who uploaded the document
-  uploadedBy   User?        @relation("DocumentUploader", fields: [uploadedById], references: [id])
-  fileName     String
-  fileType     String
-  fileUrl      String
-  uploadDate   DateTime     @default(now())
-  documentType String
-  description  String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  clientId      String
+  client        BrokerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedById  String? // Reference to the user who uploaded the document
+  uploadedBy    User?        @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  fileName      String
+  fileType      String
+  fileUrl       String
+  uploadDate    DateTime     @default(now())
+  documentType  String
+  description   String?
+  documentTitle String? // Title of the document
+  jsonData      Json? // Structured data extracted from the document
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([clientId])
   @@index([uploadedById])
@@ -111,19 +113,19 @@ model ClientDocument {
 
 // For storing the quote tool report data
 model QuoteReport {
-  id            String         @id @default(cuid())
-  title         String
-  clientId      String?        // Optional if reports can be created without associating with a client
-  client        BrokerClient?  @relation(fields: [clientId], references: [id])
-  createdById   String
-  createdBy     User           @relation("ReportCreator", fields: [createdById], references: [id])
-  data          Json           // The structured report data (coverages, premiums, etc.)
-  documentIds   String[]       // Array of document IDs used to generate this report
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  
+  id          String        @id @default(cuid())
+  title       String
+  clientId    String? // Optional if reports can be created without associating with a client
+  client      BrokerClient? @relation(fields: [clientId], references: [id])
+  createdById String
+  createdBy   User          @relation("ReportCreator", fields: [createdById], references: [id])
+  data        Json // The structured report data (coverages, premiums, etc.)
+  documentIds String[] // Array of document IDs used to generate this report
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
   // Relationships
-  shareLinks    ReportShareLink[]
+  shareLinks ReportShareLink[]
 
   @@index([clientId])
   @@index([createdById])
@@ -131,19 +133,19 @@ model QuoteReport {
 
 // For managing shareable links to reports
 model ReportShareLink {
-  id              String      @id @default(cuid())
-  reportId        String
-  report          QuoteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  shareToken      String      @unique // Unique token for the link
-  createdById     String
-  createdBy       User        @relation("ShareLinkCreator", fields: [createdById], references: [id])
-  expiresAt       DateTime?   // Optional expiration date
-  password        String?     // Optional password protection
-  accessCount     Int         @default(0) // Track number of times accessed
-  lastAccessedAt  DateTime?   // Last time the link was accessed
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  reportId       String
+  report         QuoteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  shareToken     String      @unique // Unique token for the link
+  createdById    String
+  createdBy      User        @relation("ShareLinkCreator", fields: [createdById], references: [id])
+  expiresAt      DateTime? // Optional expiration date
+  password       String? // Optional password protection
+  accessCount    Int         @default(0) // Track number of times accessed
+  lastAccessedAt DateTime? // Last time the link was accessed
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([reportId])
   @@index([shareToken])

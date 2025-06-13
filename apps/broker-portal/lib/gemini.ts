@@ -26,6 +26,7 @@ export interface DocumentAnalysisResult {
   confidence: number;
   matchedPolicyNumber?: string;
   matchedCompanyName?: string;
+  summary?: string;
 }
 
 export async function analyzeInsuranceDocument(
@@ -58,6 +59,8 @@ TASKS:
 
 4. Provide a confidence score (0-100) for your analysis
 
+5. Generate a brief summary (2-3 sentences) describing the key contents and purpose of this document
+
 RESPONSE FORMAT:
 You must respond with ONLY a valid JSON object in this exact format:
 {
@@ -68,7 +71,8 @@ You must respond with ONLY a valid JSON object in this exact format:
   "documentType": "one of the document types",
   "confidence": number between 0-100,
   "matchedPolicyNumber": "policy number or null",
-  "matchedCompanyName": "company name or null"
+  "matchedCompanyName": "company name or null",
+  "summary": "Brief 2-3 sentence summary of the document"
 }
 
 CRITICAL REQUIREMENTS:
@@ -150,6 +154,7 @@ CRITICAL REQUIREMENTS:
       confidence: 0,
       matchedPolicyNumber: undefined,
       matchedCompanyName: undefined,
+      summary: 'Unable to analyze document content.',
     };
   }
 }
