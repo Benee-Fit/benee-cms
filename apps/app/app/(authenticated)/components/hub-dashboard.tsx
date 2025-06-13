@@ -32,12 +32,13 @@ interface FavoriteApp {
 const favoriteApps: FavoriteApp[] = [
   {
     title: 'Broker Portal',
-    href: '/broker-portal',
+    href: process.env.NEXT_PUBLIC_BROKER_PORTAL_URL || '/broker-portal',
     icon: BarChart3,
+    isExternal: true,
   },
   {
     title: 'HR Portal',
-    href: 'http://localhost:9002',
+    href: process.env.NEXT_PUBLIC_HR_PORTAL_URL || '/hr-portal',
     icon: Building2,
     isExternal: true,
   },
