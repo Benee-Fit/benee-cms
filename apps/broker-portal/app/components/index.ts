@@ -19,7 +19,7 @@ export { ChatContext } from './chat/chat-context';
 export { AppHeader } from './layout/AppHeader';
 export { AppSidebar } from './layout/AppSidebar';
 export { PageLayout } from './layout/PageLayout';
-export { PageTitleContext } from './layout/PageTitleContext';
+export { PageTitleProvider, usePageTitle } from './layout/PageTitleContext';
 
 // Broker details components
 export { BrokerDetailsModal } from './broker-details/broker-details-modal';
