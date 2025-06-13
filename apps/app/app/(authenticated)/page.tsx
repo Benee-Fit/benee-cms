@@ -4,9 +4,9 @@ import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
 import { AvatarStack } from './components/avatar-stack';
-import { BrokerPortalContent } from './components/broker-portal-content';
 import { Cursors } from './components/cursors';
 import { Header } from './components/header';
+import { HubDashboard } from './components/hub-dashboard';
 
 const title = 'Acme Inc';
 const description = 'My application.';
@@ -39,7 +39,7 @@ const App = async () => {
           </CollaborationProvider>
         )}
       </Header>
-      <BrokerPortalContent />
+      <HubDashboard />
     </>
   );
 };
