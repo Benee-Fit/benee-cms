@@ -28,13 +28,30 @@ interface TileInfo {
   icon: LucideIcon;
 }
 
+// Function to get the correct href based on environment
+const getHref = (path: string) => {
+  // Check if we're on the broker portal domain or localhost:3006
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    
+    // If on broker portal subdomain or localhost:3006, use relative paths
+    if (hostname.includes('broker-portal') || port === '3006') {
+      return path;
+    }
+  }
+  
+  // Otherwise, use full broker-portal paths for main app
+  return `/broker-portal${path}`;
+};
+
 const tiles: TileInfo[] = [
   {
     title: 'Revenue Breakdown',
     description: 'Analyze commission and revenue metrics.',
     tooltipContent:
       'View team performance, carrier revenue, and commission trends.',
-    href: '/broker-portal/revenue-breakdown',
+    href: '/revenue-breakdown',
     icon: BarChart3,
   },
   {
@@ -42,7 +59,7 @@ const tiles: TileInfo[] = [
     description: 'Monitor client portfolio performance.',
     tooltipContent:
       'Track client metrics, uploads, and performance indicators.',
-    href: '/broker-portal/client-insights',
+    href: '/client-insights',
     icon: Users2,
   },
   {
@@ -50,7 +67,7 @@ const tiles: TileInfo[] = [
     description: 'Benchmark against industry standards.',
     tooltipContent:
       'Compare premiums, analyze company size tiers, and track quote sources.',
-    href: '/broker-portal/industry-insight',
+    href: '/industry-insight',
     icon: LineChart,
   },
   {
@@ -58,7 +75,7 @@ const tiles: TileInfo[] = [
     description: 'Track and manage your active quotes.',
     tooltipContent:
       'View quote statuses, follow-ups needed, and aging analysis.',
-    href: '/broker-portal/outstanding-quotes',
+    href: '/outstanding-quotes',
     icon: FileSpreadsheet,
   },
 ];
@@ -73,7 +90,7 @@ export function BrokerPortalContent() {
       <section className="py-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {tiles.map((tile) => (
-            <Link key={tile.title} href={tile.href} className="h-full">
+            <Link key={tile.title} href={getHref(tile.href)} className="h-full">
               <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200 ease-in-out group border-primary/30 hover:border-primary">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-lg font-semibold text-primary">

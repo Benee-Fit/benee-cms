@@ -23,34 +23,34 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
   }
 
   // Define the navigation items for the app header
-const navItems = [
-  { href: '/broker-portal', label: 'Broker Portal' },
-  { href: 'https://hr-portal.beneefitapp.com', label: 'HR Portal' }
-];
+  const navItems = [
+    { href: 'https://broker-portal.benealytics.store', label: 'Broker Portal' },
+    { href: 'https://hr-portal.benealytics.store', label: 'HR Portal' },
+  ];
 
   // Define action buttons for the app header
-const actionButtons = [
-  { href: '/quote-tool/document-parser', label: 'New Quote' }
-];
+  const actionButtons = [
+    { href: '/quote-tool/document-parser', label: 'New Quote' },
+  ];
 
-return (
-  <NotificationsProvider userId={user.id}>
-    <div className="flex min-h-screen flex-col">
-      <AppHeader 
-        portalName="Benee-fit Apps" 
-        navItems={navItems}
-        actionButtons={actionButtons}
-        afterSignOutUrl="/sign-in" 
-      />
-      <div className="flex-grow p-4">
-        <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl p-6">
-          {children}
+  return (
+    <NotificationsProvider userId={user.id}>
+      <div className="flex min-h-screen flex-col">
+        <AppHeader
+          portalName="Benee-fit Apps"
+          navItems={navItems}
+          actionButtons={actionButtons}
+          afterSignOutUrl="/sign-in"
+        />
+        <div className="flex-grow p-4">
+          <div className="bg-muted/50 flex-1 min-h-[50vh] md:min-h-min rounded-xl p-6">
+            {children}
+          </div>
         </div>
+        <PostHogIdentifier />
       </div>
-      <PostHogIdentifier />
-    </div>
-  </NotificationsProvider>
-);
+    </NotificationsProvider>
+  );
 };
 
 export default AppLayout;
