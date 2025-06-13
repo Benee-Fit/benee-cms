@@ -3,8 +3,8 @@ import { auth } from '@repo/auth/server';
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
-import HomePage from '../../../broker-portal/app/page';
 import { AvatarStack } from './components/avatar-stack';
+import { BrokerPortalContent } from './components/broker-portal-content';
 import { Cursors } from './components/cursors';
 import { Header } from './components/header';
 
@@ -39,7 +39,7 @@ const App = async () => {
           </CollaborationProvider>
         )}
       </Header>
-      <HomePage />
+      <BrokerPortalContent />
     </>
   );
 };
