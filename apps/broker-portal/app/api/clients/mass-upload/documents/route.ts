@@ -202,8 +202,9 @@ export async function POST(request: NextRequest) {
               const fileKey = `client-documents/${matchedClientId}/${Date.now()}-${entry.entryName}`;
               const fileUrl = await uploadToSpaces(fileKey, pdfBuffer, 'application/pdf');
 
-              // Generate document title from filename (remove extension)
-              const documentTitle = entry.entryName.replace(/\.[^/.]+$/, '');
+              // Generate document title from filename (remove path and extension)
+              const fileName = entry.entryName.split('/').pop() || entry.entryName;
+              const documentTitle = fileName.replace(/\.[^/.]+$/, '');
 
               // Save to database
               await database.clientDocument.create({
