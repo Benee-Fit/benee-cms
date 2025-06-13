@@ -67,27 +67,16 @@ const favoriteApps: FavoriteApp[] = [
 
 export function HubDashboard() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-blue-500 to-cyan-400">
+    <div className="min-h-screen bg-gray-50">
       {/* Header Banner */}
-      <div className="relative px-6 pt-8 pb-12">
+      <div className="relative px-6 pt-8 pb-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-semibold text-white mb-8">Hello, Sameer.</h1>
-          
-          {/* Navigation Tabs */}
-          <div className="flex space-x-1 bg-white/20 backdrop-blur-sm rounded-lg p-1 max-w-fit">
-            <button className="px-4 py-2 bg-white text-blue-600 rounded-md font-medium">Hub</button>
-            <button className="px-4 py-2 text-white hover:bg-white/20 rounded-md">Our Way Values</button>
-            <button className="px-4 py-2 text-white hover:bg-white/20 rounded-md">Life at Benee</button>
-            <button className="px-4 py-2 text-white hover:bg-white/20 rounded-md">Benee University</button>
-            <button className="px-4 py-2 text-white hover:bg-white/20 rounded-md">Onboarding Hub</button>
-            <button className="px-4 py-2 text-white hover:bg-white/20 rounded-md">Pay Transparency</button>
-            <button className="px-4 py-2 text-white hover:bg-white/20 rounded-md">Key Policies & FAQs</button>
-          </div>
+          <h1 className="text-3xl font-semibold text-gray-900 mb-8">Hello, Sameer.</h1>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 pb-8 -mt-4">
+      <div className="max-w-7xl mx-auto px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Left Column - News Cards */}
