@@ -79,6 +79,9 @@ CRITICAL REQUIREMENTS:
 - Document type must be exactly one from the provided list
 `;
 
+  let text = '';
+  let jsonText = '';
+  
   try {
     // Convert buffer to base64 for Gemini
     const base64Data = pdfBuffer.toString('base64');
@@ -94,10 +97,10 @@ CRITICAL REQUIREMENTS:
     ]);
     
     const response = await result.response;
-    const text = response.text();
+    text = response.text();
     
     // Extract JSON from markdown code blocks if present
-    let jsonText = text;
+    jsonText = text;
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
       jsonText = jsonMatch[1];
