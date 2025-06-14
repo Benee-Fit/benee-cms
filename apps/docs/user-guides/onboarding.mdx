@@ -1,0 +1,129 @@
+---
+title: 'Account Onboarding'
+description: 'Complete guide to setting up your Benee-CMS account'
+---
+
+# Account Onboarding
+
+The onboarding process is designed to collect essential information about your organization and set up your account for optimal use of Benee-CMS features.
+
+## Onboarding Steps
+
+The onboarding process consists of 2 streamlined steps to get you started quickly:
+
+### Step 1: Organization Details
+
+In the first step, you'll provide basic information about your organization:
+
+<AccordionGroup>
+  <Accordion icon="building" title="Organization Information">
+    - **Organization Name**: Your company or firm name
+    - **Website**: Your organization's website URL
+    - **Organization Type**: Select from predefined categories
+    - **Company Size**: Choose the range that best describes your organization
+    - **Logo Upload**: Optional company logo for branding
+  </Accordion>
+</AccordionGroup>
+
+### Step 2: Business Details
+
+The second step focuses on your business operations:
+
+<AccordionGroup>
+  <Accordion icon="map-pin" title="Business Address">
+    Complete address information including:
+    - Street address
+    - City, State, ZIP code
+    - Country
+  </Accordion>
+  <Accordion icon="briefcase" title="Business Focus">
+    - **Lines of Business**: Select the insurance products you work with
+    - **Preferred Carriers**: Choose your preferred insurance carriers
+  </Accordion>
+</AccordionGroup>
+
+## Data Collection Structure
+
+The onboarding process collects the following structured data:
+
+```typescript
+interface OnboardingData {
+  // Organization Details
+  website: string;
+  organizationName: string;
+  organizationLogo?: File;
+  organizationType: string;
+  companySize: string;
+  
+  // Business Address
+  businessAddress: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  
+  // Business Focus
+  linesOfBusiness: string[];
+  preferredCarriers: string[];
+}
+```
+
+## Navigation and Progress
+
+- **Progress Tracking**: Visual progress indicator shows completion status
+- **Back Navigation**: Move between steps to review and edit information
+- **Form Validation**: Real-time validation ensures all required fields are completed
+- **Save & Continue**: Data is preserved as you navigate between steps
+
+## After Onboarding
+
+Once you complete the onboarding process:
+
+1. **Account Setup**: Your organization profile is created and configured
+2. **Access Granted**: Full access to all Benee-CMS features is enabled
+3. **Dashboard Access**: You're redirected to the main application dashboard
+4. **Feature Exploration**: Begin using the Quote Tool and other features
+
+## Tips for Success
+
+<Card title="Best Practices" icon="lightbulb">
+  - Have your organization information readily available
+  - Upload a high-quality logo for better branding
+  - Select all relevant lines of business to unlock appropriate features
+  - Choose carriers you work with regularly for better matching
+</Card>
+
+## Updating Information
+
+After onboarding, you can update your organization information through:
+- **Settings Page**: Access through the main navigation
+- **Profile Management**: Update basic organization details
+- **Business Configuration**: Modify lines of business and preferred carriers
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion icon="exclamation-triangle" title="Upload Issues">
+    If you experience problems uploading your logo:
+    - Ensure the file is in JPG, PNG, or SVG format
+    - Keep file size under 5MB
+    - Try refreshing the page and uploading again
+  </Accordion>
+  <Accordion icon="wifi-off" title="Connection Problems">
+    If the onboarding process doesn't save properly:
+    - Check your internet connection
+    - Ensure all required fields are completed
+    - Try refreshing and starting the step again
+  </Accordion>
+</AccordionGroup>
+
+## Support
+
+If you need assistance during onboarding:
+- Use the in-app help chat
+- Email: support@benee.com
+- Schedule a personalized onboarding session

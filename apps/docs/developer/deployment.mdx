@@ -1,0 +1,566 @@
+---
+title: 'Deployment Guide'
+description: 'Complete guide to deploying Benee-CMS applications'
+---
+
+# Deployment Guide
+
+This guide covers deploying the Benee-CMS monorepo to various environments, including staging and production deployments.
+
+## Deployment Overview
+
+<Card title="Deployment Strategy" icon="rocket">
+  Benee-CMS uses a modern deployment pipeline with Vercel for frontend applications and automated CI/CD for seamless deployments across multiple environments.
+</Card>
+
+## Environment Setup
+
+### Environment Tiers
+
+<AccordionGroup>
+  <Accordion icon="laptop" title="Development">
+    **Purpose**: Local development and testing
+    
+    **Characteristics**:
+    - Local database (PostgreSQL)
+    - Local environment variables
+    - Hot reloading enabled
+    - Debug mode activated
+    - Test data and mock services
+  </Accordion>
+  <Accordion icon="test-tube" title="Staging">
+    **Purpose**: Pre-production testing and QA
+    
+    **Characteristics**:
+    - Staging database with production-like data
+    - Staging API endpoints
+    - Production-like configuration
+    - Automated testing enabled
+    - Performance monitoring
+  </Accordion>
+  <Accordion icon="globe" title="Production">
+    **Purpose**: Live application serving real users
+    
+    **Characteristics**:
+    - Production database
+    - CDN and caching enabled
+    - Error monitoring and alerting
+    - Performance optimization
+    - Backup and disaster recovery
+  </Accordion>
+</AccordionGroup>
+
+## Vercel Deployment
+
+### Project Configuration
+
+Each application in the monorepo has its own Vercel project configuration:
+
+```json vercel.json
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "rootDirectory": "apps/web"
+}
+```
+
+### Application Mappings
+
+<AccordionGroup>
+  <Accordion icon="globe" title="Web Application">
+    **Repository**: `/apps/web`
+    
+    **Domains**:
+    - Production: `https://benee.com`
+    - Staging: `https://staging.benee.com`
+    
+    **Build Settings**:
+    ```bash
+    Framework: Next.js
+    Build Command: npm run build
+    Output Directory: .next
+    Install Command: npm install --workspace=apps/web
+    ```
+  </Accordion>
+  <Accordion icon="application" title="Main Application">
+    **Repository**: `/apps/app`
+    
+    **Domains**:
+    - Production: `https://app.benee.com`
+    - Staging: `https://staging-app.benee.com`
+    
+    **Build Settings**:
+    ```bash
+    Framework: Next.js
+    Build Command: npm run build
+    Output Directory: .next
+    Install Command: npm install --workspace=apps/app
+    ```
+  </Accordion>
+  <Accordion icon="briefcase" title="Broker Portal">
+    **Repository**: `/apps/broker-portal`
+    
+    **Domains**:
+    - Production: `https://broker.benee.com`
+    - Staging: `https://staging-broker.benee.com`
+  </Accordion>
+  <Accordion icon="book" title="Documentation">
+    **Repository**: `/apps/docs`
+    
+    **Domains**:
+    - Production: `https://docs.benee.com`
+    - Staging: `https://staging-docs.benee.com`
+    
+    **Build Settings**:
+    ```bash
+    Framework: Other
+    Build Command: npm run build
+    Output Directory: out
+    Install Command: npm install --workspace=apps/docs
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+### Production Variables
+
+<AccordionGroup>
+  <Accordion icon="shield" title="Authentication">
+    ```bash
+    # Clerk Authentication
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+    CLERK_SECRET_KEY=sk_live_...
+    CLERK_WEBHOOK_SECRET=whsec_...
+    
+    # Authentication URLs
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
+    ```
+  </Accordion>
+  <Accordion icon="database" title="Database">
+    ```bash
+    # Production Database
+    DATABASE_URL=postgresql://user:password@host:5432/benee_cms_prod
+    DIRECT_URL=postgresql://user:password@host:5432/benee_cms_prod
+    
+    # Connection Pooling
+    PGBOUNCER_URL=postgresql://user:password@pgbouncer:5432/benee_cms_prod
+    ```
+  </Accordion>
+  <Accordion icon="cpu" title="AI Services">
+    ```bash
+    # Google Gemini AI
+    GOOGLE_GENERATIVE_AI_API_KEY=your_production_gemini_key
+    
+    # PDF.co
+    PDFCO_API_KEY=your_production_pdfco_key
+    ```
+  </Accordion>
+  <Accordion icon="globe" title="Application URLs">
+    ```bash
+    # Production URLs
+    NEXT_PUBLIC_APP_URL=https://app.benee.com
+    NEXT_PUBLIC_WEB_URL=https://benee.com
+    NEXT_PUBLIC_API_URL=https://api.benee.com
+    NEXT_PUBLIC_BROKER_PORTAL_URL=https://broker.benee.com
+    
+    # Vercel-specific
+    VERCEL_PROJECT_PRODUCTION_URL=benee.com
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Staging Variables
+
+Environment variables for staging should mirror production but use staging-specific resources:
+
+```bash
+# Staging Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+
+# Staging Database
+DATABASE_URL=postgresql://user:password@staging-host:5432/benee_cms_staging
+
+# Staging URLs
+NEXT_PUBLIC_APP_URL=https://staging-app.benee.com
+NEXT_PUBLIC_WEB_URL=https://staging.benee.com
+```
+
+## Build Process
+
+### Monorepo Build Strategy
+
+The build process handles the monorepo structure efficiently:
+
+```bash
+# Install dependencies for all workspaces
+npm install
+
+# Build specific application
+npm run build --workspace=apps/web
+
+# Build all applications
+npm run build
+```
+
+### Build Optimization
+
+<AccordionGroup>
+  <Accordion icon="zap" title="Next.js Optimizations">
+    ```javascript next.config.js
+    /** @type {import('next').NextConfig} */
+    const nextConfig = {
+      // Production optimizations
+      swcMinify: true,
+      compress: true,
+      
+      // Image optimization
+      images: {
+        domains: ['images.clerk.dev'],
+        formats: ['image/webp', 'image/avif'],
+      },
+      
+      // Bundle analysis
+      experimental: {
+        bundlePagesRouterDependencies: true,
+      },
+    };
+    ```
+  </Accordion>
+  <Accordion icon="package" title="Bundle Optimization">
+    - Tree shaking for unused code elimination
+    - Code splitting for optimal loading
+    - Dynamic imports for lazy loading
+    - Asset optimization and compression
+  </Accordion>
+</AccordionGroup>
+
+## Database Deployment
+
+### Migration Strategy
+
+<AccordionGroup>
+  <Accordion icon="database" title="Production Migrations">
+    ```bash
+    # Generate migration
+    npx prisma migrate dev --name add_new_feature
+    
+    # Deploy to production
+    npx prisma migrate deploy
+    
+    # Generate client
+    npx prisma generate
+    ```
+  </Accordion>
+  <Accordion icon="shield" title="Safe Migration Practices">
+    - **Backward Compatible**: Ensure migrations don't break existing deployments
+    - **Staging First**: Test all migrations in staging environment
+    - **Rollback Plan**: Prepare rollback scripts for critical migrations
+    - **Downtime Consideration**: Plan for minimal or zero-downtime deployments
+  </Accordion>
+</AccordionGroup>
+
+### Database Backup
+
+```bash
+# Automated backup script
+#!/bin/bash
+DB_URL="postgresql://user:password@host:5432/benee_cms_prod"
+BACKUP_DIR="/backups/$(date +%Y-%m-%d)"
+FILENAME="benee_cms_backup_$(date +%Y%m%d_%H%M%S).sql"
+
+mkdir -p $BACKUP_DIR
+pg_dump $DB_URL > "$BACKUP_DIR/$FILENAME"
+
+# Compress backup
+gzip "$BACKUP_DIR/$FILENAME"
+
+# Upload to cloud storage
+aws s3 cp "$BACKUP_DIR/$FILENAME.gz" s3://benee-backups/database/
+```
+
+## CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+```yaml .github/workflows/deploy.yml
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm run test
+      
+      - name: Run type check
+        run: npm run type-check
+      
+      - name: Run linting
+        run: npm run lint
+
+  deploy-staging:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./apps/web
+
+  deploy-production:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./apps/web
+```
+
+### Deployment Automation
+
+<Card title="Automated Deployments" icon="robot">
+  - **Staging**: Automatic deployment on push to `develop` branch
+  - **Production**: Automatic deployment on push to `main` branch
+  - **Preview**: Automatic preview deployments for pull requests
+  - **Rollback**: Quick rollback to previous deployments if issues arise
+</Card>
+
+## Security Considerations
+
+### Production Security
+
+<AccordionGroup>
+  <Accordion icon="shield" title="Environment Variables">
+    - Store sensitive variables in Vercel environment settings
+    - Use different keys/secrets for each environment
+    - Rotate API keys regularly
+    - Never commit secrets to version control
+  </Accordion>
+  <Accordion icon="lock" title="Access Control">
+    - Limit Vercel project access to authorized team members
+    - Use separate Clerk instances for staging and production
+    - Implement proper RBAC in the application
+    - Monitor access logs and suspicious activity
+  </Accordion>
+  <Accordion icon="network" title="Network Security">
+    - Configure proper CORS policies
+    - Use HTTPS for all endpoints
+    - Implement rate limiting
+    - Set up security headers
+  </Accordion>
+</AccordionGroup>
+
+### Secrets Management
+
+```bash
+# Using Vercel CLI to manage secrets
+vercel env add DATABASE_URL production
+vercel env add CLERK_SECRET_KEY production
+vercel env add GOOGLE_GENERATIVE_AI_API_KEY production
+
+# List environment variables
+vercel env list
+
+# Remove environment variable
+vercel env remove DEPRECATED_KEY production
+```
+
+## Monitoring and Observability
+
+### Application Monitoring
+
+<AccordionGroup>
+  <Accordion icon="activity" title="Performance Monitoring">
+    - **Vercel Analytics**: Built-in performance metrics
+    - **Core Web Vitals**: Monitor user experience metrics
+    - **API Response Times**: Track backend performance
+    - **Error Rates**: Monitor application stability
+  </Accordion>
+  <Accordion icon="bug" title="Error Tracking">
+    - **Vercel Speed Insights**: Performance analysis
+    - **Console Logging**: Structured application logs
+    - **Custom Error Boundaries**: Graceful error handling
+    - **Alert Notifications**: Immediate issue notifications
+  </Accordion>
+</AccordionGroup>
+
+### Health Checks
+
+```typescript
+// Health check endpoint
+// pages/api/health.ts
+export default function handler(req, res) {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version,
+    database: 'connected', // Add actual DB check
+    services: {
+      clerk: 'ok',
+      gemini: 'ok',
+      pdfco: 'ok'
+    }
+  };
+  
+  res.status(200).json(health);
+}
+```
+
+## Rollback Strategy
+
+### Quick Rollback
+
+<Card title="Rollback Process" icon="rotate-ccw">
+  1. **Identify Issue**: Monitor alerts and user reports
+  2. **Access Vercel Dashboard**: Navigate to project deployments
+  3. **Select Previous Version**: Choose last known good deployment
+  4. **Promote to Production**: Click "Promote to Production"
+  5. **Verify Rollback**: Confirm application is working correctly
+</Card>
+
+### Database Rollback
+
+```bash
+# Prepare rollback migration
+npx prisma migrate reset --force
+
+# Restore from backup
+pg_restore -d benee_cms_prod backup_file.sql
+
+# Apply necessary migrations
+npx prisma migrate deploy
+```
+
+## Performance Optimization
+
+### Production Optimizations
+
+<AccordionGroup>
+  <Accordion icon="zap" title="Frontend Performance">
+    - **Static Generation**: Use SSG for marketing pages
+    - **Image Optimization**: Automatic WebP/AVIF conversion
+    - **Code Splitting**: Automatic route-based splitting
+    - **Edge Caching**: Leverage Vercel Edge Network
+  </Accordion>
+  <Accordion icon="server" title="Backend Performance">
+    - **Database Indexing**: Optimize query performance
+    - **Connection Pooling**: Efficient database connections
+    - **API Caching**: Cache frequent API responses
+    - **CDN Integration**: Serve static assets from CDN
+  </Accordion>
+</AccordionGroup>
+
+## Disaster Recovery
+
+### Backup Strategy
+
+<Card title="Backup Plan" icon="hard-drive">
+  - **Database**: Daily automated backups with 30-day retention
+  - **File Storage**: Versioned storage with redundancy
+  - **Configuration**: Version-controlled infrastructure as code
+  - **Recovery Testing**: Monthly recovery drills
+</Card>
+
+### Recovery Procedures
+
+1. **Assess Impact**: Determine scope of the incident
+2. **Activate Team**: Notify incident response team
+3. **Isolate Issue**: Prevent further damage
+4. **Restore Services**: Use backup and rollback procedures
+5. **Communicate**: Update stakeholders on progress
+6. **Post-Incident**: Conduct review and improve processes
+
+## Troubleshooting Deployments
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion icon="x-circle" title="Build Failures">
+    **Symptoms**: Deployment fails during build phase
+    
+    **Solutions**:
+    - Check build logs in Vercel dashboard
+    - Verify all dependencies are properly installed
+    - Ensure environment variables are correctly set
+    - Test build locally with production settings
+  </Accordion>
+  <Accordion icon="database" title="Database Connection Issues">
+    **Symptoms**: Application can't connect to database
+    
+    **Solutions**:
+    - Verify DATABASE_URL is correctly configured
+    - Check database server is accessible
+    - Confirm connection limits aren't exceeded
+    - Test connection from local environment
+  </Accordion>
+  <Accordion icon="shield" title="Authentication Problems">
+    **Symptoms**: Users can't sign in or access is denied
+    
+    **Solutions**:
+    - Verify Clerk configuration matches environment
+    - Check domain settings in Clerk dashboard
+    - Confirm environment variables are set correctly
+    - Test authentication flow in staging
+  </Accordion>
+</AccordionGroup>
+
+## Deployment Checklist
+
+### Pre-Deployment
+
+- [ ] All tests passing
+- [ ] Code review completed
+- [ ] Environment variables configured
+- [ ] Database migrations tested
+- [ ] Security scan completed
+- [ ] Performance benchmarks met
+
+### Post-Deployment
+
+- [ ] Health checks passing
+- [ ] Core functionality verified
+- [ ] Monitor error rates
+- [ ] Check performance metrics
+- [ ] Verify user authentication
+- [ ] Test critical user flows
+
+### Emergency Contacts
+
+- **Technical Lead**: For deployment issues
+- **DevOps Team**: For infrastructure problems
+- **Security Team**: For security incidents
+- **Product Team**: For user-facing issues

@@ -1,0 +1,761 @@
+---
+title: 'Projects API'
+description: 'API endpoints for managing client projects and organizing documents'
+---
+
+# Projects API
+
+The Projects API allows you to organize documents and comparisons into client-specific projects for better workflow management.
+
+## Create Project
+
+Create a new client project to organize documents and comparisons.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/projects \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp 2024 Benefits Review",
+    "clientName": "Acme Corporation",
+    "description": "Annual benefits package review and optimization",
+    "renewalDate": "2024-12-31"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('/api/projects', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Acme Corp 2024 Benefits Review',
+    clientName: 'Acme Corporation',
+    description: 'Annual benefits package review and optimization',
+    renewalDate: '2024-12-31'
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="name" type="string" required>
+  Project name for internal reference
+</ParamField>
+
+<ParamField body="clientName" type="string" required>
+  Client or organization name
+</ParamField>
+
+<ParamField body="description" type="string">
+  Project description and objectives
+</ParamField>
+
+<ParamField body="renewalDate" type="string">
+  Benefits renewal or decision deadline (ISO 8601 format)
+</ParamField>
+
+<ParamField body="budget" type="number">
+  Project budget or premium target
+</ParamField>
+
+<ParamField body="tags" type="array">
+  Tags for project categorization
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Additional project metadata
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "projectId": "proj_12345",
+    "name": "Acme Corp 2024 Benefits Review",
+    "clientName": "Acme Corporation",
+    "description": "Annual benefits package review and optimization",
+    "renewalDate": "2024-12-31T00:00:00Z",
+    "status": "active",
+    "documentCount": 0,
+    "comparisonCount": 0,
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z"
+  }
+}
+```
+</ResponseExample>
+
+## Get Project Details
+
+Retrieve detailed information about a specific project.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/projects/proj_12345 \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "projectId": "proj_12345",
+    "name": "Acme Corp 2024 Benefits Review",
+    "clientName": "Acme Corporation",
+    "description": "Annual benefits package review and optimization",
+    "renewalDate": "2024-12-31T00:00:00Z",
+    "status": "active",
+    "budget": 50000.00,
+    "tags": ["annual-review", "large-group"],
+    "metadata": {
+      "employeeCount": 250,
+      "industry": "Technology",
+      "region": "North America"
+    },
+    "documentCount": 5,
+    "comparisonCount": 2,
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-20T14:30:00Z",
+    "documents": [
+      {
+        "documentId": "doc_12345",
+        "filename": "current_benefits.pdf",
+        "uploadedAt": "2024-01-16T09:00:00Z",
+        "status": "processed",
+        "category": "current"
+      }
+    ],
+    "comparisons": [
+      {
+        "comparisonId": "comp_12345",
+        "name": "Full Market Analysis",
+        "createdAt": "2024-01-18T11:00:00Z",
+        "status": "completed"
+      }
+    ],
+    "activity": [
+      {
+        "type": "document_uploaded",
+        "timestamp": "2024-01-16T09:00:00Z",
+        "description": "Document 'current_benefits.pdf' uploaded"
+      },
+      {
+        "type": "comparison_created",
+        "timestamp": "2024-01-18T11:00:00Z",
+        "description": "Comparison 'Full Market Analysis' created"
+      }
+    ]
+  }
+}
+```
+</ResponseExample>
+
+## List Projects
+
+Retrieve a list of projects with filtering and pagination.
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.benee.com/projects?status=active&limit=10" \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  status: 'active',
+  limit: '10',
+  sortBy: 'updatedAt',
+  sortOrder: 'desc'
+});
+
+const response = await fetch(`/api/projects?${params}`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by project status: `active`, `completed`, `archived`, `paused`
+</ParamField>
+
+<ParamField query="clientName" type="string">
+  Filter by client name (partial match)
+</ParamField>
+
+<ParamField query="tags" type="string">
+  Filter by tags (comma-separated)
+</ParamField>
+
+<ParamField query="renewalBefore" type="string">
+  Filter projects with renewal dates before this date
+</ParamField>
+
+<ParamField query="renewalAfter" type="string">
+  Filter projects with renewal dates after this date
+</ParamField>
+
+<ParamField query="sortBy" type="string" default="updatedAt">
+  Sort by: `name`, `clientName`, `createdAt`, `updatedAt`, `renewalDate`
+</ParamField>
+
+<ParamField query="sortOrder" type="string" default="desc">
+  Sort order: `asc`, `desc`
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of results per page (max 100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "projects": [
+      {
+        "projectId": "proj_12345",
+        "name": "Acme Corp 2024 Benefits Review",
+        "clientName": "Acme Corporation",
+        "status": "active",
+        "renewalDate": "2024-12-31T00:00:00Z",
+        "documentCount": 5,
+        "comparisonCount": 2,
+        "budget": 50000.00,
+        "createdAt": "2024-01-15T10:00:00Z",
+        "updatedAt": "2024-01-20T14:30:00Z"
+      }
+    ],
+    "pagination": {
+      "total": 25,
+      "limit": 20,
+      "offset": 0,
+      "hasMore": true
+    },
+    "summary": {
+      "totalProjects": 25,
+      "activeProjects": 18,
+      "completedProjects": 5,
+      "archivedProjects": 2
+    }
+  }
+}
+```
+</ResponseExample>
+
+## Update Project
+
+Update project information and settings.
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.benee.com/projects/proj_12345 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp 2024 Benefits Review - Updated",
+    "status": "completed",
+    "budget": 55000.00
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Acme Corp 2024 Benefits Review - Updated',
+    status: 'completed',
+    budget: 55000.00
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="name" type="string">
+  Update project name
+</ParamField>
+
+<ParamField body="description" type="string">
+  Update project description
+</ParamField>
+
+<ParamField body="status" type="string">
+  Update project status: `active`, `completed`, `archived`, `paused`
+</ParamField>
+
+<ParamField body="renewalDate" type="string">
+  Update renewal date
+</ParamField>
+
+<ParamField body="budget" type="number">
+  Update project budget
+</ParamField>
+
+<ParamField body="tags" type="array">
+  Update project tags
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Update project metadata
+</ParamField>
+
+## Add Documents to Project
+
+Associate documents with a project.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/projects/proj_12345/documents \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "documentIds": ["doc_12345", "doc_67890"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}/documents`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    documentIds: ['doc_12345', 'doc_67890']
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="documentIds" type="array" required>
+  Array of document IDs to add to the project
+</ParamField>
+
+## Remove Documents from Project
+
+Remove documents from a project.
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.benee.com/projects/proj_12345/documents \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "documentIds": ["doc_12345"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}/documents`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    documentIds: ['doc_12345']
+  }),
+});
+```
+</CodeGroup>
+
+## Project Analytics
+
+Get analytics and insights for a project.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/projects/proj_12345/analytics \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}/analytics`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "projectId": "proj_12345",
+    "overview": {
+      "totalDocuments": 5,
+      "processedDocuments": 5,
+      "failedDocuments": 0,
+      "totalComparisons": 2,
+      "completedComparisons": 2
+    },
+    "timeline": [
+      {
+        "date": "2024-01-16",
+        "documentsUploaded": 3,
+        "comparisonsCreated": 0
+      },
+      {
+        "date": "2024-01-18",
+        "documentsUploaded": 2,
+        "comparisonsCreated": 2
+      }
+    ],
+    "documentBreakdown": {
+      "byCategory": {
+        "current": 1,
+        "new": 2,
+        "renegotiated": 1,
+        "alternative": 1
+      },
+      "byStatus": {
+        "processed": 5,
+        "processing": 0,
+        "failed": 0
+      }
+    },
+    "costAnalysis": {
+      "lowestQuote": 2100.00,
+      "highestQuote": 2800.00,
+      "averageQuote": 2450.00,
+      "potentialSavings": 700.00,
+      "savingsPercentage": 25.0
+    },
+    "carrierParticipation": [
+      {
+        "carrierName": "ABC Insurance",
+        "quoteCount": 2,
+        "averagePremium": 2150.00
+      },
+      {
+        "carrierName": "XYZ Insurance",
+        "quoteCount": 2,
+        "averagePremium": 2750.00
+      }
+    ]
+  }
+}
+```
+</ResponseExample>
+
+## Export Project
+
+Export project data and results in various formats.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/projects/proj_12345/export \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format": "pdf",
+    "includeDocuments": true,
+    "includeComparisons": true,
+    "template": "comprehensive_report"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}/export`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    format: 'pdf',
+    includeDocuments: true,
+    includeComparisons: true,
+    template: 'comprehensive_report'
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="format" type="string" required>
+  Export format: `pdf`, `excel`, `zip`, `json`
+</ParamField>
+
+<ParamField body="template" type="string" required>
+  Report template: `summary`, `comprehensive_report`, `executive_summary`
+</ParamField>
+
+<ParamField body="includeDocuments" type="boolean" default="true">
+  Include original documents in export
+</ParamField>
+
+<ParamField body="includeComparisons" type="boolean" default="true">
+  Include comparison results in export
+</ParamField>
+
+<ParamField body="includeAnalytics" type="boolean" default="true">
+  Include analytics and insights
+</ParamField>
+
+## Archive Project
+
+Archive a completed project to reduce clutter while preserving data.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/projects/proj_12345/archive \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Project completed successfully",
+    "preserveData": true
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}/archive`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    reason: 'Project completed successfully',
+    preserveData: true
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="reason" type="string">
+  Reason for archiving the project
+</ParamField>
+
+<ParamField body="preserveData" type="boolean" default="true">
+  Whether to preserve all project data
+</ParamField>
+
+## Delete Project
+
+Permanently delete a project and all associated data.
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.benee.com/projects/proj_12345 \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/projects/${projectId}`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+<Warning>
+This action permanently deletes the project and cannot be undone. All associated documents and comparisons will also be deleted.
+</Warning>
+
+## Project Templates
+
+### Create from Template
+
+Create a new project based on a predefined template.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/projects/from-template \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateId": "template_annual_review",
+    "clientName": "New Client Corp",
+    "customizations": {
+      "renewalDate": "2024-12-31",
+      "employeeCount": 150
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('/api/projects/from-template', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    templateId: 'template_annual_review',
+    clientName: 'New Client Corp',
+    customizations: {
+      renewalDate: '2024-12-31',
+      employeeCount: 150
+    }
+  }),
+});
+```
+</CodeGroup>
+
+### Available Templates
+
+<AccordionGroup>
+  <Accordion icon="calendar" title="Annual Review Template">
+    **Template ID**: `template_annual_review`
+    
+    **Features**:
+    - Pre-configured document categories
+    - Standard comparison workflows
+    - Annual review timeline
+    - Renewal tracking
+  </Accordion>
+  <Accordion icon="building" title="New Client Onboarding">
+    **Template ID**: `template_new_client`
+    
+    **Features**:
+    - Initial needs assessment
+    - Market survey structure
+    - Proposal generation workflow
+    - Decision tracking
+  </Accordion>
+  <Accordion icon="refresh" title="Mid-Year Review">
+    **Template ID**: `template_mid_year`
+    
+    **Features**:
+    - Performance evaluation
+    - Usage analysis
+    - Adjustment recommendations
+    - Cost optimization focus
+  </Accordion>
+</AccordionGroup>
+
+## Error Responses
+
+<ResponseExample>
+```json Project Not Found
+{
+  "success": false,
+  "error": {
+    "code": "PROJECT_NOT_FOUND",
+    "message": "Project not found or access denied"
+  }
+}
+```
+
+```json Invalid Document Association
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_DOCUMENT",
+    "message": "Document cannot be added to project",
+    "details": "Document belongs to another user"
+  }
+}
+```
+
+```json Archive Failed
+{
+  "success": false,
+  "error": {
+    "code": "ARCHIVE_FAILED",
+    "message": "Cannot archive project with active comparisons"
+  }
+}
+```
+</ResponseExample>
+
+## Webhook Events
+
+<AccordionGroup>
+  <Accordion icon="play" title="project.created">
+    Triggered when a new project is created
+    
+    ```json
+    {
+      "event": "project.created",
+      "projectId": "proj_12345",
+      "timestamp": "2024-01-15T10:00:00Z",
+      "data": {
+        "name": "Acme Corp 2024 Benefits Review",
+        "clientName": "Acme Corporation",
+        "createdBy": "user_67890"
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="edit" title="project.updated">
+    Triggered when project information is updated
+    
+    ```json
+    {
+      "event": "project.updated",
+      "projectId": "proj_12345",
+      "timestamp": "2024-01-20T14:30:00Z",
+      "data": {
+        "changes": ["status", "budget"],
+        "previousStatus": "active",
+        "newStatus": "completed"
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="archive" title="project.archived">
+    Triggered when a project is archived
+    
+    ```json
+    {
+      "event": "project.archived",
+      "projectId": "proj_12345",
+      "timestamp": "2024-01-25T16:00:00Z",
+      "data": {
+        "reason": "Project completed successfully",
+        "archivedBy": "user_67890"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,536 @@
+---
+title: 'Authentication & Access Control'
+description: 'Secure user authentication and role-based access control in Benee-CMS'
+---
+
+# Authentication & Access Control
+
+Benee-CMS provides enterprise-grade authentication and authorization capabilities powered by Clerk, ensuring secure access to sensitive benefits and insurance data.
+
+## Overview
+
+<Card title="Authentication Features" icon="shield-check">
+  Comprehensive security framework with multi-factor authentication, single sign-on, role-based access control, and audit logging.
+</Card>
+
+## Authentication Methods
+
+### Primary Authentication
+
+<AccordionGroup>
+  <Accordion icon="mail" title="Email/Password Authentication">
+    **Standard Login**:
+    - Secure email and password combination
+    - Password complexity requirements
+    - Account lockout protection
+    - Password reset capabilities
+    
+    **Security Features**:
+    - Encrypted password storage
+    - Brute force protection
+    - Session management
+    - Login attempt monitoring
+  </Accordion>
+  <Accordion icon="smartphone" title="Multi-Factor Authentication (MFA)">
+    **2FA Methods**:
+    - SMS-based verification codes
+    - Time-based one-time passwords (TOTP)
+    - Authenticator app integration
+    - Backup recovery codes
+    
+    **Configuration**:
+    - Organization-wide MFA enforcement
+    - User-level MFA preferences
+    - Emergency access procedures
+    - Recovery method management
+  </Accordion>
+</AccordionGroup>
+
+### Advanced Authentication
+
+<AccordionGroup>
+  <Accordion icon="building" title="Single Sign-On (SSO)">
+    **SAML Integration**:
+    - Enterprise SSO providers
+    - Active Directory integration
+    - LDAP synchronization
+    - Federated identity management
+    
+    **OAuth/OpenID Connect**:
+    - Google Workspace integration
+    - Microsoft Azure AD
+    - Okta and other identity providers
+    - Social login options
+  </Accordion>
+  <Accordion icon="key" title="API Authentication">
+    **API Access Methods**:
+    - Bearer token authentication
+    - API key management
+    - JWT token validation
+    - OAuth 2.0 flow support
+    
+    **Security Controls**:
+    - Token expiration management
+    - Refresh token rotation
+    - Rate limiting and throttling
+    - API access logging
+  </Accordion>
+</AccordionGroup>
+
+## User Management
+
+### Account Creation
+
+<Steps>
+  <Step title="Organization Setup">
+    Configure your organization in Benee-CMS:
+    - Organization domain verification
+    - Branding and customization
+    - Security policy configuration
+    - Integration settings
+  </Step>
+  <Step title="User Invitations">
+    Invite team members and stakeholders:
+    - Email-based invitations
+    - Role assignment during invitation
+    - Welcome message customization
+    - Activation timeline management
+  </Step>
+  <Step title="Account Activation">
+    Complete user onboarding:
+    - Email verification process
+    - Initial password setup
+    - MFA configuration
+    - Profile completion
+  </Step>
+</Steps>
+
+### Profile Management
+
+<AccordionGroup>
+  <Accordion icon="user" title="User Profiles">
+    **Profile Information**:
+    - Personal and contact details
+    - Professional credentials
+    - Department and role assignment
+    - Communication preferences
+    
+    **Customization Options**:
+    - Display name and avatar
+    - Time zone and locale settings
+    - Notification preferences
+    - Dashboard layout choices
+  </Accordion>
+  <Accordion icon="settings" title="Account Settings">
+    **Security Settings**:
+    - Password change capabilities
+    - MFA device management
+    - Active session monitoring
+    - Login history review
+    
+    **Privacy Controls**:
+    - Data sharing preferences
+    - Communication consent
+    - Activity visibility settings
+    - Account deletion options
+  </Accordion>
+</AccordionGroup>
+
+## Role-Based Access Control (RBAC)
+
+### Predefined Roles
+
+<AccordionGroup>
+  <Accordion icon="crown" title="Administrator Roles">
+    **Organization Admin**:
+    - Full system access and configuration
+    - User management and role assignment
+    - Security policy enforcement
+    - Audit log access and monitoring
+    
+    **Benefits Admin**:
+    - Benefits program management
+    - Employee data access
+    - Carrier relationship management
+    - Compliance reporting access
+  </Accordion>
+  <Accordion icon="briefcase" title="Professional Roles">
+    **Benefits Broker**:
+    - Client portfolio management
+    - Market analysis and comparison tools
+    - Proposal generation and presentation
+    - Carrier quote management
+    
+    **HR Professional**:
+    - Employee benefits administration
+    - Enrollment management
+    - Communication and education tools
+    - Compliance tracking and reporting
+  </Accordion>
+  <Accordion icon="user-check" title="User Roles">
+    **Employee**:
+    - Personal benefits information access
+    - Enrollment and change capabilities
+    - Educational resource access
+    - Self-service portal features
+    
+    **Manager**:
+    - Team benefits overview
+    - Employee support capabilities
+    - Departmental reporting access
+    - Approval workflow participation
+  </Accordion>
+</AccordionGroup>
+
+### Permission System
+
+<AccordionGroup>
+  <Accordion icon="lock" title="Resource Permissions">
+    **Data Access Levels**:
+    - Read-only access to specific data
+    - Edit permissions for assigned resources
+    - Delete capabilities with approval workflow
+    - Administrative access to system features
+    
+    **Feature Permissions**:
+    - Benefits Blueprint access
+    - API and integration capabilities
+    - Reporting and analytics tools
+    - Export and sharing functions
+  </Accordion>
+  <Accordion icon="eye" title="Data Visibility">
+    **Scope Controls**:
+    - Organization-wide data access
+    - Department-specific information
+    - Individual employee records
+    - Client-specific data isolation
+    
+    **Sensitive Data Protection**:
+    - PHI and PII access controls
+    - Financial information restrictions
+    - Salary and compensation data
+    - Medical and health information
+  </Accordion>
+</AccordionGroup>
+
+## Access Control Policies
+
+### Security Policies
+
+<AccordionGroup>
+  <Accordion icon="timer" title="Session Management">
+    **Session Controls**:
+    - Configurable session timeouts
+    - Idle session termination
+    - Concurrent session limits
+    - Device-based session tracking
+    
+    **Session Security**:
+    - Secure session tokens
+    - Session encryption
+    - Cross-site request forgery (CSRF) protection
+    - Session hijacking prevention
+  </Accordion>
+  <Accordion icon="globe" title="Access Restrictions">
+    **Network Controls**:
+    - IP address whitelisting
+    - Geographic access restrictions
+    - VPN requirement enforcement
+    - Time-based access controls
+    
+    **Device Management**:
+    - Trusted device registration
+    - Mobile device policies
+    - Browser security requirements
+    - Device compliance validation
+  </Accordion>
+</AccordionGroup>
+
+### Compliance Controls
+
+<AccordionGroup>
+  <Accordion icon="file-shield" title="Regulatory Compliance">
+    **HIPAA Compliance**:
+    - PHI access logging and monitoring
+    - Minimum necessary access principles
+    - Business associate agreement compliance
+    - Breach notification procedures
+    
+    **SOC 2 Controls**:
+    - Type II certification compliance
+    - Security control implementation
+    - Availability and processing integrity
+    - Confidentiality protection measures
+  </Accordion>
+  <Accordion icon="search" title="Audit and Monitoring">
+    **Audit Logging**:
+    - Comprehensive access logging
+    - Data modification tracking
+    - Login and logout events
+    - Permission change monitoring
+    
+    **Compliance Reporting**:
+    - Access review reports
+    - Permission audit trails
+    - Security incident documentation
+    - Regulatory compliance summaries
+  </Accordion>
+</AccordionGroup>
+
+## Integration Security
+
+### API Security
+
+<AccordionGroup>
+  <Accordion icon="key" title="API Authentication">
+    **Token Management**:
+    - JWT token issuance and validation
+    - API key generation and rotation
+    - OAuth 2.0 authorization flows
+    - Scoped access token permissions
+    
+    **Rate Limiting**:
+    - Request rate limiting per user/API key
+    - Burst protection mechanisms
+    - Fair usage policy enforcement
+    - Throttling and queuing strategies
+  </Accordion>
+  <Accordion icon="shield" title="Data Protection">
+    **Encryption in Transit**:
+    - TLS 1.3 encryption for all API calls
+    - Certificate pinning for mobile apps
+    - HTTPS enforcement and redirection
+    - Secure WebSocket connections
+    
+    **Request Validation**:
+    - Input sanitization and validation
+    - SQL injection prevention
+    - Cross-site scripting (XSS) protection
+    - Parameter tampering detection
+  </Accordion>
+</AccordionGroup>
+
+### Third-Party Integrations
+
+<AccordionGroup>
+  <Accordion icon="plug" title="Integration Security">
+    **Vendor Management**:
+    - Third-party security assessments
+    - Data sharing agreement compliance
+    - Access scope limitation
+    - Integration monitoring and logging
+    
+    **Secure Communication**:
+    - Encrypted data transmission
+    - Mutual TLS authentication
+    - API gateway security controls
+    - Message integrity verification
+  </Accordion>
+  <Accordion icon="database" title="Data Sharing">
+    **Data Minimization**:
+    - Least privilege data sharing
+    - Purpose-specific data access
+    - Retention period enforcement
+    - Automatic data purging
+    
+    **Consent Management**:
+    - User consent tracking
+    - Withdrawal processing
+    - Data subject rights fulfillment
+    - Cross-border transfer compliance
+  </Accordion>
+</AccordionGroup>
+
+## User Experience
+
+### Login Experience
+
+<AccordionGroup>
+  <Accordion icon="log-in" title="Streamlined Authentication">
+    **Login Flow**:
+    - Clean and intuitive interface
+    - Remember device options
+    - Social login integration
+    - Password manager compatibility
+    
+    **Error Handling**:
+    - Clear error messages
+    - Account recovery guidance
+    - Support contact information
+    - Alternative authentication methods
+  </Accordion>
+  <Accordion icon="smartphone" title="Mobile Experience">
+    **Mobile Authentication**:
+    - Touch ID and Face ID support
+    - Mobile-optimized login forms
+    - App-based authentication
+    - Offline capability considerations
+    
+    **Responsive Design**:
+    - Cross-device compatibility
+    - Consistent user experience
+    - Adaptive security controls
+    - Progressive web app features
+  </Accordion>
+</AccordionGroup>
+
+### Account Recovery
+
+<AccordionGroup>
+  <Accordion icon="refresh-cw" title="Password Recovery">
+    **Self-Service Recovery**:
+    - Email-based password reset
+    - Security question validation
+    - Multi-step verification process
+    - Account lockout resolution
+    
+    **Administrative Recovery**:
+    - Admin-assisted account recovery
+    - Identity verification procedures
+    - Temporary access provisioning
+    - Security incident documentation
+  </Accordion>
+  <Accordion icon="help-circle" title="Account Support">
+    **Support Channels**:
+    - Self-service help resources
+    - Live chat assistance
+    - Email support tickets
+    - Phone support for urgent issues
+    
+    **Escalation Procedures**:
+    - Tier-based support structure
+    - Priority handling for security issues
+    - Executive escalation paths
+    - Resolution time commitments
+  </Accordion>
+</AccordionGroup>
+
+## Security Monitoring
+
+### Threat Detection
+
+<AccordionGroup>
+  <Accordion icon="alert-triangle" title="Anomaly Detection">
+    **Behavioral Analysis**:
+    - Unusual login pattern detection
+    - Suspicious activity monitoring
+    - Geographic anomaly alerts
+    - Time-based access analysis
+    
+    **Automated Response**:
+    - Automatic account lockout triggers
+    - Real-time alert notifications
+    - Incident response automation
+    - Escalation workflow activation
+  </Accordion>
+  <Accordion icon="activity" title="Security Monitoring">
+    **Real-Time Monitoring**:
+    - Live security dashboard
+    - Attack pattern recognition
+    - Failed login attempt tracking
+    - Privilege escalation detection
+    
+    **Incident Response**:
+    - Security incident classification
+    - Response team notification
+    - Containment procedure execution
+    - Post-incident analysis and reporting
+  </Accordion>
+</AccordionGroup>
+
+### Compliance Monitoring
+
+<AccordionGroup>
+  <Accordion icon="clipboard-check" title="Continuous Compliance">
+    **Automated Compliance Checks**:
+    - Policy compliance validation
+    - Access review automation
+    - Permission drift detection
+    - Certification requirement tracking
+    
+    **Reporting and Documentation**:
+    - Compliance dashboard metrics
+    - Audit report generation
+    - Exception tracking and resolution
+    - Regulatory submission support
+  </Accordion>
+  <Accordion icon="trending-up" title="Security Metrics">
+    **Key Performance Indicators**:
+    - Authentication success rates
+    - MFA adoption metrics
+    - Security incident frequency
+    - Compliance score tracking
+    
+    **Trend Analysis**:
+    - Security posture improvement
+    - Risk exposure assessment
+    - Threat landscape evolution
+    - Training effectiveness measurement
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+### Security Guidelines
+
+<AccordionGroup>
+  <Accordion icon="check-circle" title="User Security">
+    **Password Best Practices**:
+    - Strong password requirements
+    - Regular password updates
+    - Unique password enforcement
+    - Password manager recommendations
+    
+    **Safe Usage Practices**:
+    - Secure network connection requirements
+    - Device security guidelines
+    - Data handling procedures
+    - Incident reporting protocols
+  </Accordion>
+  <Accordion icon="users-2" title="Administrator Guidelines">
+    **Access Management**:
+    - Regular access reviews and audits
+    - Principle of least privilege
+    - Segregation of duties
+    - Periodic permission validation
+    
+    **Security Operations**:
+    - Incident response planning
+    - Security awareness training
+    - Vendor security assessments
+    - Regular security updates
+  </Accordion>
+</AccordionGroup>
+
+### Implementation Guidance
+
+<AccordionGroup>
+  <Accordion icon="settings-2" title="Configuration Recommendations">
+    **Security Configuration**:
+    - MFA enforcement policies
+    - Session timeout settings
+    - Password complexity requirements
+    - Access restriction implementations
+    
+    **Monitoring Setup**:
+    - Alert threshold configuration
+    - Log retention policies
+    - Reporting schedule establishment
+    - Integration monitoring setup
+  </Accordion>
+  <Accordion icon="graduation-cap" title="Training and Awareness">
+    **User Education**:
+    - Security awareness training
+    - Phishing simulation programs
+    - Best practice communication
+    - Regular security updates
+    
+    **Administrator Training**:
+    - Platform security features
+    - Incident response procedures
+    - Compliance requirements
+    - Advanced configuration options
+  </Accordion>
+</AccordionGroup>
+
+Benee-CMS authentication and access control systems provide the foundation for secure benefits management while maintaining usability and compliance with industry standards.

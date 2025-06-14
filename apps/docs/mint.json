@@ -21,8 +21,16 @@
   },
   "tabs": [
     {
+      "name": "User Guides",
+      "url": "user-guides"
+    },
+    {
       "name": "API Reference",
       "url": "api-reference"
+    },
+    {
+      "name": "Developer",
+      "url": "developer"
     }
   ],
   "navigation": [
@@ -34,15 +42,47 @@
       ]
     },
     {
+      "group": "User Guides",
+      "pages": [
+        "user-guides/onboarding",
+        "user-guides/quote-tool",
+        "user-guides/document-processing",
+        "user-guides/market-analysis",
+        "user-guides/reports"
+      ]
+    },
+    {
+      "group": "Portals",
+      "pages": [
+        "portals/broker-portal",
+        "portals/hr-portal"
+      ]
+    },
+    {
       "group": "Features",
       "pages": [
-        "features/benefits-blueprint"
+        "features/benefits-blueprint",
+        "features/authentication",
+        "features/billing"
       ]
     },
     {
       "group": "API Documentation",
       "pages": [
-        "api-reference/introduction"
+        "api-reference/introduction",
+        "api-reference/authentication",
+        "api-reference/documents",
+        "api-reference/projects",
+        "api-reference/comparisons"
+      ]
+    },
+    {
+      "group": "Developer Resources",
+      "pages": [
+        "developer/setup",
+        "developer/architecture",
+        "developer/deployment",
+        "developer/configuration"
       ]
     }
   ],

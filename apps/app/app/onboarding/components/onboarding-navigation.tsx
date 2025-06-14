@@ -47,16 +47,6 @@ export function OnboardingNavigation({
       </div>
 
       <div className="flex items-center space-x-3">
-        {!isFinalStep && (
-          <Button
-            variant="outline"
-            disabled={isLoading}
-            className="text-gray-600"
-          >
-            Save & Continue Later
-          </Button>
-        )}
-        
         <Button
           onClick={handlePrimaryAction}
           disabled={!canContinue || isLoading}

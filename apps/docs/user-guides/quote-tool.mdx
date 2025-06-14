@@ -1,0 +1,232 @@
+---
+title: 'Quote Tool (Benefits Blueprint)'
+description: 'Complete guide to using the Quote Tool for insurance analysis'
+---
+
+# Quote Tool (Benefits Blueprint)
+
+The Quote Tool is the core feature of Benee-CMS, designed to streamline the insurance quote analysis process through AI-powered document processing and intelligent market comparisons.
+
+## Overview
+
+The Quote Tool provides three main functions:
+
+<CardGroup cols={3}>
+  <Card title="Document Upload" icon="file-arrow-up">
+    Upload and process insurance quote documents with AI extraction
+  </Card>
+  <Card title="Market Analysis" icon="chart-line">
+    Compare quotes across multiple carriers and plan options
+  </Card>
+  <Card title="Report Generation" icon="file-text">
+    Create professional reports for client presentations
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### Quick Actions
+
+From the Quote Tool dashboard, you have access to these quick actions:
+
+1. **Start a New Quote** - Begin by uploading insurance documents
+2. **View Comparisons** - Access existing market analysis results
+3. **Recent Reports** - Review previously generated reports
+
+## Document Processing Workflow
+
+### Step 1: Document Upload
+
+<AccordionGroup>
+  <Accordion icon="upload" title="Upload Process">
+    1. Navigate to `/quote-tool/document-parser`
+    2. Drag and drop PDF files or click to browse
+    3. Categorize documents:
+       - **New/Current**: Fresh quotes for analysis
+       - **Renegotiated**: Updated terms after negotiations
+       - **Alternative**: Alternative plan options
+  </Accordion>
+  <Accordion icon="cog" title="AI Processing">
+    The system automatically:
+    - Extracts text using PDF.co technology
+    - Processes content with Google Gemini AI
+    - Structures data into standardized format
+    - Validates extracted information
+  </Accordion>
+</AccordionGroup>
+
+### Step 2: Review and Validation
+
+After processing, review the extracted data:
+
+- **Coverage Types**: Verify all insurance products are correctly identified
+- **Premium Amounts**: Confirm monthly and annual premium calculations
+- **Carrier Information**: Check carrier names and policy details
+- **Plan Options**: Review multiple plan variations if present
+
+### Step 3: Market Comparison
+
+Once validated, proceed to comparison analysis:
+
+- **Full Market View**: Compare all uploaded carriers side-by-side
+- **Single Carrier Analysis**: Deep dive into specific carrier offerings
+- **Premium Analysis**: Calculate cost differences and percentage changes
+- **Coverage Comparison**: Review benefit details across options
+
+## Supported Insurance Types
+
+The Quote Tool processes these coverage types:
+
+<AccordionGroup>
+  <Accordion icon="heart-pulse" title="Life and Disability">
+    - Basic Life Insurance
+    - Accidental Death & Dismemberment (AD&D)
+    - Dependent Life
+    - Long-term Disability (LTD)
+    - Short-term Disability (STD)
+    - Critical Illness
+  </Accordion>
+  <Accordion icon="hospital" title="Health and Medical">
+    - Extended Healthcare
+    - Dental Care
+    - Vision Coverage
+    - Health Spending Accounts (HSA)
+  </Accordion>
+  <Accordion icon="user-check" title="Additional Benefits">
+    - Employee Assistance Programs (EAP)
+    - Voluntary benefits
+    - Supplemental coverage options
+  </Accordion>
+</AccordionGroup>
+
+## Analysis Features
+
+### Premium Comparison
+
+- **Unit Rate Analysis**: Compare rates per $1,000 of coverage
+- **Monthly Premium Totals**: Aggregate costs across all coverages
+- **Volume Calculations**: Factor in number of lives covered
+- **Cost Impact Analysis**: Percentage differences between options
+
+### Coverage Details
+
+- **Benefit Schedules**: Review coverage amounts and limits
+- **Elimination Periods**: Compare waiting periods for disability coverage
+- **Coinsurance Rates**: Analyze cost-sharing arrangements
+- **Maximum Benefits**: Review coverage limits and caps
+
+### Plan Options
+
+- **Multiple Plans**: Handle documents with several plan variations
+- **Plan-Specific Premiums**: Track costs for each option
+- **Rate Guarantees**: Document rate lock periods
+- **Effective Dates**: Track coverage start dates
+
+## Report Generation
+
+### Available Report Types
+
+<CardGroup cols={2}>
+  <Card title="Executive Summary" icon="presentation">
+    High-level comparison with key recommendations
+  </Card>
+  <Card title="Detailed Analysis" icon="chart-bar">
+    Comprehensive coverage and premium breakdown
+  </Card>
+  <Card title="Cost Impact Report" icon="calculator">
+    Financial analysis showing premium differences
+  </Card>
+  <Card title="Client Presentation" icon="users">
+    Professional format suitable for client meetings
+  </Card>
+</CardGroup>
+
+### Report Features
+
+- **Customizable Templates**: Adapt reports to your brand and style
+- **Interactive Charts**: Visual representations of premium comparisons
+- **Export Options**: PDF, Excel, and other professional formats
+- **Client Sharing**: Secure links for client access
+
+## Best Practices
+
+### Document Preparation
+
+<Card title="Optimization Tips" icon="target">
+  - Use clear, text-readable PDF documents (avoid scanned images)
+  - Ensure all plan information is included in uploads
+  - Group related documents by carrier or plan type
+  - Verify document completeness before uploading
+</Card>
+
+### Analysis Workflow
+
+1. **Upload Related Documents Together**: Process all quotes for a project simultaneously
+2. **Validate Extracted Data**: Review AI-extracted information for accuracy
+3. **Compare Consistently**: Use the same time periods and coverage amounts
+4. **Document Assumptions**: Note any adjustments or interpretations made
+
+### Report Optimization
+
+- **Tailor to Audience**: Adjust detail level based on client sophistication
+- **Highlight Key Differences**: Focus on most significant premium or coverage variations
+- **Include Context**: Provide relevant market or industry benchmarks
+- **Plan Recommendations**: Offer clear guidance based on analysis
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion icon="file-x" title="Processing Errors">
+    **Document Not Processing**
+    - Verify PDF is text-readable (not a scanned image)
+    - Check file size (must be under 50MB)
+    - Ensure document contains insurance quote information
+    - Try re-uploading with a different filename
+  </Accordion>
+  <Accordion icon="exclamation-triangle" title="Extraction Issues">
+    **Missing or Incorrect Data**
+    - Review source document for completeness
+    - Check if document format follows standard insurance layouts
+    - Manually correct extracted data in the validation step
+    - Contact support for unusual document formats
+  </Accordion>
+  <Accordion icon="chart-line-down" title="Comparison Problems">
+    **Inconsistent Results**
+    - Verify all documents are for the same client/group
+    - Check effective dates are comparable
+    - Ensure similar coverage amounts across quotes
+    - Review plan options are appropriately matched
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Features
+
+### Bulk Processing
+
+- **Multiple Document Upload**: Process several files simultaneously
+- **Batch Validation**: Review multiple extractions efficiently
+- **Cross-Reference Analysis**: Compare related quotes automatically
+
+### Integration Options
+
+- **API Access**: Programmatic access to processing capabilities
+- **Webhook Notifications**: Real-time updates on processing status
+- **Third-party Integrations**: Connect with existing broker management systems
+
+## Support and Training
+
+### Available Resources
+
+- **Video Tutorials**: Step-by-step walkthroughs of key features
+- **Live Training Sessions**: Scheduled group training calls
+- **One-on-One Support**: Personalized assistance for complex scenarios
+- **Best Practices Guide**: Industry-specific recommendations
+
+### Getting Help
+
+- **In-App Chat**: Immediate assistance during your workflow
+- **Email Support**: support@benee.com for detailed questions
+- **Phone Support**: Scheduled calls for complex technical issues
+- **Community Forum**: Connect with other users and share tips

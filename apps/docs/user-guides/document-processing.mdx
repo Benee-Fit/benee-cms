@@ -1,0 +1,294 @@
+---
+title: 'Document Processing'
+description: 'Understanding AI-powered document processing in Benee-CMS'
+---
+
+# Document Processing
+
+Benee-CMS uses advanced AI technology to automatically extract and structure data from insurance quote documents, eliminating manual data entry and reducing errors.
+
+## Processing Pipeline
+
+The document processing system uses a two-stage approach:
+
+<CardGroup cols={2}>
+  <Card title="Text Extraction" icon="file-text">
+    PDF.co technology extracts raw text from uploaded documents
+  </Card>
+  <Card title="Data Structuring" icon="cpu">
+    Google Gemini AI processes text into structured JSON format
+  </Card>
+</CardGroup>
+
+## Supported Document Types
+
+### Primary Formats
+
+<AccordionGroup>
+  <Accordion icon="file-pdf" title="PDF Documents">
+    - **Text-based PDFs**: Preferred format with selectable text
+    - **Size Limit**: Up to 50MB per document
+    - **Quality**: High-resolution documents process more accurately
+    - **Layout**: Standard insurance quote formats work best
+  </Accordion>
+  <Accordion icon="shield-check" title="Insurance Quote Types">
+    - Group insurance proposals
+    - Individual quote documents
+    - Renewal documentation
+    - Rate sheets and schedules
+    - Benefit summaries
+  </Accordion>
+</AccordionGroup>
+
+### Document Categories
+
+When uploading, categorize documents for better organization:
+
+1. **New/Current Quotes** - Fresh proposals for analysis
+2. **Renegotiated Quotes** - Updated terms after negotiations
+3. **Alternative Quotes** - Alternative plan options or carriers
+
+## AI Extraction Process
+
+### Stage 1: Text Extraction (PDF.co)
+
+The system uses PDF.co's advanced OCR and text extraction:
+
+- **Asynchronous Processing**: Handles large documents without timeouts
+- **Layout Preservation**: Maintains document structure and formatting
+- **High Accuracy**: Specialized for insurance document layouts
+- **Status Tracking**: Real-time progress updates during extraction
+
+### Stage 2: Data Structuring (Google Gemini)
+
+Google's Gemini AI model processes the extracted text:
+
+- **Model**: gemini-2.5-pro-preview-05-06
+- **Context Window**: Large enough for complex insurance documents
+- **Structured Output**: Consistent JSON format for all extractions
+- **Domain Expertise**: Trained to understand insurance terminology
+
+## Extracted Data Structure
+
+### Root Level Properties
+
+The AI extracts data into three main sections:
+
+```json
+{
+  "metadata": {
+    // Document and carrier information
+  },
+  "coverages": [
+    // Array of individual coverage details
+  ],
+  "planNotes": [
+    // Document-wide notes and conditions
+  ]
+}
+```
+
+### Metadata Fields
+
+<AccordionGroup>
+  <Accordion icon="info" title="Document Information">
+    - **documentType**: Type of insurance document
+    - **clientName**: Policyholder or group name
+    - **carrierName**: Insurance carrier/company
+    - **quoteDate**: Date quote was generated
+    - **effectiveDate**: Coverage start date
+    - **policyNumber**: Policy or quote reference number
+  </Accordion>
+  <Accordion icon="dollar-sign" title="Financial Summary">
+    - **totalProposedMonthlyPlanPremium**: Total monthly cost
+    - **planOptionTotals**: Premiums for each plan variation
+    - **rateGuarantees**: Rate lock periods and terms
+  </Accordion>
+</AccordionGroup>
+
+### Coverage Details
+
+Each coverage type includes comprehensive details:
+
+<AccordionGroup>
+  <Accordion icon="heart-pulse" title="Basic Information">
+    - **coverageType**: Predefined coverage category
+    - **carrierName**: Specific carrier for this coverage
+    - **planOptionName**: Plan variation identifier
+    - **premium**: Monthly premium amount
+    - **unitRate**: Rate per unit of coverage
+    - **volume**: Amount of coverage
+    - **lives**: Number of people covered
+  </Accordion>
+  <Accordion icon="list" title="Benefit Details">
+    Coverage-specific benefit information including:
+    - Maximum benefit amounts
+    - Coinsurance percentages
+    - Deductibles and copays
+    - Elimination periods
+    - Benefit schedules
+    - Coverage limitations
+  </Accordion>
+</AccordionGroup>
+
+## Supported Coverage Types
+
+The system recognizes these standardized coverage types:
+
+### Life and Disability
+- **Basic Life**: Term life insurance coverage
+- **AD&D**: Accidental Death & Dismemberment
+- **Dependent Life**: Coverage for family members
+- **LTD**: Long-term Disability insurance
+- **STD**: Short-term Disability insurance
+- **Critical Illness**: Supplemental illness coverage
+
+### Health and Medical
+- **Extended Healthcare**: Major medical coverage
+- **Dental Care**: Dental insurance plans
+- **Vision**: Eye care coverage
+- **EAP**: Employee Assistance Programs
+- **Health Spending Account**: HSA/FSA accounts
+
+## Processing Status and Monitoring
+
+### Real-Time Tracking
+
+Monitor processing progress through status indicators:
+
+<AccordionGroup>
+  <Accordion icon="clock" title="Processing Stages">
+    1. **Uploading**: Document transfer to processing system
+    2. **Text Extraction**: PDF.co extracting raw content
+    3. **AI Processing**: Gemini structuring extracted data
+    4. **Validation**: System validating extracted information
+    5. **Complete**: Ready for review and analysis
+  </Accordion>
+  <Accordion icon="activity" title="Status Updates">
+    - **Progress Bars**: Visual indication of completion percentage
+    - **Time Estimates**: Expected completion times
+    - **Error Notifications**: Immediate alerts for processing issues
+    - **Success Confirmations**: Completion notifications with summary
+  </Accordion>
+</AccordionGroup>
+
+## Quality Assurance
+
+### Validation Features
+
+<CardGroup cols={2}>
+  <Card title="Automatic Validation" icon="check-circle">
+    - Required field completeness
+    - Data type verification
+    - Range and format checks
+    - Cross-reference validation
+  </Card>
+  <Card title="Manual Review" icon="eye">
+    - Human oversight of AI extractions
+    - Correction capabilities for inaccuracies
+    - Confidence scoring for extracted data
+    - Flagging of unusual or uncertain values
+  </Card>
+</CardGroup>
+
+### Error Handling
+
+The system handles various processing scenarios:
+
+<AccordionGroup>
+  <Accordion icon="triangle-alert" title="Document Issues">
+    - **Unreadable Text**: Suggestions for document optimization
+    - **Format Problems**: Guidance on supported layouts
+    - **Missing Information**: Identification of incomplete data
+    - **Size Limitations**: File size optimization recommendations
+  </Accordion>
+  <Accordion icon="refresh-cw" title="Processing Failures">
+    - **Retry Mechanisms**: Automatic retry for temporary failures
+    - **Alternative Processing**: Fallback methods for difficult documents
+    - **Manual Override**: Options to manually input critical data
+    - **Support Escalation**: Direct access to technical assistance
+  </Accordion>
+</AccordionGroup>
+
+## Optimization Tips
+
+### Document Preparation
+
+<Card title="Best Practices" icon="target">
+  **For Optimal Results:**
+  - Use high-quality, text-based PDF documents
+  - Ensure good contrast and readable fonts
+  - Include complete quote information in single documents
+  - Avoid heavily stylized or image-heavy layouts
+  - Use standard insurance industry document formats
+</Card>
+
+### Batch Processing
+
+- **Group Related Documents**: Process all quotes for a project together
+- **Consistent Naming**: Use clear, descriptive filenames
+- **Size Management**: Break large documents into logical sections
+- **Timing Consideration**: Allow sufficient time for complex documents
+
+## Troubleshooting Guide
+
+### Common Processing Issues
+
+<AccordionGroup>
+  <Accordion icon="file-x" title="Text Extraction Problems">
+    **Symptoms**: No text extracted or garbled content
+    
+    **Solutions**:
+    - Verify PDF contains selectable text (not scanned image)
+    - Try a different PDF viewer to check text quality
+    - Re-create PDF from original source if possible
+    - Contact support for OCR processing of image-based documents
+  </Accordion>
+  <Accordion icon="brain" title="AI Processing Errors">
+    **Symptoms**: Incomplete or incorrect data structure
+    
+    **Solutions**:
+    - Review source document for standard insurance format
+    - Check if all required information is present
+    - Try re-uploading with different categorization
+    - Use manual correction tools for specific fields
+  </Accordion>
+  <Accordion icon="clock" title="Processing Timeouts">
+    **Symptoms**: Processing takes unusually long or fails
+    
+    **Solutions**:
+    - Check document size and complexity
+    - Verify stable internet connection
+    - Try processing during off-peak hours
+    - Break large documents into smaller sections
+  </Accordion>
+</AccordionGroup>
+
+## API Integration
+
+For developers integrating document processing:
+
+### Processing Endpoints
+- `POST /api/documents/upload` - Upload documents for processing
+- `GET /api/documents/{id}/status` - Check processing status
+- `GET /api/documents/{id}/results` - Retrieve structured data
+
+### Webhook Support
+- Real-time notifications for processing completion
+- Status updates for long-running extractions
+- Error notifications for failed processing
+
+## Support and Resources
+
+### Getting Help
+
+- **Live Chat**: Real-time assistance during processing
+- **Email Support**: Detailed troubleshooting at support@benee.com
+- **Video Guides**: Step-by-step processing tutorials
+- **API Documentation**: Complete developer resources
+
+### Training Resources
+
+- **Best Practices Webinars**: Monthly training sessions
+- **Document Optimization Guide**: Detailed preparation instructions
+- **Industry-Specific Tips**: Specialized guidance for different insurance types

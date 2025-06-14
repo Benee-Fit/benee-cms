@@ -1,0 +1,375 @@
+---
+title: 'Development Setup'
+description: 'Complete guide to setting up the Benee-CMS development environment'
+---
+
+# Development Setup
+
+This guide will help you set up a local development environment for the Benee-CMS monorepo.
+
+## Prerequisites
+
+Before getting started, ensure you have the following installed:
+
+<AccordionGroup>
+  <Accordion icon="cube" title="Required Software">
+    - **Node.js**: Version 18.x or higher
+    - **npm**: Latest version (comes with Node.js)
+    - **Git**: For version control
+    - **Docker**: Optional, for containerized development
+  </Accordion>
+  <Accordion icon="key" title="Required Accounts">
+    - **GitHub**: Access to the repository
+    - **Vercel**: For deployment (optional)
+    - **Clerk**: For authentication services
+    - **PDF.co**: For document processing
+    - **Google Cloud**: For Gemini AI services
+  </Accordion>
+</AccordionGroup>
+
+## Repository Structure
+
+The Benee-CMS project is a monorepo with the following structure:
+
+```
+benee-cms/
+├── apps/
+│   ├── web/              # Marketing website
+│   ├── app/              # Main application
+│   ├── api/              # API services
+│   ├── broker-portal/    # Broker-specific portal
+│   ├── hr-portal/        # HR portal
+│   ├── docs/             # Documentation site
+│   ├── email/            # Email templates
+│   ├── storybook/        # Component library
+│   └── studio/           # CMS studio
+├── packages/
+│   ├── design-system/    # Shared UI components
+│   ├── auth/             # Authentication utilities
+│   ├── database/         # Database schemas and utilities
+│   ├── internationalization/ # Localization
+│   └── ...               # Other shared packages
+├── tooling/
+│   ├── eslint/           # Linting configuration
+│   ├── typescript/       # TypeScript configuration
+│   └── tailwind/         # Tailwind CSS configuration
+└── turbo.json           # Turborepo configuration
+```
+
+## Initial Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-org/benee-cms.git
+cd benee-cms
+```
+
+### 2. Install Dependencies
+
+Install all dependencies for the monorepo:
+
+```bash
+npm install
+```
+
+This will install dependencies for all apps and packages using the workspace configuration.
+
+### 3. Environment Variables
+
+Each application requires environment variables. Copy the example files and configure:
+
+```bash
+# For the main app
+cp apps/app/.env.example apps/app/.env.local
+
+# For the web app
+cp apps/web/.env.example apps/web/.env.local
+
+# For the API
+cp apps/api/.env.example apps/api/.env.local
+
+# For broker portal
+cp apps/broker-portal/.env.example apps/broker-portal/.env.local
+```
+
+## Environment Configuration
+
+### Required Environment Variables
+
+<AccordionGroup>
+  <Accordion icon="shield" title="Authentication (Clerk)">
+    ```bash
+    # Clerk Configuration
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+    CLERK_SECRET_KEY=sk_test_...
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+    ```
+  </Accordion>
+  <Accordion icon="database" title="Database">
+    ```bash
+    # Database Configuration
+    DATABASE_URL=postgresql://user:password@localhost:5432/benee_cms
+    DIRECT_URL=postgresql://user:password@localhost:5432/benee_cms
+    ```
+  </Accordion>
+  <Accordion icon="cpu" title="AI Services">
+    ```bash
+    # Google Gemini AI
+    GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
+    
+    # PDF.co
+    PDFCO_API_KEY=your_pdfco_api_key
+    ```
+  </Accordion>
+  <Accordion icon="globe" title="Application URLs">
+    ```bash
+    # Application URLs
+    NEXT_PUBLIC_APP_URL=http://localhost:3000
+    NEXT_PUBLIC_WEB_URL=http://localhost:3001
+    NEXT_PUBLIC_API_URL=http://localhost:3002
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Database Setup
+
+### Local PostgreSQL
+
+1. **Install PostgreSQL**:
+   ```bash
+   # macOS
+   brew install postgresql
+   brew services start postgresql
+   
+   # Ubuntu
+   sudo apt install postgresql postgresql-contrib
+   sudo systemctl start postgresql
+   ```
+
+2. **Create Database**:
+   ```bash
+   createdb benee_cms
+   ```
+
+3. **Run Migrations**:
+   ```bash
+   npm run db:migrate
+   ```
+
+### Using Docker (Alternative)
+
+```bash
+# Start PostgreSQL container
+docker run --name benee-postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=benee_cms \
+  -p 5432:5432 \
+  -d postgres:15
+
+# Run migrations
+npm run db:migrate
+```
+
+## Development Commands
+
+### Running Applications
+
+<AccordionGroup>
+  <Accordion icon="play" title="Start All Applications">
+    ```bash
+    # Start all apps in development mode
+    npm run dev
+    ```
+    
+    This starts:
+    - Web app: http://localhost:3001
+    - Main app: http://localhost:3000
+    - API: http://localhost:3002
+    - Broker portal: http://localhost:3003
+    - HR portal: http://localhost:3004
+    - Docs: http://localhost:3005
+  </Accordion>
+  <Accordion icon="focus" title="Start Individual Apps">
+    ```bash
+    # Start specific applications
+    npm run dev --filter=web
+    npm run dev --filter=app
+    npm run dev --filter=api
+    npm run dev --filter=broker-portal
+    npm run dev --filter=hr-portal
+    npm run dev --filter=docs
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Build and Test
+
+```bash
+# Build all applications
+npm run build
+
+# Run tests
+npm run test
+
+# Run linting
+npm run lint
+
+# Type checking
+npm run type-check
+```
+
+## Package Management
+
+### Adding Dependencies
+
+```bash
+# Add to specific app
+npm install package-name --workspace=apps/app
+
+# Add to specific package
+npm install package-name --workspace=packages/design-system
+
+# Add to root (affects all workspaces)
+npm install -D package-name
+```
+
+### Creating New Packages
+
+```bash
+# Create new shared package
+mkdir packages/new-package
+cd packages/new-package
+npm init -y
+
+# Update package.json for workspace compatibility
+```
+
+## Development Workflow
+
+### Branch Strategy
+
+<Card title="Git Workflow" icon="git-branch">
+  - **main**: Production-ready code
+  - **develop**: Integration branch for features
+  - **feature/***: Individual feature branches
+  - **hotfix/***: Critical fixes for production
+</Card>
+
+### Code Quality
+
+The project uses several tools to maintain code quality:
+
+<AccordionGroup>
+  <Accordion icon="shield-check" title="Linting and Formatting">
+    - **ESLint**: JavaScript/TypeScript linting
+    - **Prettier**: Code formatting
+    - **Husky**: Git hooks for pre-commit checks
+    - **lint-staged**: Run linters on staged files
+  </Accordion>
+  <Accordion icon="type" title="Type Safety">
+    - **TypeScript**: Static type checking
+    - **Strict mode**: Enabled for all packages
+    - **Path mapping**: Simplified imports with @/ aliases
+  </Accordion>
+</AccordionGroup>
+
+## IDE Configuration
+
+### VS Code (Recommended)
+
+Install these extensions for the best development experience:
+
+```json
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-typescript-next",
+    "dbaeumer.vscode-eslint",
+    "unifiedjs.vscode-mdx",
+    "ms-vscode.vscode-json"
+  ]
+}
+```
+
+### Workspace Settings
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+    ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ]
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion icon="exclamation-triangle" title="Port Conflicts">
+    **Problem**: Applications fail to start due to port conflicts
+    
+    **Solution**:
+    - Check which processes are using ports: `lsof -i :3000`
+    - Kill conflicting processes or use different ports
+    - Update `.env.local` files with new port numbers
+  </Accordion>
+  <Accordion icon="package" title="Dependency Issues">
+    **Problem**: Package installation or import errors
+    
+    **Solution**:
+    ```bash
+    # Clear all node_modules and reinstall
+    npm run clean
+    npm install
+    
+    # Clear specific app cache
+    rm -rf apps/app/.next
+    npm run dev --filter=app
+    ```
+  </Accordion>
+  <Accordion icon="database" title="Database Connection">
+    **Problem**: Cannot connect to database
+    
+    **Solution**:
+    - Verify PostgreSQL is running: `pg_ctl status`
+    - Check DATABASE_URL format in .env files
+    - Ensure database exists: `psql -l`
+    - Run migrations: `npm run db:migrate`
+  </Accordion>
+</AccordionGroup>
+
+### Performance Tips
+
+<Card title="Development Optimization" icon="zap">
+  - Use `npm run dev --filter=app` to start only needed applications
+  - Enable TypeScript incremental compilation
+  - Use `--turbo` flag for faster builds when available
+  - Configure your IDE to exclude node_modules from indexing
+</Card>
+
+## Next Steps
+
+After setup is complete:
+
+1. **Explore the Codebase**: Review key components in each application
+2. **Run Tests**: Ensure everything is working with `npm run test`
+3. **Create a Feature Branch**: Start with a small change to verify workflow
+4. **Read Architecture Guide**: Understand the overall system design
+5. **Review Deployment Docs**: Learn about the deployment process
+
+## Getting Help
+
+- **Documentation**: Check other sections for specific topics
+- **Team Chat**: Internal development channels
+- **Issues**: Create GitHub issues for bugs or feature requests
+- **Code Review**: Submit PRs for feedback and guidance

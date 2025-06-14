@@ -1,0 +1,634 @@
+---
+title: 'Comparisons API'
+description: 'API endpoints for quote comparisons and market analysis'
+---
+
+# Comparisons API
+
+The Comparisons API provides endpoints for creating, managing, and retrieving insurance quote comparisons and market analysis.
+
+## Create Comparison
+
+Create a new comparison analysis from uploaded documents.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/comparisons \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q1 2024 Benefits Analysis",
+    "documentIds": ["doc_12345", "doc_67890", "doc_54321"],
+    "comparisonType": "full_market"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('/api/comparisons', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Q1 2024 Benefits Analysis',
+    documentIds: ['doc_12345', 'doc_67890', 'doc_54321'],
+    comparisonType: 'full_market'
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="name" type="string" required>
+  Name for the comparison analysis
+</ParamField>
+
+<ParamField body="documentIds" type="array" required>
+  Array of document IDs to include in comparison
+</ParamField>
+
+<ParamField body="comparisonType" type="string" required>
+  Type of comparison: `full_market`, `single_carrier`, `renegotiated`, `alternative`
+</ParamField>
+
+<ParamField body="projectId" type="string">
+  Associate comparison with a project
+</ParamField>
+
+<ParamField body="filters" type="object">
+  Filters to apply to the comparison
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "comparisonId": "comp_12345",
+    "name": "Q1 2024 Benefits Analysis",
+    "comparisonType": "full_market",
+    "status": "processing",
+    "documentCount": 3,
+    "createdAt": "2024-01-15T11:00:00Z"
+  }
+}
+```
+</ResponseExample>
+
+## Get Comparison Results
+
+Retrieve the results of a completed comparison analysis.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/comparisons/comp_12345 \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/comparisons/${comparisonId}`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "comparisonId": "comp_12345",
+    "name": "Q1 2024 Benefits Analysis",
+    "comparisonType": "full_market",
+    "status": "completed",
+    "createdAt": "2024-01-15T11:00:00Z",
+    "completedAt": "2024-01-15T11:05:30Z",
+    "summary": {
+      "totalCarriers": 3,
+      "coverageTypes": ["Basic Life", "LTD", "Extended Healthcare", "Dental Care"],
+      "totalMonthlyPremiumRange": {
+        "min": 2100.00,
+        "max": 2800.00,
+        "average": 2450.00
+      },
+      "recommendedOption": "ABC Insurance Company"
+    },
+    "carrierComparisons": [
+      {
+        "carrierId": "carrier_abc",
+        "carrierName": "ABC Insurance Company",
+        "documentId": "doc_12345",
+        "totalMonthlyPremium": 2100.00,
+        "coverageCount": 4,
+        "competitiveAdvantages": [
+          "Lowest premium cost",
+          "Comprehensive LTD benefits"
+        ],
+        "coverages": [
+          {
+            "coverageType": "Basic Life",
+            "premium": 450.00,
+            "unitRate": 0.18,
+            "volume": 2500000,
+            "lives": 50,
+            "competitivePosition": "lowest"
+          }
+        ]
+      }
+    ],
+    "premiumAnalysis": {
+      "byCarrier": [
+        {
+          "carrierName": "ABC Insurance Company",
+          "totalPremium": 2100.00,
+          "percentageOfAverage": 85.7,
+          "differenceFromLowest": 0.00
+        }
+      ],
+      "byCoverage": [
+        {
+          "coverageType": "Basic Life",
+          "carriers": [
+            {
+              "carrierName": "ABC Insurance Company",
+              "premium": 450.00,
+              "unitRate": 0.18,
+              "competitiveRanking": 1
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+</ResponseExample>
+
+## List Comparisons
+
+Retrieve a list of comparison analyses with filtering options.
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.benee.com/comparisons?status=completed&limit=10" \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  status: 'completed',
+  limit: '10',
+  comparisonType: 'full_market'
+});
+
+const response = await fetch(`/api/comparisons?${params}`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by status: `processing`, `completed`, `failed`
+</ParamField>
+
+<ParamField query="comparisonType" type="string">
+  Filter by comparison type
+</ParamField>
+
+<ParamField query="projectId" type="string">
+  Filter by project ID
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of results per page (max 100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "comparisons": [
+      {
+        "comparisonId": "comp_12345",
+        "name": "Q1 2024 Benefits Analysis",
+        "comparisonType": "full_market",
+        "status": "completed",
+        "documentCount": 3,
+        "totalCarriers": 3,
+        "lowestPremium": 2100.00,
+        "highestPremium": 2800.00,
+        "createdAt": "2024-01-15T11:00:00Z",
+        "completedAt": "2024-01-15T11:05:30Z"
+      }
+    ],
+    "pagination": {
+      "total": 15,
+      "limit": 20,
+      "offset": 0,
+      "hasMore": false
+    }
+  }
+}
+```
+</ResponseExample>
+
+## Premium Analysis
+
+Get detailed premium analysis for a specific comparison.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/comparisons/comp_12345/premium-analysis \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/comparisons/${comparisonId}/premium-analysis`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "comparisonId": "comp_12345",
+    "analysis": {
+      "totalPremiumComparison": {
+        "lowestOption": {
+          "carrierName": "ABC Insurance Company",
+          "premium": 2100.00
+        },
+        "highestOption": {
+          "carrierName": "XYZ Insurance Company",
+          "premium": 2800.00
+        },
+        "averagePremium": 2450.00,
+        "premiumSpread": 700.00,
+        "spreadPercentage": 33.3
+      },
+      "coverageAnalysis": [
+        {
+          "coverageType": "Basic Life",
+          "analysis": {
+            "lowestRate": 0.15,
+            "highestRate": 0.22,
+            "averageRate": 0.18,
+            "bestValue": "ABC Insurance Company",
+            "premiumRange": {
+              "min": 375.00,
+              "max": 550.00
+            }
+          }
+        }
+      ],
+      "competitiveInsights": [
+        {
+          "insight": "ABC Insurance offers 15% lower premiums than market average",
+          "category": "cost_advantage",
+          "impact": "high"
+        },
+        {
+          "insight": "XYZ Insurance provides superior LTD elimination period",
+          "category": "benefit_advantage",
+          "impact": "medium"
+        }
+      ]
+    }
+  }
+}
+```
+</ResponseExample>
+
+## Coverage Comparison
+
+Get detailed coverage comparison across carriers.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/comparisons/comp_12345/coverage-comparison \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/comparisons/${comparisonId}/coverage-comparison`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="coverageType" type="string">
+  Filter by specific coverage type
+</ParamField>
+
+<ParamField query="sortBy" type="string" default="premium">
+  Sort results by: `premium`, `unitRate`, `coverage`, `carrierName`
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "comparisonId": "comp_12345",
+    "coverageComparison": [
+      {
+        "coverageType": "Basic Life",
+        "carriers": [
+          {
+            "carrierName": "ABC Insurance Company",
+            "premium": 450.00,
+            "unitRate": 0.18,
+            "volume": 2500000,
+            "lives": 50,
+            "benefitDetails": {
+              "maxBenefit": 500000,
+              "schedule": "2x salary up to $500,000",
+              "portability": true,
+              "conversionOption": true
+            },
+            "competitivePosition": {
+              "premiumRanking": 1,
+              "rateRanking": 1,
+              "benefitRanking": 2
+            }
+          }
+        ],
+        "summary": {
+          "premiumSpread": 175.00,
+          "rateSpread": 0.07,
+          "bestPremium": "ABC Insurance Company",
+          "bestBenefits": "XYZ Insurance Company"
+        }
+      }
+    ]
+  }
+}
+```
+</ResponseExample>
+
+## Update Comparison
+
+Update comparison settings or add/remove documents.
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.benee.com/comparisons/comp_12345 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Q1 2024 Benefits Analysis",
+    "addDocumentIds": ["doc_99999"],
+    "removeDocumentIds": ["doc_54321"]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/comparisons/${comparisonId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Updated Q1 2024 Benefits Analysis',
+    addDocumentIds: ['doc_99999'],
+    removeDocumentIds: ['doc_54321']
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="name" type="string">
+  Update comparison name
+</ParamField>
+
+<ParamField body="addDocumentIds" type="array">
+  Document IDs to add to comparison
+</ParamField>
+
+<ParamField body="removeDocumentIds" type="array">
+  Document IDs to remove from comparison
+</ParamField>
+
+<ParamField body="filters" type="object">
+  Update comparison filters
+</ParamField>
+
+## Export Comparison
+
+Generate and download comparison reports in various formats.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/comparisons/comp_12345/export \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format": "pdf",
+    "template": "executive_summary",
+    "includeCharts": true
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/comparisons/${comparisonId}/export`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    format: 'pdf',
+    template: 'executive_summary',
+    includeCharts: true
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="format" type="string" required>
+  Export format: `pdf`, `excel`, `csv`, `json`
+</ParamField>
+
+<ParamField body="template" type="string" required>
+  Report template: `executive_summary`, `detailed_analysis`, `cost_comparison`
+</ParamField>
+
+<ParamField body="includeCharts" type="boolean" default="true">
+  Include visual charts in the report
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "exportId": "export_12345",
+    "downloadUrl": "https://api.benee.com/exports/export_12345/download",
+    "expiresAt": "2024-01-16T11:00:00Z",
+    "format": "pdf",
+    "fileSize": 2048576
+  }
+}
+```
+</ResponseExample>
+
+## Delete Comparison
+
+Delete a comparison analysis and all associated data.
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.benee.com/comparisons/comp_12345 \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/comparisons/${comparisonId}`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "message": "Comparison deleted successfully"
+}
+```
+</ResponseExample>
+
+## Error Responses
+
+<ResponseExample>
+```json Insufficient Documents
+{
+  "success": false,
+  "error": {
+    "code": "INSUFFICIENT_DOCUMENTS",
+    "message": "At least 2 documents required for comparison"
+  }
+}
+```
+
+```json Processing Failed
+{
+  "success": false,
+  "error": {
+    "code": "COMPARISON_FAILED",
+    "message": "Unable to generate comparison",
+    "details": "Documents contain incompatible coverage types"
+  }
+}
+```
+
+```json Invalid Document
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_DOCUMENT",
+    "message": "Document not found or not accessible",
+    "documentId": "doc_invalid"
+  }
+}
+```
+</ResponseExample>
+
+## Webhook Events
+
+<AccordionGroup>
+  <Accordion icon="play" title="comparison.started">
+    Triggered when comparison processing begins
+    
+    ```json
+    {
+      "event": "comparison.started",
+      "comparisonId": "comp_12345",
+      "timestamp": "2024-01-15T11:00:00Z",
+      "data": {
+        "name": "Q1 2024 Benefits Analysis",
+        "documentCount": 3,
+        "comparisonType": "full_market"
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="check-circle" title="comparison.completed">
+    Triggered when comparison analysis completes
+    
+    ```json
+    {
+      "event": "comparison.completed",
+      "comparisonId": "comp_12345",
+      "timestamp": "2024-01-15T11:05:30Z",
+      "data": {
+        "totalCarriers": 3,
+        "lowestPremium": 2100.00,
+        "processingTime": 330
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="download" title="comparison.exported">
+    Triggered when comparison report is exported
+    
+    ```json
+    {
+      "event": "comparison.exported",
+      "comparisonId": "comp_12345",
+      "timestamp": "2024-01-15T11:10:00Z",
+      "data": {
+        "exportId": "export_12345",
+        "format": "pdf",
+        "template": "executive_summary"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

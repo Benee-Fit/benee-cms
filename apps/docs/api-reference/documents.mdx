@@ -1,0 +1,488 @@
+---
+title: 'Documents API'
+description: 'API endpoints for document upload and processing'
+---
+
+# Documents API
+
+The Documents API handles document upload, processing, and management for insurance quote analysis.
+
+## Upload Document
+
+Upload a PDF document for AI processing and analysis.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/documents/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@quote.pdf" \
+  -F "category=new"
+```
+
+```javascript JavaScript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('category', 'new');
+
+const response = await fetch('/api/documents/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+  body: formData,
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="file" type="File" required>
+  PDF file to upload (max 50MB)
+</ParamField>
+
+<ParamField body="category" type="string" required>
+  Document category: `new`, `renegotiated`, or `alternative`
+</ParamField>
+
+<ParamField body="projectId" type="string">
+  Associate document with existing project
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "documentId": "doc_12345",
+    "filename": "quote.pdf",
+    "category": "new",
+    "status": "processing",
+    "uploadedAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+</ResponseExample>
+
+## Get Document Status
+
+Check the processing status of an uploaded document.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/documents/doc_12345/status \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/documents/${documentId}/status`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Processing
+{
+  "success": true,
+  "data": {
+    "documentId": "doc_12345",
+    "status": "processing",
+    "progress": 75,
+    "stage": "ai_extraction",
+    "estimatedCompletion": "2024-01-15T10:35:00Z"
+  }
+}
+```
+
+```json Completed
+{
+  "success": true,
+  "data": {
+    "documentId": "doc_12345",
+    "status": "completed",
+    "extractedData": {
+      "metadata": {
+        "carrierName": "ABC Insurance",
+        "clientName": "Example Corp",
+        "totalMonthlyPremium": 2500.00
+      },
+      "coverages": [...],
+      "planNotes": [...]
+    },
+    "processedAt": "2024-01-15T10:34:22Z"
+  }
+}
+```
+</ResponseExample>
+
+## List Documents
+
+Retrieve a list of uploaded documents with filtering options.
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.benee.com/documents?status=completed&limit=10" \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  status: 'completed',
+  limit: '10',
+  category: 'new'
+});
+
+const response = await fetch(`/api/documents?${params}`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by status: `processing`, `completed`, `failed`
+</ParamField>
+
+<ParamField query="category" type="string">
+  Filter by category: `new`, `renegotiated`, `alternative`
+</ParamField>
+
+<ParamField query="projectId" type="string">
+  Filter by project ID
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of results per page (max 100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of results to skip
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "documents": [
+      {
+        "documentId": "doc_12345",
+        "filename": "quote.pdf",
+        "category": "new",
+        "status": "completed",
+        "carrierName": "ABC Insurance",
+        "uploadedAt": "2024-01-15T10:30:00Z",
+        "processedAt": "2024-01-15T10:34:22Z"
+      }
+    ],
+    "pagination": {
+      "total": 45,
+      "limit": 20,
+      "offset": 0,
+      "hasMore": true
+    }
+  }
+}
+```
+</ResponseExample>
+
+## Get Document Details
+
+Retrieve complete details and extracted data for a specific document.
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.benee.com/documents/doc_12345 \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/documents/${documentId}`, {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "data": {
+    "documentId": "doc_12345",
+    "filename": "abc_insurance_quote.pdf",
+    "category": "new",
+    "status": "completed",
+    "fileSize": 2048576,
+    "uploadedAt": "2024-01-15T10:30:00Z",
+    "processedAt": "2024-01-15T10:34:22Z",
+    "extractedData": {
+      "metadata": {
+        "documentType": "Group Insurance Proposal",
+        "clientName": "Example Corporation",
+        "carrierName": "ABC Insurance Company",
+        "quoteDate": "2024-01-15",
+        "effectiveDate": "2024-02-01",
+        "policyNumber": "Q-2024-001234",
+        "planOptionName": "Standard Plan",
+        "totalProposedMonthlyPlanPremium": 2500.00,
+        "planOptionTotals": {
+          "Standard Plan": 2500.00,
+          "Premium Plan": 3200.00
+        },
+        "rateGuarantees": "12 months"
+      },
+      "coverages": [
+        {
+          "coverageType": "Basic Life",
+          "carrierName": "ABC Insurance Company",
+          "planOptionName": "Standard Plan",
+          "premium": 450.00,
+          "monthlyPremium": 450.00,
+          "unitRate": 0.18,
+          "unitRateBasis": "per $1,000",
+          "volume": 2500000,
+          "lives": 50,
+          "benefitDetails": {
+            "maxBenefit": 500000,
+            "schedule": "2x salary up to $500,000",
+            "portability": true,
+            "conversionOption": true
+          }
+        }
+      ],
+      "planNotes": [
+        "Rates guaranteed for 12 months from effective date",
+        "Medical underwriting required for amounts over $250,000"
+      ]
+    }
+  }
+}
+```
+</ResponseExample>
+
+## Update Document
+
+Update document metadata or category.
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.benee.com/documents/doc_12345 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category": "renegotiated",
+    "projectId": "proj_67890"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/documents/${documentId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    category: 'renegotiated',
+    projectId: 'proj_67890'
+  }),
+});
+```
+</CodeGroup>
+
+### Parameters
+
+<ParamField body="category" type="string">
+  Update document category
+</ParamField>
+
+<ParamField body="projectId" type="string">
+  Associate with different project
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Add notes or comments
+</ParamField>
+
+## Delete Document
+
+Delete a document and all associated data.
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.benee.com/documents/doc_12345 \
+  -H "Authorization: Bearer <token>"
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/documents/${documentId}`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+  },
+});
+```
+</CodeGroup>
+
+### Response
+
+<ResponseExample>
+```json Success Response
+{
+  "success": true,
+  "message": "Document deleted successfully"
+}
+```
+</ResponseExample>
+
+## Reprocess Document
+
+Trigger reprocessing of a document with updated AI models or settings.
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.benee.com/documents/doc_12345/reprocess \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Updated AI model available"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(`/api/documents/${documentId}/reprocess`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    reason: 'Updated AI model available'
+  }),
+});
+```
+</CodeGroup>
+
+## Error Responses
+
+<ResponseExample>
+```json File Too Large
+{
+  "success": false,
+  "error": {
+    "code": "FILE_TOO_LARGE",
+    "message": "File size exceeds 50MB limit"
+  }
+}
+```
+
+```json Invalid File Type
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_FILE_TYPE",
+    "message": "Only PDF files are supported"
+  }
+}
+```
+
+```json Processing Failed
+{
+  "success": false,
+  "error": {
+    "code": "PROCESSING_FAILED",
+    "message": "Document could not be processed",
+    "details": "Unable to extract readable text from PDF"
+  }
+}
+```
+</ResponseExample>
+
+## Webhooks
+
+Subscribe to document processing events via webhooks.
+
+### Event Types
+
+<AccordionGroup>
+  <Accordion icon="upload" title="document.uploaded">
+    Triggered when a document is successfully uploaded
+    
+    ```json
+    {
+      "event": "document.uploaded",
+      "documentId": "doc_12345",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "data": {
+        "filename": "quote.pdf",
+        "category": "new",
+        "fileSize": 2048576
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="cpu" title="document.processing">
+    Triggered when document processing begins
+    
+    ```json
+    {
+      "event": "document.processing",
+      "documentId": "doc_12345",
+      "timestamp": "2024-01-15T10:30:30Z",
+      "data": {
+        "stage": "text_extraction",
+        "progress": 0
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="check-circle" title="document.completed">
+    Triggered when processing completes successfully
+    
+    ```json
+    {
+      "event": "document.completed",
+      "documentId": "doc_12345",
+      "timestamp": "2024-01-15T10:34:22Z",
+      "data": {
+        "extractedCoverages": 5,
+        "totalPremium": 2500.00,
+        "processingTime": 232
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion icon="x-circle" title="document.failed">
+    Triggered when processing fails
+    
+    ```json
+    {
+      "event": "document.failed",
+      "documentId": "doc_12345",
+      "timestamp": "2024-01-15T10:32:15Z",
+      "data": {
+        "error": "Unable to extract text from PDF",
+        "stage": "text_extraction"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

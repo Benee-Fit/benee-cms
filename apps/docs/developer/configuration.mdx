@@ -1,0 +1,769 @@
+---
+title: 'Configuration Guide'
+description: 'Configuration options and environment setup for Benee-CMS'
+---
+
+# Configuration Guide
+
+This guide covers all configuration options, environment variables, and settings for the Benee-CMS platform.
+
+## Environment Variables
+
+### Core Application Settings
+
+<AccordionGroup>
+  <Accordion icon="globe" title="Application URLs">
+    ```bash
+    # Frontend Application URLs
+    NEXT_PUBLIC_APP_URL=http://localhost:3000
+    NEXT_PUBLIC_WEB_URL=http://localhost:3001
+    NEXT_PUBLIC_API_URL=http://localhost:3002
+    NEXT_PUBLIC_BROKER_PORTAL_URL=http://localhost:3003
+    NEXT_PUBLIC_HR_PORTAL_URL=http://localhost:3004
+    NEXT_PUBLIC_DOCS_URL=http://localhost:3005
+    
+    # Vercel-specific
+    VERCEL_PROJECT_PRODUCTION_URL=benee.com
+    ```
+  </Accordion>
+  <Accordion icon="database" title="Database Configuration">
+    ```bash
+    # Primary database connection
+    DATABASE_URL=postgresql://user:password@localhost:5432/benee_cms
+    DIRECT_URL=postgresql://user:password@localhost:5432/benee_cms
+    
+    # Connection pooling (optional)
+    PGBOUNCER_URL=postgresql://user:password@pgbouncer:5432/benee_cms
+    
+    # Database configuration
+    DB_POOL_SIZE=20
+    DB_TIMEOUT=30000
+    DB_SSL_MODE=prefer
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Authentication (Clerk)
+
+<AccordionGroup>
+  <Accordion icon="key" title="Clerk Configuration">
+    ```bash
+    # Clerk API Keys
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+    CLERK_SECRET_KEY=sk_test_...
+    CLERK_WEBHOOK_SECRET=whsec_...
+    
+    # Authentication URLs
+    NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+    NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+    NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
+    
+    # Additional Clerk settings
+    CLERK_ENCRYPTION_KEY=your_encryption_key
+    CLERK_JWT_KEY=your_jwt_key
+    ```
+  </Accordion>
+  <Accordion icon="shield" title="Session Configuration">
+    ```bash
+    # Session management
+    SESSION_TIMEOUT=24h
+    REFRESH_TOKEN_EXPIRY=7d
+    IDLE_TIMEOUT=30m
+    
+    # Security settings
+    SECURE_COOKIES=true
+    SAME_SITE_POLICY=strict
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### AI Services Configuration
+
+<AccordionGroup>
+  <Accordion icon="brain" title="Google Gemini AI">
+    ```bash
+    # Gemini API Configuration
+    GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
+    GEMINI_MODEL=gemini-2.5-pro-preview-05-06
+    GEMINI_MAX_OUTPUT_TOKENS=58192
+    GEMINI_TEMPERATURE=0.1
+    
+    # Rate limiting
+    GEMINI_REQUESTS_PER_MINUTE=60
+    GEMINI_TIMEOUT=120000
+    ```
+  </Accordion>
+  <Accordion icon="file-text" title="PDF.co Configuration">
+    ```bash
+    # PDF.co API Configuration
+    PDFCO_API_KEY=your_pdfco_api_key
+    PDFCO_BASE_URL=https://api.pdf.co/v1
+    
+    # Processing settings
+    PDFCO_ASYNC_MODE=true
+    PDFCO_MAX_RETRIES=30
+    PDFCO_POLLING_INTERVAL=2000
+    PDFCO_MAX_FILE_SIZE=52428800
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Monitoring and Logging
+
+<AccordionGroup>
+  <Accordion icon="activity" title="Application Monitoring">
+    ```bash
+    # Monitoring configuration
+    LOG_LEVEL=info
+    ENABLE_REQUEST_LOGGING=true
+    ENABLE_PERFORMANCE_MONITORING=true
+    
+    # Error tracking
+    SENTRY_DSN=your_sentry_dsn
+    SENTRY_ENVIRONMENT=development
+    SENTRY_RELEASE=1.0.0
+    
+    # Analytics
+    GOOGLE_ANALYTICS_ID=GA_MEASUREMENT_ID
+    HOTJAR_ID=your_hotjar_id
+    ```
+  </Accordion>
+  <Accordion icon="server" title="Performance Settings">
+    ```bash
+    # Performance optimization
+    ENABLE_COMPRESSION=true
+    CACHE_TTL=3600
+    MAX_REQUEST_SIZE=50mb
+    REQUEST_TIMEOUT=30000
+    
+    # Rate limiting
+    RATE_LIMIT_REQUESTS=1000
+    RATE_LIMIT_WINDOW=3600000
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Application Configuration Files
+
+### Next.js Configuration
+
+<AccordionGroup>
+  <Accordion icon="react" title="next.config.js">
+    ```javascript
+    const { withNextConfig } = require('@benee/next-config');
+    
+    /** @type {import('next').NextConfig} */
+    const nextConfig = {
+      // Production optimizations
+      swcMinify: true,
+      compress: true,
+      poweredByHeader: false,
+      
+      // Image optimization
+      images: {
+        domains: [
+          'images.clerk.dev',
+          'img.clerk.com',
+          'api.pdf.co'
+        ],
+        formats: ['image/webp', 'image/avif'],
+        deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+        imageSizes: [16, 32, 48, 64, 96, 128, 256, 384]
+      },
+      
+      // Security headers
+      async headers() {
+        return [
+          {
+            source: '/(.*)',
+            headers: [
+              {
+                key: 'X-Frame-Options',
+                value: 'DENY'
+              },
+              {
+                key: 'X-Content-Type-Options',
+                value: 'nosniff'
+              },
+              {
+                key: 'Referrer-Policy',
+                value: 'origin-when-cross-origin'
+              }
+            ]
+          }
+        ];
+      },
+      
+      // Redirects
+      async redirects() {
+        return [
+          {
+            source: '/dashboard',
+            destination: '/',
+            permanent: true
+          }
+        ];
+      },
+      
+      // Environment variables
+      env: {
+        CUSTOM_KEY: process.env.CUSTOM_KEY
+      },
+      
+      // Experimental features
+      experimental: {
+        bundlePagesRouterDependencies: true,
+        optimizePackageImports: ['@benee/design-system']
+      }
+    };
+    
+    module.exports = withNextConfig(nextConfig);
+    ```
+  </Accordion>
+  <Accordion icon="type" title="TypeScript Configuration">
+    ```json tsconfig.json
+    {
+      "extends": "@benee/typescript-config/nextjs.json",
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"],
+          "@/components/*": ["./src/components/*"],
+          "@/lib/*": ["./src/lib/*"],
+          "@/hooks/*": ["./src/hooks/*"],
+          "@/types/*": ["./src/types/*"]
+        },
+        "plugins": [
+          {
+            "name": "next"
+          }
+        ]
+      },
+      "include": [
+        "next-env.d.ts",
+        "**/*.ts",
+        "**/*.tsx",
+        ".next/types/**/*.ts"
+      ],
+      "exclude": [
+        "node_modules"
+      ]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Database Configuration
+
+<AccordionGroup>
+  <Accordion icon="database" title="Prisma Schema">
+    ```prisma schema.prisma
+    generator client {
+      provider        = "prisma-client-js"
+      previewFeatures = ["driverAdapters"]
+    }
+    
+    datasource db {
+      provider  = "postgresql"
+      url       = env("DATABASE_URL")
+      directUrl = env("DIRECT_URL")
+    }
+    
+    model User {
+      id        String   @id @default(cuid())
+      clerkId   String   @unique
+      email     String   @unique
+      createdAt DateTime @default(now())
+      updatedAt DateTime @updatedAt
+      
+      // Relationships
+      documents   Document[]
+      projects    Project[]
+      comparisons Comparison[]
+      
+      @@map("users")
+    }
+    ```
+  </Accordion>
+  <Accordion icon="gear" title="Database Connection Pool">
+    ```javascript lib/db.ts
+    import { PrismaClient } from '@prisma/client';
+    
+    const globalForPrisma = globalThis as unknown as {
+      prisma: PrismaClient | undefined;
+    };
+    
+    export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+      log: process.env.NODE_ENV === 'development' 
+        ? ['query', 'error', 'warn'] 
+        : ['error'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+    });
+    
+    if (process.env.NODE_ENV !== 'production') {
+      globalForPrisma.prisma = prisma;
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Feature Flags
+
+### Configuration System
+
+<AccordionGroup>
+  <Accordion icon="flag" title="Feature Flag Setup">
+    ```typescript lib/feature-flags.ts
+    interface FeatureFlags {
+      enableBetaFeatures: boolean;
+      enableAdvancedAnalytics: boolean;
+      enableNewDocumentProcessor: boolean;
+      enableWebhooks: boolean;
+      enableAPIRateLimiting: boolean;
+      maxDocumentSize: number;
+      maxDocumentsPerProject: number;
+    }
+    
+    export const featureFlags: FeatureFlags = {
+      enableBetaFeatures: process.env.ENABLE_BETA_FEATURES === 'true',
+      enableAdvancedAnalytics: process.env.ENABLE_ADVANCED_ANALYTICS === 'true',
+      enableNewDocumentProcessor: process.env.ENABLE_NEW_PROCESSOR === 'true',
+      enableWebhooks: process.env.ENABLE_WEBHOOKS === 'true',
+      enableAPIRateLimiting: process.env.ENABLE_RATE_LIMITING === 'true',
+      maxDocumentSize: parseInt(process.env.MAX_DOCUMENT_SIZE || '52428800'),
+      maxDocumentsPerProject: parseInt(process.env.MAX_DOCUMENTS_PER_PROJECT || '50'),
+    };
+    ```
+  </Accordion>
+  <Accordion icon="toggle" title="Runtime Feature Checks">
+    ```typescript hooks/use-feature-flag.ts
+    import { featureFlags } from '@/lib/feature-flags';
+    
+    export function useFeatureFlag(flag: keyof typeof featureFlags) {
+      return featureFlags[flag];
+    }
+    
+    // Usage in components
+    function DocumentUpload() {
+      const enableNewProcessor = useFeatureFlag('enableNewDocumentProcessor');
+      
+      return (
+        <div>
+          {enableNewProcessor ? (
+            <NewDocumentProcessor />
+          ) : (
+            <LegacyDocumentProcessor />
+          )}
+        </div>
+      );
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Security Configuration
+
+### Content Security Policy
+
+<AccordionGroup>
+  <Accordion icon="shield" title="CSP Headers">
+    ```javascript
+    const ContentSecurityPolicy = `
+      default-src 'self';
+      script-src 'self' 'unsafe-eval' 'unsafe-inline' *.clerk.accounts.dev *.googletagmanager.com;
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' blob: data: *.clerk.com *.googleusercontent.com;
+      media-src 'self';
+      connect-src 'self' *.clerk.accounts.dev *.google.com *.pdf.co;
+      font-src 'self';
+    `;
+    
+    module.exports = {
+      async headers() {
+        return [
+          {
+            source: '/(.*)',
+            headers: [
+              {
+                key: 'Content-Security-Policy',
+                value: ContentSecurityPolicy.replace(/\n/g, '')
+              }
+            ]
+          }
+        ];
+      }
+    };
+    ```
+  </Accordion>
+  <Accordion icon="lock" title="CORS Configuration">
+    ```typescript middleware.ts
+    import { NextResponse } from 'next/server';
+    import type { NextRequest } from 'next/server';
+    
+    export function middleware(request: NextRequest) {
+      // Handle CORS for API routes
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        const response = NextResponse.next();
+        
+        // Set CORS headers
+        response.headers.set('Access-Control-Allow-Origin', getAllowedOrigins());
+        response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+        
+        return response;
+      }
+      
+      return NextResponse.next();
+    }
+    
+    function getAllowedOrigins(): string {
+      const origins = [
+        process.env.NEXT_PUBLIC_WEB_URL,
+        process.env.NEXT_PUBLIC_APP_URL,
+        process.env.NEXT_PUBLIC_BROKER_PORTAL_URL
+      ].filter(Boolean);
+      
+      return origins.join(',');
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## API Configuration
+
+### Rate Limiting
+
+<AccordionGroup>
+  <Accordion icon="shield" title="Rate Limit Configuration">
+    ```typescript lib/rate-limit.ts
+    import { Ratelimit } from '@upstash/ratelimit';
+    import { Redis } from '@upstash/redis';
+    
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    
+    export const rateLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(100, '1 h'),
+      analytics: true,
+    });
+    
+    export const documentUploadLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, '1 m'),
+      analytics: true,
+    });
+    ```
+  </Accordion>
+  <Accordion icon="api" title="API Middleware">
+    ```typescript lib/api-middleware.ts
+    import { NextApiRequest, NextApiResponse } from 'next';
+    import { rateLimiter } from '@/lib/rate-limit';
+    import { auth } from '@clerk/nextjs';
+    
+    export function withRateLimit(handler: any) {
+      return async (req: NextApiRequest, res: NextApiResponse) => {
+        const { userId } = auth();
+        
+        if (!userId) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+        
+        const { success, limit, reset, remaining } = await rateLimiter.limit(userId);
+        
+        if (!success) {
+          return res.status(429).json({
+            error: 'Rate limit exceeded',
+            retryAfter: reset
+          });
+        }
+        
+        // Add rate limit headers
+        res.setHeader('X-RateLimit-Limit', limit);
+        res.setHeader('X-RateLimit-Remaining', remaining);
+        res.setHeader('X-RateLimit-Reset', reset);
+        
+        return handler(req, res);
+      };
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Email Configuration
+
+### Email Service Setup
+
+<AccordionGroup>
+  <Accordion icon="mail" title="Transactional Email">
+    ```bash
+    # Email service configuration
+    EMAIL_PROVIDER=resend
+    RESEND_API_KEY=your_resend_api_key
+    FROM_EMAIL=noreply@benee.com
+    REPLY_TO_EMAIL=support@benee.com
+    
+    # Email templates
+    WELCOME_EMAIL_TEMPLATE_ID=template_welcome
+    RESET_PASSWORD_TEMPLATE_ID=template_reset
+    DOCUMENT_PROCESSED_TEMPLATE_ID=template_processed
+    ```
+  </Accordion>
+  <Accordion icon="template" title="Email Templates">
+    ```typescript lib/email.ts
+    import { Resend } from 'resend';
+    
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    
+    export async function sendWelcomeEmail(
+      email: string, 
+      name: string
+    ) {
+      return await resend.emails.send({
+        from: process.env.FROM_EMAIL!,
+        to: email,
+        subject: 'Welcome to Benee-CMS',
+        react: WelcomeEmailTemplate({ name }),
+      });
+    }
+    
+    export async function sendDocumentProcessedEmail(
+      email: string,
+      documentName: string,
+      resultsUrl: string
+    ) {
+      return await resend.emails.send({
+        from: process.env.FROM_EMAIL!,
+        to: email,
+        subject: 'Document Processing Complete',
+        react: DocumentProcessedTemplate({ 
+          documentName, 
+          resultsUrl 
+        }),
+      });
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Cache Configuration
+
+### Redis Caching
+
+<AccordionGroup>
+  <Accordion icon="database" title="Cache Setup">
+    ```typescript lib/cache.ts
+    import { Redis } from '@upstash/redis';
+    
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    
+    export class CacheService {
+      static async get<T>(key: string): Promise<T | null> {
+        try {
+          const data = await redis.get(key);
+          return data as T;
+        } catch (error) {
+          console.error('Cache get error:', error);
+          return null;
+        }
+      }
+      
+      static async set(
+        key: string, 
+        value: any, 
+        ttl: number = 3600
+      ): Promise<void> {
+        try {
+          await redis.setex(key, ttl, JSON.stringify(value));
+        } catch (error) {
+          console.error('Cache set error:', error);
+        }
+      }
+      
+      static async del(key: string): Promise<void> {
+        try {
+          await redis.del(key);
+        } catch (error) {
+          console.error('Cache delete error:', error);
+        }
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion icon="clock" title="Cache Strategies">
+    ```typescript
+    // Cache keys and TTL configuration
+    export const CACHE_KEYS = {
+      USER_DOCUMENTS: (userId: string) => `user:${userId}:documents`,
+      DOCUMENT_STATUS: (docId: string) => `document:${docId}:status`,
+      COMPARISON_RESULTS: (compId: string) => `comparison:${compId}:results`,
+      CARRIER_DATA: (carrierId: string) => `carrier:${carrierId}:data`,
+    } as const;
+    
+    export const CACHE_TTL = {
+      USER_DOCUMENTS: 300,      // 5 minutes
+      DOCUMENT_STATUS: 60,      // 1 minute
+      COMPARISON_RESULTS: 3600, // 1 hour
+      CARRIER_DATA: 86400,      // 24 hours
+    } as const;
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Development Configuration
+
+### Development Tools
+
+<AccordionGroup>
+  <Accordion icon="bug" title="Debugging Configuration">
+    ```json .vscode/launch.json
+    {
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "name": "Next.js: debug server-side",
+          "type": "node",
+          "request": "attach",
+          "port": 9229,
+          "skipFiles": ["<node_internals>/**"]
+        },
+        {
+          "name": "Next.js: debug client-side",
+          "type": "chrome",
+          "request": "launch",
+          "url": "http://localhost:3000"
+        }
+      ]
+    }
+    ```
+  </Accordion>
+  <Accordion icon="test-tube" title="Testing Configuration">
+    ```javascript jest.config.js
+    const nextJest = require('next/jest');
+    
+    const createJestConfig = nextJest({
+      dir: './',
+    });
+    
+    const customJestConfig = {
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+      moduleNameMapping: {
+        '^@/components/(.*)$': '<rootDir>/components/$1',
+        '^@/pages/(.*)$': '<rootDir>/pages/$1',
+      },
+      testEnvironment: 'jest-environment-jsdom',
+      collectCoverageFrom: [
+        'src/**/*.{js,jsx,ts,tsx}',
+        '!src/**/*.d.ts',
+      ],
+    };
+    
+    module.exports = createJestConfig(customJestConfig);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Optimizations
+
+### Performance Configuration
+
+<Card title="Production Settings" icon="zap">
+  These settings are automatically applied in production environments to optimize performance and security.
+</Card>
+
+<AccordionGroup>
+  <Accordion icon="rocket" title="Build Optimizations">
+    ```bash
+    # Production build settings
+    NODE_ENV=production
+    ANALYZE_BUNDLE=false
+    ENABLE_SOURCE_MAPS=false
+    OPTIMIZE_FONTS=true
+    COMPRESS_ASSETS=true
+    
+    # Bundle analysis
+    BUNDLE_ANALYZE=false
+    WEBPACK_BUNDLE_ANALYZER=false
+    ```
+  </Accordion>
+  <Accordion icon="server" title="Runtime Optimizations">
+    ```bash
+    # Server optimizations
+    MAX_CONCURRENT_REQUESTS=100
+    KEEP_ALIVE_TIMEOUT=5000
+    HEADERS_TIMEOUT=60000
+    
+    # Memory management
+    NODE_OPTIONS=--max_old_space_size=4096
+    UV_THREADPOOL_SIZE=128
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Configuration Validation
+
+### Environment Validation
+
+<AccordionGroup>
+  <Accordion icon="check" title="Validation Schema">
+    ```typescript lib/env-validation.ts
+    import { z } from 'zod';
+    
+    const envSchema = z.object({
+      NODE_ENV: z.enum(['development', 'staging', 'production']),
+      DATABASE_URL: z.string().url(),
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+      CLERK_SECRET_KEY: z.string().min(1),
+      GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1),
+      PDFCO_API_KEY: z.string().min(1),
+    });
+    
+    export function validateEnvironment() {
+      try {
+        envSchema.parse(process.env);
+        console.log('✅ Environment variables validated');
+      } catch (error) {
+        console.error('❌ Invalid environment variables:', error);
+        process.exit(1);
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion icon="warning" title="Startup Checks">
+    ```typescript lib/startup-checks.ts
+    import { validateEnvironment } from './env-validation';
+    import { prisma } from './db';
+    
+    export async function performStartupChecks() {
+      console.log('🔧 Performing startup checks...');
+      
+      // Validate environment
+      validateEnvironment();
+      
+      // Check database connection
+      try {
+        await prisma.$connect();
+        console.log('✅ Database connection successful');
+      } catch (error) {
+        console.error('❌ Database connection failed:', error);
+        process.exit(1);
+      }
+      
+      // Check external services
+      await checkExternalServices();
+      
+      console.log('✅ All startup checks passed');
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
