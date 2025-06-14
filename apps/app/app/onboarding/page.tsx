@@ -37,6 +37,13 @@ export interface OnboardingData {
   preferredCarriers: string[];
   clientIndustries: string[];
   averageClientSize: string;
+  
+  // Team Members
+  teamMembers: Array<{
+    email: string;
+    role: string;
+    permissions: string[];
+  }>;
 }
 
 // Reduced to just 2 steps for better UX
@@ -55,6 +62,7 @@ export default function OnboardingPage() {
     preferredCarriers: [],
     clientIndustries: [],
     averageClientSize: '',
+    teamMembers: [],
     businessAddress: {
       street: '',
       city: '',
@@ -133,6 +141,7 @@ export default function OnboardingPage() {
           preferredCarriers: onboardingData.preferredCarriers ?? [],
           clientIndustries: onboardingData.clientIndustries ?? [],
           averageClientSize: onboardingData.averageClientSize ?? '',
+          teamMembers: onboardingData.teamMembers ?? [],
           businessAddress: onboardingData.businessAddress ?? {
             street: '',
             city: '',

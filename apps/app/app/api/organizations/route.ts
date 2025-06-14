@@ -27,6 +27,11 @@ const organizationSchema = z.object({
   preferredCarriers: z.array(z.string()).optional(),
   clientIndustries: z.array(z.string()).optional(),
   averageClientSize: z.string().optional(),
+  teamMembers: z.array(z.object({
+    email: z.string(),
+    role: z.string(),
+    permissions: z.array(z.string()),
+  })).optional(),
 });
 
 export async function POST(request: Request) {
