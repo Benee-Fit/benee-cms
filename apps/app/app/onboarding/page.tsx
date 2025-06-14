@@ -1,30 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { OnboardingContainer } from './components/onboarding-container';
 import { OrganizationStep } from './steps/organization-step';
-// Note: BusinessDetailsStep needs to be implemented
-import { BusinessDetailsStep } from './steps/business-details-step';
+import { BusinessDetailsStep } from '../steps/business-details-step';
 import { useUser } from '@repo/auth/client';
 import { useRouter } from 'next/navigation';
 
 // Simplified onboarding data interface
 export interface OnboardingData {
   // Organization Details
+  website: string;
   organizationName: string;
   organizationLogo?: File;
   organizationType: string;
   companySize: string;
-  website: string;
-  
-  // Business Details
-  businessAddress?: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
   
   // Business Focus
   linesOfBusiness: string[];
@@ -37,13 +26,7 @@ const TOTAL_STEPS = 2;
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
-    businessAddress: {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'US',
-    },
+    website: '',
     linesOfBusiness: [],
     preferredCarriers: [],
   });
@@ -88,8 +71,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           name: onboardingData.organizationName ?? '',
           website: onboardingData.website ?? '',
-          address: onboardingData.businessAddress ? 
-            `${onboardingData.businessAddress.street}, ${onboardingData.businessAddress.city}, ${onboardingData.businessAddress.state} ${onboardingData.businessAddress.zipCode}` : '',
+          // Address removed per user request
           specialties: onboardingData.linesOfBusiness ?? [],
           preferredCarriers: onboardingData.preferredCarriers ?? []
         }),
@@ -115,7 +97,7 @@ export default function OnboardingPage() {
           <OrganizationStep
             data={onboardingData}
             onContinue={handleNextStep}
-            onBack={() => {}}
+            onBack={handlePreviousStep}
             onUpdateData={handleUpdateData}
           />
         );
@@ -135,7 +117,7 @@ export default function OnboardingPage() {
           <OrganizationStep
             data={onboardingData}
             onContinue={handleNextStep}
-            onBack={() => {}}
+            onBack={handlePreviousStep}
             onUpdateData={handleUpdateData}
           />
         );
@@ -143,8 +125,8 @@ export default function OnboardingPage() {
   };
 
   return (
-    <OnboardingContainer currentStep={currentStep} totalSteps={TOTAL_STEPS}>
+    <div className="p-4 max-w-md mx-auto">
       {renderCurrentStep()}
-    </OnboardingContainer>
+    </div>
   );
 }

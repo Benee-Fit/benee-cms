@@ -25,6 +25,7 @@ import {
   Upload,
   Edit,
   Trash,
+  ChevronRight,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -311,9 +312,9 @@ export default function ClientListPage() {
         
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Client List</h1>
+            <h1 className="text-3xl font-semibold text-gray-900">Client List</h1>
             {searchTerm && (
-              <p className="text-muted-foreground mt-1">
+              <p className="text-gray-600 mt-2">
                 Showing results for "{searchTerm}" ({sortedClients.length} found)
               </p>
             )}
@@ -356,7 +357,7 @@ export default function ClientListPage() {
         </div>
 
         <Card className={`mb-6 ${isEditMode ? 'border-orange-500' : ''}`}>
-          <div className="p-6">
+          <div className="px-6 pt-6 pb-2">
             {isEditMode && (
               <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
                 <p className="text-sm text-orange-800 dark:text-orange-200 font-medium">
@@ -389,16 +390,16 @@ export default function ClientListPage() {
                         </TableHead>
                       )}
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-gray-50 py-2 px-6 font-semibold text-gray-900"
                         onClick={() => handleSortRequest('companyName')}
                       >
                         <div className="flex items-center">
                           Company Name {getSortIcon('companyName')}
                         </div>
                       </TableHead>
-                      <TableHead>Policy #</TableHead>
+                      <TableHead className="py-2 px-6 font-semibold text-gray-900">Policy #</TableHead>
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-gray-50 py-2 px-6 font-semibold text-gray-900"
                         onClick={() => handleSortRequest('renewalDate')}
                       >
                         <div className="flex items-center">
@@ -406,7 +407,7 @@ export default function ClientListPage() {
                         </div>
                       </TableHead>
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-gray-50 py-2 px-6 font-semibold text-gray-900"
                         onClick={() => handleSortRequest('headcount')}
                       >
                         <div className="flex items-center">
@@ -414,7 +415,7 @@ export default function ClientListPage() {
                         </div>
                       </TableHead>
                       <TableHead
-                        className="text-right cursor-pointer hover:bg-muted/50"
+                        className="text-right cursor-pointer hover:bg-gray-50 py-2 px-6 font-semibold text-gray-900"
                         onClick={() => handleSortRequest('premium')}
                       >
                         <div className="flex items-center justify-end">
@@ -422,40 +423,47 @@ export default function ClientListPage() {
                         </div>
                       </TableHead>
                       <TableHead
-                        className="text-right cursor-pointer hover:bg-muted/50"
+                        className="text-right cursor-pointer hover:bg-gray-50 py-2 px-6 font-semibold text-gray-900"
                         onClick={() => handleSortRequest('revenue')}
                       >
                         <div className="flex items-center justify-end">
                           Revenue {getSortIcon('revenue')}
                         </div>
                       </TableHead>
-                      <TableHead>Industry</TableHead>
+                      <TableHead className="py-2 px-6 font-semibold text-gray-900">Industry</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedClients.map((client) => (
                       <TableRow 
                         key={client.id}
-                        className={`${!isEditMode ? 'cursor-pointer' : ''} hover:bg-muted/50 transition-colors`}
+                        className={`${!isEditMode ? 'cursor-pointer group' : ''} hover:bg-gray-50 transition-colors border-b border-gray-100`}
                         onClick={() => handleClientClick(client.id)}
                       >
                         {isEditMode && (
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                               checked={selectedClients.has(client.id)}
                               onCheckedChange={() => toggleClientSelection(client.id)}
                             />
                           </TableCell>
                         )}
-                        <TableCell className="font-medium">
-                          {client.companyName}
+                        <TableCell className="font-semibold text-gray-900 py-4 px-6">
+                          <div className="flex items-center justify-between">
+                            <span className={!isEditMode ? "group-hover:text-blue-600 transition-colors" : ""}>
+                              {client.companyName}
+                            </span>
+                            {!isEditMode && (
+                              <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all ml-2" />
+                            )}
+                          </div>
                         </TableCell>
-                        <TableCell>{client.policyNumber}</TableCell>
-                        <TableCell>{client.renewalDate}</TableCell>
-                        <TableCell>{client.headcount}</TableCell>
-                        <TableCell className="text-right">{`$${client.premium.toLocaleString()}`}</TableCell>
-                        <TableCell className="text-right">{`$${client.revenue.toLocaleString()}`}</TableCell>
-                        <TableCell>{client.industry}</TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">{client.policyNumber}</TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">{client.renewalDate}</TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">{client.headcount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium text-gray-900 py-4 px-6">{`$${client.premium.toLocaleString()}`}</TableCell>
+                        <TableCell className="text-right font-medium text-gray-900 py-4 px-6">{`$${client.revenue.toLocaleString()}`}</TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">{client.industry}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -476,9 +484,14 @@ export default function ClientListPage() {
                     <SelectItem value="100">100 rows per page</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-gray-600">
                   Page {currentPage} of {totalPages}
                 </span>
+                {!isEditMode && sortedClients.length > 0 && (
+                  <span className="text-xs text-gray-500 italic">
+                    Click any row to view client details
+                  </span>
+                )}
               </div>
               <div className="space-x-2">
                 <Button

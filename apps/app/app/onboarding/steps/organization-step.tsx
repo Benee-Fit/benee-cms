@@ -149,6 +149,20 @@ export function OrganizationStep({
       </div>
 
       <div className="space-y-6">
+        {/* Website - Moved to first position */}
+        <div>
+          <Label htmlFor="website" className="text-sm font-medium text-gray-700 mb-2 block">
+            Website URL (Optional)
+          </Label>
+          <Input
+            id="website"
+            type="url"
+            value={formData.website}
+            onChange={(e) => handleInputChange('website', e.target.value)}
+            placeholder="https://www.company.com"
+          />
+        </div>
+
         {/* Organization Logo */}
         <div className="flex items-center space-x-6">
           <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
@@ -253,20 +267,6 @@ export function OrganizationStep({
               <p className="text-sm text-red-600 mt-1">{errors.companySize}</p>
             )}
           </div>
-        </div>
-
-        {/* Website */}
-        <div>
-          <Label htmlFor="website" className="text-sm font-medium text-gray-700 mb-2 block">
-            Website URL (Optional)
-          </Label>
-          <Input
-            id="website"
-            type="url"
-            value={formData.website}
-            onChange={(e) => handleInputChange('website', e.target.value)}
-            placeholder="https://www.company.com"
-          />
         </div>
 
         {/* Business Address */}

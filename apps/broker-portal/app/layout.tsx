@@ -1,3 +1,4 @@
+import '../polyfills';
 import { env } from '@/env';
 import { ClerkProvider } from '@clerk/nextjs';
 import { AppHeader } from '@repo/design-system';
