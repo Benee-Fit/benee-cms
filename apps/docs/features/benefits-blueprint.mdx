@@ -1,0 +1,185 @@
+---
+title: 'Benefits Blueprint'
+description: 'AI-powered insurance quote comparison and analysis'
+---
+
+# Benefits Blueprint
+
+Benefits Blueprint is a powerful feature designed for benefits brokers and insurance consultants to efficiently compare multiple insurance carriers' offerings using AI-powered document processing.
+
+## Overview
+
+The Benefits Blueprint workflow consists of three main stages:
+
+1. **Document Upload**: Upload insurance quote PDFs with intelligent categorization
+2. **AI Processing**: Automated data extraction and structuring using advanced AI models
+3. **Analysis & Comparison**: Comprehensive market comparison and report generation
+
+## Document Upload System
+
+### Supported File Types
+- PDF documents (primary format for insurance quotes)
+- Multiple documents per project
+- Batch upload capabilities
+
+### Document Categorization
+
+When uploading documents, you can categorize them as:
+
+<AccordionGroup>
+  <Accordion icon="file-plus" title="New/Current Quotes">
+    Fresh quotes from carriers for new business or renewals
+  </Accordion>
+  <Accordion icon="file-pen" title="Renegotiated Quotes">
+    Updated quotes after negotiations or plan modifications
+  </Accordion>
+  <Accordion icon="file-contract" title="Alternative Quotes">
+    Alternative plan options or carrier proposals
+  </Accordion>
+</AccordionGroup>
+
+## AI-Powered Document Processing
+
+### Text Extraction
+- Utilizes PDF.co for reliable text extraction from complex insurance documents
+- Handles various document formats and layouts
+- Asynchronous processing for large documents
+
+### Data Structuring
+- Google Gemini AI (gemini-2.5-pro-preview) processes extracted text
+- Structured JSON output with standardized schema
+- Intelligent recognition of insurance terminology and structures
+
+### Extracted Data Points
+
+<CardGroup cols={2}>
+  <Card title="Metadata" icon="info-circle">
+    - Document type and source
+    - Client and carrier information
+    - Effective dates and policy numbers
+    - Plan option names and totals
+  </Card>
+  <Card title="Coverage Details" icon="shield-check">
+    - Coverage types (Life, AD&D, LTD, STD, etc.)
+    - Premium amounts and unit rates
+    - Benefit details and limitations
+    - Volume and lives covered
+  </Card>
+  <Card title="Plan Information" icon="file-chart-column">
+    - Multiple plan options within documents
+    - Rate guarantees and terms
+    - Plan-specific notes and conditions
+  </Card>
+  <Card title="Financial Data" icon="dollar-sign">
+    - Monthly premiums by coverage
+    - Total proposed plan premiums
+    - Unit rates and basis calculations
+  </Card>
+</CardGroup>
+
+## Market Comparison Views
+
+### Full Market Comparison
+Compare all uploaded carriers side-by-side with:
+- Premium comparison tables
+- Coverage detail analysis
+- Financial impact calculations
+- Percentage change analysis
+
+### Single Carrier Analysis
+Deep dive into individual carrier offerings:
+- Detailed coverage breakdowns
+- Plan option comparisons
+- Benefit detail exploration
+
+### Specialized Comparisons
+- **Renegotiated Quotes**: Before/after analysis of negotiated terms
+- **Alternative Options**: Side-by-side alternative plan comparisons
+- **Filtered Views**: Dynamic filtering by insurance type or coverage
+
+## Coverage Analysis Features
+
+### Supported Insurance Types
+
+<AccordionGroup>
+  <Accordion icon="heart-pulse" title="Life Insurance">
+    - Basic Life and AD&D coverage
+    - Dependent Life options
+    - Benefit schedules and maximums
+  </Accordion>
+  <Accordion icon="hospital" title="Health & Medical">
+    - Extended Healthcare plans
+    - Dental and Vision coverage
+    - Health Spending Accounts (HSA)
+  </Accordion>
+  <Accordion icon="briefcase-medical" title="Disability Insurance">
+    - Long-term Disability (LTD)
+    - Short-term Disability (STD)
+    - Benefit periods and elimination periods
+  </Accordion>
+  <Accordion icon="shield-heart" title="Specialty Coverage">
+    - Critical Illness insurance
+    - Employee Assistance Programs (EAP)
+    - Additional voluntary benefits
+  </Accordion>
+</AccordionGroup>
+
+### Premium Comparison Features
+- **Volume-based calculations**: Unit rates × lives covered
+- **Monthly premium totals**: Aggregated across all coverages
+- **Percentage analysis**: Cost differences between options
+- **Financial impact**: Total cost implications for clients
+
+## Report Management
+
+### Generated Reports
+- Client-specific comparison summaries
+- Detailed coverage analysis
+- Premium impact assessments
+- Professional presentation format
+
+### Export Options
+- PDF report generation
+- Structured data export
+- Customizable report templates
+
+## Integration & Authentication
+
+### User Management
+- Clerk authentication integration
+- Role-based access control
+- Client project organization
+
+### API Integration
+- RESTful API endpoints
+- Webhook support for processing updates
+- Integration with existing broker workflows
+
+## Best Practices
+
+### Document Preparation
+1. Ensure PDF documents are text-readable (not scanned images)
+2. Use clear, standard insurance quote formats
+3. Include all relevant plan information in uploads
+
+### Data Validation
+1. Review AI-extracted data for accuracy
+2. Verify premium calculations match source documents
+3. Check coverage details against original quotes
+
+### Comparison Analysis
+1. Use consistent time periods for fair comparisons
+2. Consider total cost of ownership, not just premiums
+3. Factor in benefit differences when analyzing costs
+
+## Troubleshooting
+
+### Common Issues
+- **Processing Errors**: Check document format and readability
+- **Missing Data**: Verify all required information is present in source documents
+- **Comparison Discrepancies**: Review data extraction accuracy
+
+### Support Resources
+- In-app help documentation
+- Technical support via support@benee.com
+- Video tutorials and best practices guides

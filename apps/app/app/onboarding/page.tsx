@@ -15,6 +15,15 @@ export interface OnboardingData {
   organizationType: string;
   companySize: string;
   
+  // Business Address
+  businessAddress: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  
   // Business Focus
   linesOfBusiness: string[];
   preferredCarriers: string[];
@@ -29,6 +38,13 @@ export default function OnboardingPage() {
     website: '',
     linesOfBusiness: [],
     preferredCarriers: [],
+    businessAddress: {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: ''
+    }
   });
   
   const [loading, setLoading] = useState(false);
@@ -70,7 +86,8 @@ export default function OnboardingPage() {
         companySize: onboardingData.companySize,
         website: onboardingData.website,
         linesOfBusiness: onboardingData.linesOfBusiness,
-        preferredCarriers: onboardingData.preferredCarriers
+        preferredCarriers: onboardingData.preferredCarriers,
+        businessAddress: onboardingData.businessAddress
       });
       
       // Submit organization data through API
@@ -85,7 +102,14 @@ export default function OnboardingPage() {
           companySize: onboardingData.companySize ?? '',
           website: onboardingData.website ?? '',
           linesOfBusiness: onboardingData.linesOfBusiness ?? [],
-          preferredCarriers: onboardingData.preferredCarriers ?? []
+          preferredCarriers: onboardingData.preferredCarriers ?? [],
+          businessAddress: onboardingData.businessAddress ?? {
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            country: ''
+          }
         }),
       });
 

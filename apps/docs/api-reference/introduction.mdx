@@ -1,33 +1,97 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API Reference"
+description: "Integrate with Benee-CMS APIs"
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+# Benee-CMS API Reference
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+Welcome to the Benee-CMS API documentation. Our APIs enable you to integrate Benefits Blueprint functionality into your existing workflows and applications.
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API requests require authentication using API keys. You can generate API keys from your account dashboard.
+
+```bash
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+  https://api.benee.com/v1/endpoint
+```
+
+## Base URL
+
+All API endpoints are available at:
+```
+https://api.benee.com/v1/
+```
+
+## Core Endpoints
+
+### Document Processing
+- `POST /documents/upload` - Upload insurance quote documents
+- `GET /documents/{id}/status` - Check processing status
+- `GET /documents/{id}/results` - Retrieve extracted data
+
+### Project Management
+- `GET /projects` - List all projects
+- `POST /projects` - Create new project
+- `GET /projects/{id}` - Get project details
+- `PUT /projects/{id}` - Update project
+
+### Comparisons
+- `POST /comparisons` - Create comparison analysis
+- `GET /comparisons/{id}` - Get comparison results
+- `POST /comparisons/{id}/reports` - Generate reports
+
+## Response Format
+
+All API responses follow a consistent JSON format:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+  "success": true,
+  "data": {
+    // Response data
+  },
+  "message": "Success",
+  "timestamp": "2023-06-14T12:00:00Z"
+}
 ```
+
+## Error Handling
+
+API errors return appropriate HTTP status codes with detailed error messages:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid document format",
+    "details": {}
+  }
+}
+```
+
+## Rate Limiting
+
+API requests are rate limited to ensure fair usage:
+- **Free tier**: 100 requests per hour
+- **Pro tier**: 1,000 requests per hour  
+- **Enterprise**: Custom limits
+
+## SDKs and Libraries
+
+We provide official SDKs for popular programming languages:
+- JavaScript/Node.js
+- Python
+- PHP
+- C#/.NET
+
+## Webhooks
+
+Configure webhooks to receive real-time notifications about document processing status, comparison completions, and other events.
+
+## Need Help?
+
+- Browse our API documentation and examples
+- Join our developer community
+- Contact our technical support team at api-support@benee.com
