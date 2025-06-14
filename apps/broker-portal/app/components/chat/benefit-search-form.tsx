@@ -58,10 +58,10 @@ export function BenefitSearchForm({ className }: BenefitSearchFormProps) {
             {...form.register('query')}
             type="text"
             placeholder="Ask about coverage, plans, or benefits..."
-            className="flex-grow"
+            className="flex-grow h-12"
             aria-label="Benefit plan question"
           />
-          <Button type="submit">
+          <Button type="submit" className="h-12 px-6">
             <Search className="mr-2 h-4 w-4" />
             Ask a Question
           </Button>
