@@ -16,6 +16,7 @@ const envSchema = z.object({
   VERCEL_ENV: z.enum(['development', 'preview', 'production']).optional(),
   VERCEL_URL: z.string().optional(),
   VERCEL_REGION: z.string().optional(),
+  VERCEL_PROJECT_PRODUCTION_URL: z.string().optional(),
   
   // Public environment variables
   NEXT_PUBLIC_APP_URL: z.string().url(),
@@ -32,6 +33,7 @@ const processEnv = {
   VERCEL_ENV: process.env.VERCEL_ENV,
   VERCEL_URL: process.env.VERCEL_URL,
   VERCEL_REGION: process.env.VERCEL_REGION,
+  VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_WEB_URL: process.env.NEXT_PUBLIC_WEB_URL,
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
