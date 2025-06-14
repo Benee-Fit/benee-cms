@@ -52,14 +52,7 @@ export function OrganizationStep({
     organizationName: data.organizationName || '',
     organizationType: data.organizationType || '',
     companySize: data.companySize || '',
-    website: data.website || '',
-    businessAddress: {
-      street: data.businessAddress?.street || '',
-      city: data.businessAddress?.city || '',
-      state: data.businessAddress?.state || '',
-      zipCode: data.businessAddress?.zipCode || '',
-      country: data.businessAddress?.country || 'US',
-    }
+    website: data.website || ''
   });
 
   const [organizationLogo, setOrganizationLogo] = useState<File | null>(null);
@@ -79,18 +72,6 @@ export function OrganizationStep({
     }
     if (!formData.companySize) {
       newErrors.companySize = 'Company size is required';
-    }
-    if (!formData.businessAddress.street.trim()) {
-      newErrors.street = 'Street address is required';
-    }
-    if (!formData.businessAddress.city.trim()) {
-      newErrors.city = 'City is required';
-    }
-    if (!formData.businessAddress.state) {
-      newErrors.state = 'State is required';
-    }
-    if (!formData.businessAddress.zipCode.trim()) {
-      newErrors.zipCode = 'ZIP code is required';
     }
 
     setErrors(newErrors);
@@ -120,7 +101,9 @@ export function OrganizationStep({
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch organization info');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData?.error || 'Failed to fetch organization info';
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
@@ -148,18 +131,8 @@ export function OrganizationStep({
   };
 
   const handleInputChange = (field: string, value: string) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
+    // Since we no longer have nested objects like businessAddress, we can simplify this function
+    setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error when user starts typing
     if (errors[field]) {
@@ -196,10 +169,7 @@ export function OrganizationStep({
     }
   };
 
-  const isFormValid = formData.organizationName && formData.organizationType && 
-                     formData.companySize && formData.businessAddress.street &&
-                     formData.businessAddress.city && formData.businessAddress.state &&
-                     formData.businessAddress.zipCode;
+  const isFormValid = formData.organizationName && formData.organizationType && formData.companySize;
 
   return (
     <div>
@@ -359,57 +329,6 @@ export function OrganizationStep({
             {errors.companySize && (
               <p className="text-sm text-red-600 mt-1">{errors.companySize}</p>
             )}
-          </div>
-        </div>
-
-        {/* Business Address */}
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-3 block">
-            Business Address *
-          </Label>
-          <div className="space-y-4">
-            <Input
-              value={formData.businessAddress.street}
-              onChange={(e) => handleInputChange('businessAddress.street', e.target.value)}
-              placeholder="Street address"
-              className={errors.street ? 'border-red-500' : ''}
-            />
-            {errors.street && (
-              <p className="text-sm text-red-600 mt-1">{errors.street}</p>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                value={formData.businessAddress.city}
-                onChange={(e) => handleInputChange('businessAddress.city', e.target.value)}
-                placeholder="City"
-                className={errors.city ? 'border-red-500' : ''}
-              />
-              <Select
-                value={formData.businessAddress.state}
-                onValueChange={(value) => handleInputChange('businessAddress.state', value)}
-              >
-                <SelectTrigger className={errors.state ? 'border-red-500' : ''}>
-                  <SelectValue placeholder="State" />
-                </SelectTrigger>
-                <SelectContent>
-                  {US_STATES.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                value={formData.businessAddress.zipCode}
-                onChange={(e) => handleInputChange('businessAddress.zipCode', e.target.value)}
-                placeholder="ZIP Code"
-                className={errors.zipCode ? 'border-red-500' : ''}
-              />
-            </div>
-            {errors.city && <p className="text-sm text-red-600">{errors.city}</p>}
-            {errors.state && <p className="text-sm text-red-600">{errors.state}</p>}
-            {errors.zipCode && <p className="text-sm text-red-600">{errors.zipCode}</p>}
           </div>
         </div>
       </div>

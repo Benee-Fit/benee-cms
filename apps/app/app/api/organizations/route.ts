@@ -1,6 +1,5 @@
-import { clerkClient } from '@clerk/nextjs';
+import { currentUser, clerkClient } from '@repo/auth/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
 import { z } from 'zod';
 
 // Schema for validating organization data
@@ -9,6 +8,7 @@ const organizationSchema = z.object({
   organizationType: z.string().optional(),
   companySize: z.string().optional(),
   website: z.string().optional(),
+  // Accept both nested businessAddress and flat structure
   businessAddress: z.object({
     street: z.string().optional(),
     city: z.string().optional(),
@@ -22,8 +22,16 @@ const organizationSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { userId, orgId } = auth();
-
+    // Authenticate the request
+    const user = await currentUser();
+    const userId = user?.id;
+    
+    // Get organizations that user belongs to
+    let orgId = null;
+    if (user?.privateMetadata?.orgId) {
+      orgId = user.privateMetadata.orgId as string;
+    }
+    
     // Check if user is authenticated
     if (!userId) {
       return NextResponse.json(
@@ -33,10 +41,12 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
+    console.log('Received organization data:', JSON.stringify(data, null, 2));
     
     // Validate input data
     const parsedData = organizationSchema.safeParse(data);
     if (!parsedData.success) {
+      console.error('Validation failed:', parsedData.error.flatten());
       return NextResponse.json(
         { error: 'Invalid organization data', details: parsedData.error.flatten() },
         { status: 400 }
@@ -47,7 +57,8 @@ export async function POST(request: Request) {
 
     // If organization already exists, just update it
     if (orgId) {
-      const updatedOrg = await clerkClient.organizations.updateOrganization(orgId, {
+      const clerk = await clerkClient();
+      const updatedOrg = await clerk.organizations.updateOrganization(orgId, {
         name: organizationName,
         publicMetadata: orgMetadata,
       });
@@ -64,14 +75,15 @@ export async function POST(request: Request) {
     }
     
     // Create new organization
-    const newOrg = await clerkClient.organizations.createOrganization({
+    const clerk = await clerkClient();
+    const newOrg = await clerk.organizations.createOrganization({
       name: organizationName,
       createdBy: userId,
       publicMetadata: orgMetadata,
     });
     
     // Add current user as admin
-    await clerkClient.organizations.createOrganizationMembership({
+    await clerk.organizations.createOrganizationMembership({
       organizationId: newOrg.id,
       userId,
       role: 'admin',
@@ -89,8 +101,18 @@ export async function POST(request: Request) {
     
   } catch (error) {
     console.error('Error creating organization:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to create or update organization';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create or update organization' },
+      { 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : String(error)
+      },
       { status: 500 }
     );
   }

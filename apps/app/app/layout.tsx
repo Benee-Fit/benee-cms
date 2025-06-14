@@ -2,6 +2,7 @@ import { env } from '@/env';
 import './styles.css';
 import { DesignSystemProvider } from '@repo/design-system';
 import { fonts } from '@repo/design-system/lib/fonts';
+import { AuthProvider } from '@repo/auth/provider';
 import type { ReactNode } from 'react';
 
 type RootLayoutProperties = {
@@ -11,7 +12,7 @@ type RootLayoutProperties = {
 const RootLayout = ({ children }: RootLayoutProperties) => (
   <html lang="en" className={fonts} suppressHydrationWarning>
     <body>
-      <DesignSystemProvider
+      <AuthProvider
         privacyUrl={new URL(
           '/legal/privacy',
           env.NEXT_PUBLIC_WEB_URL
@@ -19,8 +20,17 @@ const RootLayout = ({ children }: RootLayoutProperties) => (
         termsUrl={new URL('/legal/terms', env.NEXT_PUBLIC_WEB_URL).toString()}
         helpUrl={env.NEXT_PUBLIC_DOCS_URL}
       >
-        {children}
-      </DesignSystemProvider>
+        <DesignSystemProvider
+          privacyUrl={new URL(
+            '/legal/privacy',
+            env.NEXT_PUBLIC_WEB_URL
+          ).toString()}
+          termsUrl={new URL('/legal/terms', env.NEXT_PUBLIC_WEB_URL).toString()}
+          helpUrl={env.NEXT_PUBLIC_DOCS_URL}
+        >
+          {children}
+        </DesignSystemProvider>
+      </AuthProvider>
     </body>
   </html>
 );

@@ -54,13 +54,24 @@ export default function OnboardingPage() {
 
   const handleCompleteOnboarding = async () => {
     // Check if user exists from Clerk
+    console.log('Current user:', user);
     if (!user) {
-      alert('Please sign in to complete onboarding');
+      alert('Please sign in to complete onboarding. Redirecting to sign-in page...');
+      // Redirect to sign-in page if user is not authenticated
+      window.location.href = '/sign-in';
       return;
     }
 
     try {
       setLoading(true);
+      console.log('Submitting organization data:', {
+        organizationName: onboardingData.organizationName,
+        organizationType: onboardingData.organizationType,
+        companySize: onboardingData.companySize,
+        website: onboardingData.website,
+        linesOfBusiness: onboardingData.linesOfBusiness,
+        preferredCarriers: onboardingData.preferredCarriers
+      });
       
       // Submit organization data through API
       const response = await fetch('/api/organizations', {
@@ -69,22 +80,42 @@ export default function OnboardingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: onboardingData.organizationName ?? '',
+          organizationName: onboardingData.organizationName ?? '',
+          organizationType: onboardingData.organizationType ?? '',
+          companySize: onboardingData.companySize ?? '',
           website: onboardingData.website ?? '',
-          // Address removed per user request
-          specialties: onboardingData.linesOfBusiness ?? [],
+          linesOfBusiness: onboardingData.linesOfBusiness ?? [],
           preferredCarriers: onboardingData.preferredCarriers ?? []
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create organization');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Organization creation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          errorData
+        });
+        
+        if (response.status === 404) {
+          throw new Error('API endpoint not found. Please check if the server is running correctly.');
+        } else if (response.status === 401) {
+          throw new Error('Authentication required. Please sign in and try again.');
+        } else {
+          throw new Error(errorData.error || `Failed to create organization (${response.status}: ${response.statusText})`);
+        }
       }
+
+      const result = await response.json();
+      console.log('Organization created successfully:', result);
 
       // Redirect to dashboard
       router.push('/dashboard');
-    } catch (_) {
-      alert('Error creating organization');
+    } catch (error) {
+      console.error('Onboarding error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Error creating organization: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

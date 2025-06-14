@@ -1,5 +1,4 @@
-// Import auth from the shared auth package
-import { useAuth } from '@repo/auth/client';
+import { currentUser } from '@repo/auth/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -11,8 +10,10 @@ const requestSchema = z.object({
 export async function POST(request: Request) {
   try {
     // Authenticate the request
-    const { userId } = useAuth();
-    if (!userId) {
+    const user = await currentUser();
+    console.log('Auth check for user:', user?.id || 'No user found');
+    
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     // Fetch website content
     let response: Response;
     try {
+      console.log('Attempting to fetch website:', websiteUrl);
       response = await fetch(websiteUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; BeneeFit/1.0; +https://benee-fit.xyz)'
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error('Error fetching website:', error);
       return NextResponse.json(
-        { error: 'Could not fetch website content' }, 
+        { error: `Could not fetch website content: ${error instanceof Error ? error.message : 'Unknown error'}` }, 
         { status: 422 }
       );
     }
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error processing website info request:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
