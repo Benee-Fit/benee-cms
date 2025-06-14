@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Search } from 'lucide-react';
+import { Search, Bot } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -35,12 +35,20 @@ export function BenefitSearchForm({ className }: BenefitSearchFormProps) {
   return (
     <div className={className}>
       <div className="w-full">
-        <Label
-          htmlFor="search-query"
-          className="text-2xl text-center font-medium tracking-tight mb-6 block"
-        >
-          Have a question?
-        </Label>
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Bot className="h-6 w-6 text-blue-600" />
+            <Label
+              htmlFor="search-query"
+              className="text-2xl font-medium tracking-tight"
+            >
+              Have a question?
+            </Label>
+          </div>
+          <p className="text-sm text-gray-600">
+            Ask our AI assistant about coverage, plans, or benefits
+          </p>
+        </div>
         <form
           className="flex w-full items-center space-x-2"
           onSubmit={form.handleSubmit((values) => {
@@ -58,10 +66,10 @@ export function BenefitSearchForm({ className }: BenefitSearchFormProps) {
             {...form.register('query')}
             type="text"
             placeholder="Ask about coverage, plans, or benefits..."
-            className="flex-grow"
+            className="flex-grow h-12"
             aria-label="Benefit plan question"
           />
-          <Button type="submit">
+          <Button type="submit" className="h-12 px-6">
             <Search className="mr-2 h-4 w-4" />
             Ask a Question
           </Button>

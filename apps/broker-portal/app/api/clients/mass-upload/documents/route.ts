@@ -69,6 +69,10 @@ export async function POST(request: NextRequest) {
           premium: client.planManagementFee * 10, // Estimate
           revenue: client.planManagementFee * 100, // Estimate
           industry: 'Unknown', // Will be updated later
+          // Use CSV data if available
+          planManagementFee: client.planManagementFee ? client.planManagementFee : undefined,
+          splitWithAnotherBroker: client.hasBrokerSplit || false,
+          brokerCommissionSplit: client.brokerSplit ? client.brokerSplit : undefined,
         },
       });
       createdClients.set(client.policyNumber, created.id);
@@ -202,6 +206,10 @@ export async function POST(request: NextRequest) {
               const fileKey = `client-documents/${matchedClientId}/${Date.now()}-${entry.entryName}`;
               const fileUrl = await uploadToSpaces(fileKey, pdfBuffer, 'application/pdf');
 
+              // Generate document title from filename (remove path and extension)
+              const fileName = entry.entryName.split('/').pop() || entry.entryName;
+              const documentTitle = fileName.replace(/\.[^/.]+$/, '');
+
               // Save to database
               await database.clientDocument.create({
                 data: {
@@ -210,36 +218,85 @@ export async function POST(request: NextRequest) {
                   fileType: 'application/pdf',
                   fileUrl: fileUrl,
                   documentType: analysis.documentType,
-                  description: `Extracted data: ${JSON.stringify(analysis)}`,
+                  description: analysis.summary || 'Document processed via mass upload',
+                  documentTitle,
+                  jsonData: analysis,
                 },
               });
 
               // Update client with extracted data if available
-              if (analysis.renewalDate || analysis.premium || analysis.headcount) {
-                const updateData: any = {};
-                
-                if (analysis.renewalDate) {
-                  try {
-                    updateData.renewalDate = new Date(analysis.renewalDate);
-                  } catch (e) {
-                    // Invalid date format, skip
-                  }
+              const updateData: any = {};
+              
+              if (analysis.renewalDate) {
+                try {
+                  updateData.renewalDate = new Date(analysis.renewalDate);
+                } catch (e) {
+                  // Invalid date format, skip
                 }
-                
-                if (analysis.premium && analysis.premium > 0) {
-                  updateData.premium = analysis.premium;
-                }
-                
-                if (analysis.headcount && analysis.headcount > 0) {
-                  updateData.headcount = analysis.headcount;
-                }
+              }
+              
+              if (analysis.premium && analysis.premium > 0) {
+                updateData.premium = analysis.premium;
+              }
+              
+              if (analysis.headcount && analysis.headcount > 0) {
+                updateData.headcount = analysis.headcount;
+              }
 
-                if (Object.keys(updateData).length > 0) {
-                  await database.brokerClient.update({
-                    where: { id: matchedClientId },
-                    data: updateData,
-                  });
+              // Update new fields
+              if (analysis.companySize) {
+                updateData.companySize = analysis.companySize;
+              }
+              
+              if (analysis.companyLocation) {
+                updateData.companyLocation = analysis.companyLocation;
+              }
+              
+              if (analysis.leadershipCEO) {
+                updateData.leadershipCEO = analysis.leadershipCEO;
+              }
+              
+              if (analysis.leadershipCFO) {
+                updateData.leadershipCFO = analysis.leadershipCFO;
+              }
+              
+              if (analysis.leadershipCHRO) {
+                updateData.leadershipCHRO = analysis.leadershipCHRO;
+              }
+              
+              if (analysis.planAdmin) {
+                updateData.planAdmin = analysis.planAdmin;
+              }
+              
+              if (analysis.currentCarrier || analysis.carrier) {
+                updateData.currentCarrier = analysis.currentCarrier || analysis.carrier;
+              }
+              
+              if (analysis.withCarrierSince) {
+                try {
+                  updateData.withCarrierSince = new Date(analysis.withCarrierSince);
+                } catch (e) {
+                  // Invalid date format, skip
                 }
+              }
+              
+              if (analysis.planType) {
+                updateData.planType = analysis.planType;
+              }
+              
+              if (analysis.planManagementFee && analysis.planManagementFee > 0) {
+                updateData.planManagementFee = analysis.planManagementFee;
+              }
+              
+              if (analysis.brokerCommissionSplit && analysis.brokerCommissionSplit > 0) {
+                updateData.brokerCommissionSplit = analysis.brokerCommissionSplit;
+              }
+
+              if (Object.keys(updateData).length > 0) {
+                await database.brokerClient.update({
+                  where: { id: matchedClientId },
+                  data: updateData,
+                });
               }
 
               result.status = 'success';

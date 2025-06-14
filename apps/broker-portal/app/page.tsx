@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from '@repo/design-system/components/ui/card';
 import {
-  ArrowRight,
   BarChart3,
   FileSpreadsheet,
   LineChart,
@@ -69,41 +68,39 @@ export default function HomePage() {
   return (
     <PageLayout>
       <div className="container mx-auto pt-12 px-6 pb-6 space-y-6">
-        <section className="mt-10 mb-10 p-6 max-w-2xl mx-auto">
-          <BenefitSearchForm />
+        <section className="py-12">
+          <div className="max-w-3xl mx-auto px-8">
+            <BenefitSearchForm />
+          </div>
         </section>
 
         <section className="py-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {tiles.map((tile) => (
               <Link key={tile.title} href={tile.href} className="h-full">
-                <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200 ease-in-out group border-primary/30 hover:border-primary">
+                <Card className="flex flex-col h-full hover:shadow-lg transition-shadow duration-200 ease-in-out group">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-lg font-semibold text-primary">
+                    <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 hover:underline transition-colors duration-200">
                       {tile.title}
                     </CardTitle>
-                    <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <tile.icon className="h-6 w-6 text-gray-600 group-hover:text-blue-600 transition-colors" />
                   </CardHeader>
                   <CardContent className="flex-grow">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-gray-600">
                       {tile.description}
                     </p>
                   </CardContent>
-                  <div className="p-6 pt-0">
-                    <span className="text-xs text-primary group-hover:underline flex items-center">
-                      Go to {tile.title} <ArrowRight className="ml-1 h-3 w-3" />
-                    </span>
-                  </div>
                 </Card>
               </Link>
             ))}
           </div>
         </section>
-
-        <section className="py-6">
-          <CalendarGrid />
-        </section>
       </div>
+
+      {/* Full width calendar section */}
+      <section className="w-full">
+        <CalendarGrid />
+      </section>
     </PageLayout>
   );
 }

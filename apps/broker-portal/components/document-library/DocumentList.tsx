@@ -48,6 +48,8 @@ interface ClientDocument {
   fileUrl: string;
   fileType: string;
   description?: string;
+  documentTitle?: string;
+  jsonData?: any;
 }
 
 interface DocumentListProps {
@@ -112,7 +114,8 @@ export function DocumentList({ clientId, refreshTrigger }: DocumentListProps) {
       filtered = filtered.filter(
         (doc) =>
           doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          doc.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          doc.documentTitle?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -317,7 +320,8 @@ export function DocumentList({ clientId, refreshTrigger }: DocumentListProps) {
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
-                    <TableHead>Document</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Upload Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -336,12 +340,15 @@ export function DocumentList({ clientId, refreshTrigger }: DocumentListProps) {
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-gray-400" />
                           <div>
-                            <p className="font-medium">{doc.description || doc.fileName}</p>
-                            {doc.description && (
-                              <p className="text-sm text-gray-500">{doc.fileName}</p>
-                            )}
+                            <p className="font-medium">{doc.documentTitle || doc.fileName}</p>
+                            <p className="text-sm text-gray-500">{doc.fileName}</p>
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-gray-600 max-w-xs truncate">
+                          {doc.description || 'No description available'}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">

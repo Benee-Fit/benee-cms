@@ -66,6 +66,9 @@ export async function POST(
     // Upload to DO Spaces
     const fileUrl = await uploadToSpaces(key, buffer, file.type);
     
+    // Generate document title from filename (remove extension)
+    const documentTitle = file.name.replace(/\.[^/.]+$/, '');
+    
     // Save document metadata to database
     const document = await database.clientDocument.create({
       data: {
@@ -75,6 +78,7 @@ export async function POST(
         fileUrl,
         documentType,
         description,
+        documentTitle,
       },
     });
     

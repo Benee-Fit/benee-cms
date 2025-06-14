@@ -20,6 +20,7 @@ interface DocumentPreviewProps {
     fileName: string;
     fileUrl: string;
     description?: string;
+    documentTitle?: string;
   };
   onClose: () => void;
 }
@@ -28,6 +29,9 @@ export function DocumentPreview({ document, onClose }: DocumentPreviewProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use proxy URL for PDF fetching to avoid CORS issues
+  const proxyUrl = `/api/documents/proxy?url=${encodeURIComponent(document.fileUrl)}`;
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -47,7 +51,7 @@ export function DocumentPreview({ document, onClose }: DocumentPreviewProps) {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>{document.description || document.fileName}</span>
+            <span>{document.documentTitle || document.fileName}</span>
             <Button
               variant="outline"
               size="sm"
@@ -69,7 +73,7 @@ export function DocumentPreview({ document, onClose }: DocumentPreviewProps) {
           )}
 
           <Document
-            file={document.fileUrl}
+            file={proxyUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={(error) => {
               console.error('Error loading PDF:', error);

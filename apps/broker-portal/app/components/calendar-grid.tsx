@@ -77,65 +77,69 @@ export function CalendarGrid() {
   // Show loading state during hydration
   if (!isClient) {
     return (
-      <div className="space-y-4 p-6 bg-muted/30 rounded-lg border">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold">12-Month Forecast</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <Card key={i} className="border border-primary/20 h-full animate-pulse">
-              <CardHeader className="py-0 px-3 bg-muted/20">
-                <div className="h-6 bg-muted rounded"></div>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3 border-t">
-                <div className="h-4 bg-muted rounded"></div>
-                <div className="h-4 bg-muted rounded"></div>
-                <div className="h-4 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="w-full bg-muted/30 py-8">
+        <div className="container mx-auto px-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-semibold text-gray-900">12-Month Forecast</h1>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <Card key={i} className="bg-card text-card-foreground flex flex-col gap-4 rounded-xl py-0 shadow-sm border border-gray-200 h-full pt-6 animate-pulse">
+                <CardHeader className="py-0 px-3">
+                  <div className="h-6 bg-gray-200 rounded"></div>
+                </CardHeader>
+                <CardContent className="p-4 space-y-0 border-t flex flex-col gap-4">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 p-6 bg-muted/30 rounded-lg border">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold">12-Month Forecast</h2>
-      </div>
+    <div className="w-full bg-muted/30 py-8">
+      <div className="container mx-auto px-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-semibold text-gray-900">12-Month Forecast</h1>
+        </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {calendarData.map((month) => (
-          <Card
-            key={`${month.month}-${month.year}`}
-            className="border border-primary/20 h-full"
-          >
-            <CardHeader className="py-0 px-3 bg-muted/20">
-              <CardTitle className="text-lg font-medium">
-                {month.month} {month.year}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3 border-t">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Renewals</span>
-                <span className="font-medium">{month.renewals}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Headcount</span>
-                <span className="font-medium">
-                  {month.headcount.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Revenue</span>
-                <span className="font-medium">
-                  {formatCurrency(month.revenue)}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {calendarData.map((month) => (
+            <Card
+              key={`${month.month}-${month.year}`}
+              className="bg-card text-card-foreground flex flex-col gap-4 rounded-xl py-0 shadow-sm border border-gray-200 h-full pt-6"
+            >
+              <CardHeader className="py-0 px-3">
+                <CardTitle className="text-lg font-semibold text-gray-900">
+                  {month.month} {month.year}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-0 border-t flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Renewals</span>
+                  <span className="font-medium text-gray-900">{month.renewals}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Headcount</span>
+                  <span className="font-medium text-gray-900">
+                    {month.headcount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Revenue</span>
+                  <span className="font-medium text-gray-900">
+                    {formatCurrency(month.revenue)}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );
