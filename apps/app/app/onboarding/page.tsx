@@ -14,6 +14,7 @@ export interface OnboardingData {
   email: string;
   phone: string;
   title: string;
+  profilePhoto?: File;
   
   // Organization Details
   website: string;
