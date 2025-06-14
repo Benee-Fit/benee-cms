@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { OnboardingContainer } from './components/onboarding-container';
-// Welcome step removed per user request
 import { OrganizationStep } from './steps/organization-step';
+// Note: BusinessDetailsStep needs to be implemented
 import { BusinessDetailsStep } from './steps/business-details-step';
 import { useUser } from '@repo/auth/client';
 import { useRouter } from 'next/navigation';
@@ -101,9 +101,8 @@ export default function OnboardingPage() {
 
       // Redirect to dashboard
       router.push('/dashboard');
-    } catch (error) {
+    } catch (_) {
       alert('Error creating organization');
-      // Error is handled via the alert
     } finally {
       setLoading(false);
     }
