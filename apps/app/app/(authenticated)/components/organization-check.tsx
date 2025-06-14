@@ -2,14 +2,13 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useOrganization, useUser } from '@repo/auth/client';
+import { useUser } from '@repo/auth/client';
 
 /**
- * Component that checks if a user is part of an organization
+ * Component that checks if a user has completed onboarding
  * If not, redirects them to the onboarding flow
  */
 export function OrganizationCheck({ children }: { children: ReactNode }) {
-  const { organization } = useOrganization();
   const { isLoaded: isUserLoaded, user } = useUser();
   const router = useRouter();
 
@@ -19,14 +18,20 @@ export function OrganizationCheck({ children }: { children: ReactNode }) {
       return;
     }
     
-    // If user is authenticated but doesn't have an organization, redirect to onboarding
-    if (user && !organization) {
+    // Check if user has completed onboarding by looking at their metadata
+    const onboardingCompleted = user?.publicMetadata?.onboardingCompleted as boolean;
+    
+    // If user is authenticated but hasn't completed onboarding, redirect to onboarding
+    if (user && !onboardingCompleted) {
       router.push('/onboarding');
     }
-  }, [isUserLoaded, user, organization, router]);
+  }, [isUserLoaded, user, router]);
 
+  // Check if user needs onboarding
+  const onboardingCompleted = user?.publicMetadata?.onboardingCompleted as boolean;
+  
   // If we're checking/redirecting, show nothing
-  if (isUserLoaded && user && !organization) {
+  if (isUserLoaded && user && !onboardingCompleted) {
     return null;
   }
 

@@ -25,6 +25,8 @@ const organizationSchema = z.object({
   }).optional(),
   linesOfBusiness: z.array(z.string()).optional(),
   preferredCarriers: z.array(z.string()).optional(),
+  clientIndustries: z.array(z.string()).optional(),
+  averageClientSize: z.string().optional(),
 });
 
 export async function POST(request: Request) {

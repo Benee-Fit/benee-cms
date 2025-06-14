@@ -35,6 +35,8 @@ export interface OnboardingData {
   // Business Focus
   linesOfBusiness: string[];
   preferredCarriers: string[];
+  clientIndustries: string[];
+  averageClientSize: string;
 }
 
 // Reduced to just 2 steps for better UX
@@ -51,6 +53,8 @@ export default function OnboardingPage() {
     website: '',
     linesOfBusiness: [],
     preferredCarriers: [],
+    clientIndustries: [],
+    averageClientSize: '',
     businessAddress: {
       street: '',
       city: '',
@@ -127,6 +131,8 @@ export default function OnboardingPage() {
           website: onboardingData.website ?? '',
           linesOfBusiness: onboardingData.linesOfBusiness ?? [],
           preferredCarriers: onboardingData.preferredCarriers ?? [],
+          clientIndustries: onboardingData.clientIndustries ?? [],
+          averageClientSize: onboardingData.averageClientSize ?? '',
           businessAddress: onboardingData.businessAddress ?? {
             street: '',
             city: '',
