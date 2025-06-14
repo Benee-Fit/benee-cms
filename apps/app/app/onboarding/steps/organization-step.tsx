@@ -6,8 +6,8 @@ import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { OnboardingNavigation } from '../components/onboarding-navigation';
-import { OnboardingData } from '../page';
-import { Upload, Building } from 'lucide-react';
+import type { OnboardingData } from '../page';
+import { Upload, Building, Loader2 } from 'lucide-react';
 
 interface OrganizationStepProps {
   data: Partial<OnboardingData>;
@@ -64,6 +64,9 @@ export function OrganizationStep({
 
   const [organizationLogo, setOrganizationLogo] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
+  const [infoFetchError, setInfoFetchError] = useState<string | null>(null);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -94,6 +97,56 @@ export function OrganizationStep({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Function to fetch organization info from website URL
+  const fetchOrganizationInfo = async (url: string) => {
+    if (!url.trim() || !url.includes('.')) return;
+    
+    // Add protocol if missing
+    let websiteUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      websiteUrl = `https://${url}`;
+    }
+    
+    try {
+      setIsLoadingInfo(true);
+      setInfoFetchError(null);
+      
+      const response = await fetch('/api/website-info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ websiteUrl })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch organization info');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Auto-fill organization name if empty
+        if (!formData.organizationName && data.data.name) {
+          setFormData(prev => ({
+            ...prev,
+            organizationName: data.data.name
+          }));
+        }
+        
+        // Set logo URL if available
+        if (data.data.logoUrl) {
+          setLogoUrl(data.data.logoUrl);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching organization info:', error);
+      setInfoFetchError('Could not retrieve organization info');
+    } finally {
+      setIsLoadingInfo(false);
+    }
+  };
+
   const handleInputChange = (field: string, value: string) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -111,6 +164,18 @@ export function OrganizationStep({
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    
+    // If website field was changed and user stopped typing, try to fetch info
+    if (field === 'website') {
+      // Debounced website info fetching
+      const timeoutId = setTimeout(() => {
+        if (value) {
+          fetchOrganizationInfo(value);
+        }
+      }, 1000); // 1 second debounce
+      
+      return () => clearTimeout(timeoutId);
     }
   };
 
@@ -154,13 +219,30 @@ export function OrganizationStep({
           <Label htmlFor="website" className="text-sm font-medium text-gray-700 mb-2 block">
             Website URL (Optional)
           </Label>
-          <Input
-            id="website"
-            type="url"
-            value={formData.website}
-            onChange={(e) => handleInputChange('website', e.target.value)}
-            placeholder="https://www.company.com"
-          />
+          <div className="relative">
+            <Input
+              id="website"
+              type="url"
+              value={formData.website}
+              onChange={(e) => handleInputChange('website', e.target.value)}
+              placeholder="https://www.company.com"
+              className={isLoadingInfo ? 'pr-10' : ''}
+              disabled={isLoadingInfo}
+            />
+            {isLoadingInfo && (
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+              </div>
+            )}
+          </div>
+          {infoFetchError && (
+            <p className="text-sm text-amber-600 mt-1">{infoFetchError}</p>
+          )}
+          {formData.website && !isLoadingInfo && !infoFetchError && (
+            <p className="text-sm text-gray-500 mt-1">
+              Enter your website URL and we'll try to auto-fill your organization details
+            </p>
+          )}
         </div>
 
         {/* Organization Logo */}
@@ -170,6 +252,12 @@ export function OrganizationStep({
               <img 
                 src={URL.createObjectURL(organizationLogo)} 
                 alt="Logo preview"
+                className="w-full h-full object-cover"
+              />
+            ) : logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt="Logo preview from website"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -193,6 +281,11 @@ export function OrganizationStep({
                   />
                 </label>
               </Button>
+              {logoUrl && !organizationLogo && (
+                <span className="text-sm text-gray-500">
+                  Auto-detected from website
+                </span>
+              )}
               {organizationLogo && (
                 <span className="text-sm text-gray-500">
                   {organizationLogo.name}
