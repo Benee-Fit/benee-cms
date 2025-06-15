@@ -6,6 +6,20 @@ import type { NextConfig } from 'next';
 // Start with the base config
 let nextConfig: NextConfig = {
   ...config,
+  images: {
+    ...config.images,
+    remotePatterns: [
+      ...(config.images?.remotePatterns || []),
+      {
+        protocol: 'https',
+        hostname: 'kropmangroup.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.kropmangroup.com',
+      },
+    ],
+  },
   webpack: (webpackConfig, options) => {
     const { isServer } = options;
     // Handle AWS SDK properly

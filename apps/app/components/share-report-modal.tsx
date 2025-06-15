@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@repo/design-system/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@repo/design-system/components/ui/dialog';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
@@ -248,6 +248,9 @@ export default function ShareReportModal({ reportId, reportTitle, children }: Sh
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Share Report: {reportTitle}</DialogTitle>
+          <DialogDescription>
+            Create and manage share links for this report. You can set expiration dates and passwords for secure sharing.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">

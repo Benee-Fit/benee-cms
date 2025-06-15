@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { OrganizationStep } from './steps/organization-step';
-import { BusinessDetailsStep } from '../steps/business-details-step';
 import { useUser } from '@repo/auth/client';
 import { useRouter } from 'next/navigation';
 
@@ -32,11 +31,6 @@ export interface OnboardingData {
     country: string;
   };
   
-  // Business Focus
-  linesOfBusiness: string[];
-  preferredCarriers: string[];
-  clientIndustries: string[];
-  averageClientSize: string;
   
   // Team Members
   teamMembers: Array<{
@@ -46,8 +40,8 @@ export interface OnboardingData {
   }>;
 }
 
-// Reduced to just 2 steps for better UX
-const TOTAL_STEPS = 2;
+// Reduced to just 1 step for better UX
+const TOTAL_STEPS = 1;
 
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -58,10 +52,6 @@ export default function OnboardingPage() {
     phone: '',
     title: '',
     website: '',
-    linesOfBusiness: [],
-    preferredCarriers: [],
-    clientIndustries: [],
-    averageClientSize: '',
     teamMembers: [],
     businessAddress: {
       street: '',
@@ -115,8 +105,6 @@ export default function OnboardingPage() {
         organizationType: onboardingData.organizationType,
         companySize: onboardingData.companySize,
         website: onboardingData.website,
-        linesOfBusiness: onboardingData.linesOfBusiness,
-        preferredCarriers: onboardingData.preferredCarriers,
         businessAddress: onboardingData.businessAddress
       });
       
@@ -137,10 +125,10 @@ export default function OnboardingPage() {
           organizationType: onboardingData.organizationType ?? '',
           companySize: onboardingData.companySize ?? '',
           website: onboardingData.website ?? '',
-          linesOfBusiness: onboardingData.linesOfBusiness ?? [],
-          preferredCarriers: onboardingData.preferredCarriers ?? [],
-          clientIndustries: onboardingData.clientIndustries ?? [],
-          averageClientSize: onboardingData.averageClientSize ?? '',
+          linesOfBusiness: [],
+          preferredCarriers: [],
+          clientIndustries: [],
+          averageClientSize: '',
           teamMembers: onboardingData.teamMembers ?? [],
           businessAddress: onboardingData.businessAddress ?? {
             street: '',
@@ -214,37 +202,16 @@ export default function OnboardingPage() {
   };
 
   const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <OrganizationStep
-            data={onboardingData}
-            onContinue={handleNextStep}
-            onBack={handlePreviousStep}
-            onUpdateData={handleUpdateData}
-          />
-        );
-      case 2:
-        return (
-          <BusinessDetailsStep
-            data={onboardingData}
-            buttonText="Complete Setup"
-            onComplete={handleCompleteOnboarding}
-            onPrevious={handlePreviousStep}
-            onUpdateData={handleUpdateData}
-            loading={loading}
-          />
-        );
-      default:
-        return (
-          <OrganizationStep
-            data={onboardingData}
-            onContinue={handleNextStep}
-            onBack={handlePreviousStep}
-            onUpdateData={handleUpdateData}
-          />
-        );
-      }
+    return (
+      <OrganizationStep
+        data={onboardingData}
+        onContinue={handleCompleteOnboarding}
+        onBack={handlePreviousStep}
+        onUpdateData={handleUpdateData}
+        loading={loading}
+        isLastStep={true}
+      />
+    );
   };
 
   return (

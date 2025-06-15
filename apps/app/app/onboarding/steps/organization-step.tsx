@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
@@ -14,6 +15,8 @@ interface OrganizationStepProps {
   onContinue: () => void;
   onBack: () => void;
   onUpdateData: (data: Partial<OnboardingData>) => void;
+  loading?: boolean;
+  isLastStep?: boolean;
 }
 
 const ORGANIZATION_TYPES = [
@@ -46,7 +49,9 @@ export function OrganizationStep({
   data, 
   onContinue, 
   onBack, 
-  onUpdateData 
+  onUpdateData,
+  loading = false,
+  isLastStep = false
 }: OrganizationStepProps) {
   const [formData, setFormData] = useState({
     organizationName: data.organizationName || '',
@@ -58,6 +63,7 @@ export function OrganizationStep({
   const [organizationLogo, setOrganizationLogo] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [proxiedLogoUrl, setProxiedLogoUrl] = useState<string | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const [infoFetchError, setInfoFetchError] = useState<string | null>(null);
 
@@ -120,6 +126,9 @@ export function OrganizationStep({
         // Set logo URL if available
         if (data.data.logoUrl) {
           setLogoUrl(data.data.logoUrl);
+          // Create proxied URL
+          const proxiedUrl = `/api/proxy-image?url=${encodeURIComponent(data.data.logoUrl)}`;
+          setProxiedLogoUrl(proxiedUrl);
         }
       }
     } catch (error) {
@@ -217,18 +226,22 @@ export function OrganizationStep({
 
         {/* Organization Logo */}
         <div className="flex items-center space-x-6">
-          <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+          <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
             {organizationLogo ? (
-              <img 
+              <Image 
                 src={URL.createObjectURL(organizationLogo)} 
                 alt="Logo preview"
-                className="w-full h-full object-cover"
+                width={80}
+                height={80}
+                className="object-cover"
               />
-            ) : logoUrl ? (
-              <img 
-                src={logoUrl} 
+            ) : proxiedLogoUrl ? (
+              <Image 
+                src={proxiedLogoUrl} 
                 alt="Logo preview from website"
-                className="w-full h-full object-cover"
+                width={80}
+                height={80}
+                className="object-cover"
               />
             ) : (
               <Building className="w-8 h-8 text-gray-400" />
@@ -251,7 +264,7 @@ export function OrganizationStep({
                   />
                 </label>
               </Button>
-              {logoUrl && !organizationLogo && (
+              {proxiedLogoUrl && !organizationLogo && (
                 <span className="text-sm text-gray-500">
                   Auto-detected from website
                 </span>
@@ -334,10 +347,12 @@ export function OrganizationStep({
       </div>
 
       <OnboardingNavigation
-        canGoBack={true}
+        canGoBack={false}
         canContinue={!!isFormValid}
         onBack={onBack}
         onContinue={handleContinue}
+        isFinalStep={isLastStep}
+        isLoading={loading}
       />
     </div>
   );
