@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
   ChartContainer,
   ChartTooltip,
 } from '@repo/design-system/components/ui/chart';
+import { Button } from '@repo/design-system/components/ui/button';
 import { cn } from '@repo/design-system/lib/utils';
 import {
   SortableTable,
@@ -22,127 +24,35 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts';
+import { Plus, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { useClientInsights, type ClientInsightData } from '../hooks/useClientInsights';
 
 interface ClientInsightsProps {
   className?: string;
   sectionId?: string;
+  editMode?: boolean;
+  clientId?: string;
 }
 
-export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
-  // Mock data
-  const clientOverview = {
-    totalClients: 43,
-    totalPlanMembers: 4782,
-    avgGroupSize: 111,
-  };
-
-  // Top clients data for sortable table
-  const topClientsData = [
-    {
-      rank: 1,
-      clientName: 'TechCorp Solutions',
-      industry: 'Technology',
-      planMembers: 380,
-      annualRevenue: 89500,
-      revenuePerMember: 236,
-    },
-    {
-      rank: 2,
-      clientName: 'Global Manufacturing',
-      industry: 'Manufacturing',
-      planMembers: 315,
-      annualRevenue: 76200,
-      revenuePerMember: 242,
-    },
-    {
-      rank: 3,
-      clientName: 'HealthCare Partners',
-      industry: 'Healthcare',
-      planMembers: 285,
-      annualRevenue: 68900,
-      revenuePerMember: 242,
-    },
-    {
-      rank: 4,
-      clientName: 'Financial Services Co.',
-      industry: 'Financial Services',
-      planMembers: 270,
-      annualRevenue: 65400,
-      revenuePerMember: 242,
-    },
-    {
-      rank: 5,
-      clientName: 'Digital Innovations',
-      industry: 'Technology',
-      planMembers: 243,
-      annualRevenue: 58750,
-      revenuePerMember: 242,
-    },
-    {
-      rank: 6,
-      clientName: 'Educational Institute',
-      industry: 'Education',
-      planMembers: 216,
-      annualRevenue: 52300,
-      revenuePerMember: 242,
-    },
-  ];
-
-  // Column configuration for top clients sortable table
-  const topClientsColumns: ColumnConfig<(typeof topClientsData)[0]>[] = [
-    {
-      key: 'rank',
-      header: 'Rank',
-      type: 'number',
-      align: 'left',
-    },
-    {
-      key: 'clientName',
-      header: 'Client Name',
-      type: 'string',
-      align: 'left',
-    },
-    {
-      key: 'industry',
-      header: 'Industry',
-      type: 'string',
-      align: 'left',
-    },
-    {
-      key: 'planMembers',
-      header: 'Plan Members',
-      type: 'number',
-      align: 'right',
-    },
-    {
-      key: 'annualRevenue',
-      header: 'Annual Revenue',
-      type: 'currency',
-      align: 'right',
-    },
-    {
-      key: 'revenuePerMember',
-      header: 'Revenue per Member',
-      type: 'currency',
-      align: 'right',
-    },
-  ];
-
-  // Client Growth YOY data
-  const clientGrowthData = [
-    { month: 'Jan', currentYear: 35, lastYear: 28 },
-    { month: 'Feb', currentYear: 36, lastYear: 29 },
-    { month: 'Mar', currentYear: 37, lastYear: 30 },
-    { month: 'Apr', currentYear: 38, lastYear: 31 },
-    { month: 'May', currentYear: 39, lastYear: 32 },
-    { month: 'Jun', currentYear: 40, lastYear: 33 },
-    { month: 'Jul', currentYear: 41, lastYear: 34 },
-    { month: 'Aug', currentYear: 41, lastYear: 35 },
-    { month: 'Sep', currentYear: 42, lastYear: 36 },
-    { month: 'Oct', currentYear: 43, lastYear: 37 },
-    { month: 'Nov', currentYear: 43, lastYear: 37 },
-    { month: 'Dec', currentYear: 43, lastYear: 38 },
-  ];
+export function ClientInsights({ 
+  className, 
+  sectionId, 
+  editMode = false,
+  clientId 
+}: ClientInsightsProps) {
+  const [isEditMode, setIsEditMode] = useState(editMode);
+  const [selectedInsight, setSelectedInsight] = useState<ClientInsightData | null>(null);
+  
+  // Data hooks
+  const { 
+    insights, 
+    loading, 
+    error,
+    createInsight, 
+    updateInsight, 
+    deleteInsight,
+    refetch 
+  } = useClientInsights({ clientId });
 
   // Helper function to determine if a section should be rendered
   const shouldRenderSection = (id: string): boolean => {
@@ -152,90 +62,323 @@ export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
     return sectionId === id;
   };
 
+  // Helper function to format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Get data by category
+  const getDataByCategory = (category: string) => {
+    return insights.filter(insight => insight.category === category);
+  };
+
+  // Extract overview metrics
+  const overviewMetrics = getDataByCategory('METRIC');
+  const revenueData = getDataByCategory('REVENUE');
+  const riskData = getDataByCategory('RISK');
+  const opportunityData = getDataByCategory('OPPORTUNITY');
+
+  // Aggregate overview data
+  const clientOverview = {
+    totalClients: overviewMetrics.find(m => m.type === 'total_clients')?.value?.count || 0,
+    totalMembers: overviewMetrics.find(m => m.type === 'total_members')?.value?.count || 0,
+    totalRevenue: revenueData.reduce((sum, r) => sum + (r.value?.annualRevenue || 0), 0),
+    avgRevenue: revenueData.length > 0 ? revenueData.reduce((sum, r) => sum + (r.value?.annualRevenue || 0), 0) / revenueData.length : 0,
+  };
+
+  // Prepare client metrics data for table
+  const clientMetricsData = overviewMetrics
+    .map((metric, index) => ({
+      rank: index + 1,
+      clientName: metric.client?.companyName || metric.title.replace(' Metrics', ''),
+      industry: metric.client?.industry || 'Unknown',
+      planMembers: metric.value?.count || metric.value?.currentMembers || metric.client?.headcount || 0,
+      annualRevenue: metric.client ? parseInt(metric.client.revenue || '0') || 0 : 0,
+      revenuePerMember: metric.client && metric.client.headcount 
+        ? Math.round((parseInt(metric.client.revenue || '0') || 0) / metric.client.headcount)
+        : 0,
+    }));
+
+  // Revenue per client data
+  const revenueByClientData = revenueData.map((revenue, index) => ({
+    rank: index + 1,
+    clientName: revenue.client?.companyName || revenue.title.replace(' Revenue', ''),
+    annualRevenue: revenue.value?.annualRevenue || 0,
+    monthlyRevenue: revenue.value?.monthlyRevenue || 0,
+    premium: revenue.value?.premium || 0,
+    managementFeePercent: `${revenue.value?.managementFeePercent || 0}%`,
+  }));
+
+  // Risk and opportunity data
+  const riskOpportunityData = [...riskData, ...opportunityData].map((item, index) => ({
+    rank: index + 1,
+    clientName: item.client?.companyName || item.title.replace(/ (Risk Profile|Opportunities)/, ''),
+    category: item.category,
+    riskScore: item.value?.riskScore || 0,
+    riskLevel: item.value?.riskLevel || 'Low',
+    opportunityValue: item.value?.opportunityValue || 0,
+    opportunityType: item.value?.opportunityType || 'N/A',
+  }));
+
+  // Growth chart data - mock for now, would come from time series
+  const clientGrowthData = [
+    { month: 'Jan', currentYear: 35, lastYear: 28 },
+    { month: 'Feb', currentYear: 36, lastYear: 29 },
+    { month: 'Mar', currentYear: 38, lastYear: 31 },
+    { month: 'Apr', currentYear: 41, lastYear: 33 },
+    { month: 'May', currentYear: 43, lastYear: 35 },
+    { month: 'Jun', currentYear: 43, lastYear: 37 },
+  ];
+
+  // Handler for updating insights from inline editing
+  const handleUpdateInsight = async (item: any, newValue: any) => {
+    try {
+      // Find the corresponding insight to update
+      const insight = insights.find(i => 
+        i.client?.companyName === item.clientName ||
+        i.title.includes(item.clientName.replace(' Revenue', '').replace(' Metrics', '').replace(' Risk Profile', '').replace(' Opportunities', ''))
+      );
+      
+      if (insight) {
+        await updateInsight(insight.id, {
+          title: insight.title,
+          description: insight.description || null,
+          value: { ...insight.value, [Object.keys(item).find(key => item[key] === newValue) || 'updated']: newValue },
+          category: insight.category,
+          type: insight.type,
+          period: insight.period || null,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update insight:', error);
+    }
+  };
+
+  // Column configurations
+  const clientMetricsColumns: ColumnConfig<(typeof clientMetricsData)[0]>[] = [
+    { key: 'rank' as const, header: 'Rank', type: 'number' as const },
+    { key: 'clientName' as const, header: 'Client Name', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'industry' as const, header: 'Industry', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'planMembers' as const, header: 'Plan Members', type: 'number' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'annualRevenue' as const, header: 'Annual Revenue', type: 'currency' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'revenuePerMember' as const, header: 'Revenue/Member', type: 'currency' as const, editable: true, onUpdate: handleUpdateInsight },
+  ];
+
+  const revenueColumns: ColumnConfig<(typeof revenueByClientData)[0]>[] = [
+    { key: 'rank' as const, header: 'Rank', type: 'number' as const },
+    { key: 'clientName' as const, header: 'Client Name', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'annualRevenue' as const, header: 'Annual Revenue', type: 'currency' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'monthlyRevenue' as const, header: 'Monthly Revenue', type: 'currency' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'premium' as const, header: 'Premium', type: 'currency' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'managementFeePercent' as const, header: 'Management Fee %', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+  ];
+
+  const riskOpportunityColumns: ColumnConfig<(typeof riskOpportunityData)[0]>[] = [
+    { key: 'rank' as const, header: 'Rank', type: 'number' as const },
+    { key: 'clientName' as const, header: 'Client Name', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'category' as const, header: 'Category', type: 'string' as const },
+    { key: 'riskScore' as const, header: 'Risk Score', type: 'number' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'riskLevel' as const, header: 'Risk Level', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'opportunityValue' as const, header: 'Opportunity Value', type: 'currency' as const, editable: true, onUpdate: handleUpdateInsight },
+    { key: 'opportunityType' as const, header: 'Opportunity Type', type: 'string' as const, editable: true, onUpdate: handleUpdateInsight },
+  ];
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className={cn('space-y-6', className)}>
+        <div className="flex items-center justify-center p-8">
+          <RefreshCw className="h-6 w-6 animate-spin" />
+          <span className="ml-2">Loading client insights...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className={cn('space-y-6', className)}>
+        <Card className="border-red-200">
+          <CardContent className="p-6">
+            <p className="text-red-600">Error loading client insights: {error}</p>
+            <Button onClick={refetch} className="mt-4" variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const handleAddInsight = async (category: 'METRIC' | 'REVENUE' | 'RISK' | 'OPPORTUNITY') => {
+    // Use a default clientId if none provided - we'll get this from our seeded data
+    const defaultClientId = 'cmbvdcgi200070l0r399v9p9m'; // First client from our seed data
+    
+    const newInsight = {
+      clientId: clientId || defaultClientId,
+      category,
+      type: 'custom',
+      title: `New ${category.toLowerCase()} insight`,
+      value: { count: 0 },
+      period: '2024-Q4',
+    };
+    
+    try {
+      await createInsight(newInsight);
+    } catch (err) {
+      console.error('Error creating insight:', err);
+    }
+  };
+
+  const handleEditInsight = async (insight: ClientInsightData, newValue: any) => {
+    try {
+      await updateInsight(insight.id, { value: newValue });
+    } catch (err) {
+      console.error('Error updating insight:', err);
+    }
+  };
+
+  const handleDeleteInsight = async (insightId: string) => {
+    if (confirm('Are you sure you want to delete this insight?')) {
+      try {
+        await deleteInsight(insightId);
+      } catch (err) {
+        console.error('Error deleting insight:', err);
+      }
+    }
+  };
+
   return (
     <div className={cn('space-y-6', className)}>
+      {/* Header with Edit Mode Toggle */}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold">Client Insights</h2>
+          <span className="text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
+            {insights.length} Records • Live Data
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={refetch}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button
+            variant={isEditMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsEditMode(!isEditMode)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            {isEditMode ? 'Exit Edit' : 'Edit Mode'}
+          </Button>
+        </div>
+      </div>
+
       {/* Client Metrics Overview */}
       {shouldRenderSection('client-metrics-overview-title') && (
         <section aria-labelledby="client-metrics-overview-title">
-          <h3
-            id="client-metrics-overview-title"
-            className="text-xl font-medium mb-2"
-          >
-            Client Metrics Overview
-          </h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 id="client-metrics-overview-title" className="text-xl font-medium">
+              Client Metrics Overview
+            </h3>
+            {isEditMode && (
+              <Button size="sm" variant="outline" onClick={() => handleAddInsight('METRIC')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Metric
+              </Button>
+            )}
+          </div>
 
-          {/* Client Overview */}
           <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Total Clients</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+                  {isEditMode && (
+                    <Button size="sm" variant="ghost">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">
-                    {clientOverview.totalClients}
-                  </p>
+                  <div className="text-2xl font-bold">{clientOverview.totalClients}</div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">
-                    Total Plan Members
-                  </CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+                  {isEditMode && (
+                    <Button size="sm" variant="ghost">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">
-                    {clientOverview.totalPlanMembers.toLocaleString()}
-                  </p>
+                  <div className="text-2xl font-bold">{clientOverview.totalMembers.toLocaleString()}</div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Avg. Company Size</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                  {isEditMode && (
+                    <Button size="sm" variant="ghost">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <p className="text-3xl font-bold">
-                    {clientOverview.avgGroupSize}
-                  </p>
+                  <div className="text-2xl font-bold">{formatCurrency(clientOverview.totalRevenue)}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Average Revenue</CardTitle>
+                  {isEditMode && (
+                    <Button size="sm" variant="ghost">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{formatCurrency(clientOverview.avgRevenue)}</div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Client Growth YOY Chart */}
+            {/* Client Growth Chart */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Client Growth YOY</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-base">Member Growth Over Time</CardTitle>
+                  {isEditMode && (
+                    <Button size="sm" variant="ghost">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <ChartContainer
                   className="h-[300px] w-full"
                   config={{
-                    currentYear: {
-                      label: 'Current Year',
-                      color: '#2563eb',
-                    },
-                    lastYear: {
-                      label: 'Last Year',
-                      color: '#60a5fa',
-                    },
+                    currentYear: { label: 'Current Year', color: '#2563eb' },
+                    lastYear: { label: 'Last Year', color: '#60a5fa' },
                   }}
                 >
-                  <LineChart
-                    data={clientGrowthData}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, right: 30, bottom: 30, left: 50 }}
-                  >
+                  <LineChart data={clientGrowthData} width={800} height={300} margin={{ top: 10, right: 30, bottom: 30, left: 50 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="month" 
-                      className="text-xs text-muted-foreground" 
-                    />
-                    <YAxis 
-                      className="text-xs text-muted-foreground" 
-                    />
+                    <XAxis dataKey="month" className="text-xs text-muted-foreground" />
+                    <YAxis className="text-xs text-muted-foreground" />
                     <ChartTooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
@@ -252,9 +395,6 @@ export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
                                   <span className="text-xs">
                                     <span className="font-medium">Last Year:</span> {payload[0].payload.lastYear} clients
                                   </span>
-                                  <span className="text-xs text-green-600">
-                                    +{((payload[0].payload.currentYear - payload[0].payload.lastYear) / payload[0].payload.lastYear * 100).toFixed(0)}% growth
-                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -263,27 +403,40 @@ export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
                         return null;
                       }}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="currentYear" 
-                      stroke="#2563eb" 
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: '#2563eb' }}
-                      name="Current Year"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="lastYear" 
-                      stroke="#60a5fa" 
-                      strokeWidth={3}
-                      strokeDasharray="5 5"
-                      dot={{ r: 4, fill: '#60a5fa' }}
-                      name="Last Year"
-                    />
+                    <Line type="monotone" dataKey="currentYear" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: '#2563eb' }} />
+                    <Line type="monotone" dataKey="lastYear" stroke="#60a5fa" strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4, fill: '#60a5fa' }} />
                   </LineChart>
                 </ChartContainer>
               </CardContent>
             </Card>
+
+            {/* Client Metrics Table */}
+            {clientMetricsData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-base">Client Metrics Details</CardTitle>
+                    {isEditMode && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleAddInsight('METRIC')}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Client
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <SortableTable
+                    data={clientMetricsData}
+                    columns={clientMetricsColumns}
+                    defaultSortKey="annualRevenue"
+                    defaultSortDirection="desc"
+                    isEditMode={isEditMode}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </section>
       )}
@@ -291,307 +444,100 @@ export function ClientInsights({ className, sectionId }: ClientInsightsProps) {
       {/* Revenue Per Client */}
       {shouldRenderSection('revenue-per-client-title') && (
         <section aria-labelledby="revenue-per-client-title">
-          <h3
-            id="revenue-per-client-title"
-            className="text-xl font-medium mb-2"
-          >
-            Revenue Per Client
-          </h3>
-          
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  Avg Plan Member Premium
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">$485</p>
-                <p className="text-xs text-muted-foreground">
-                  Per member per month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  Avg Plan Member Revenue
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">$58</p>
-                <p className="text-xs text-muted-foreground">
-                  Per member per month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  Avg Plan Management Fee %
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">12.0%</p>
-                <p className="text-xs text-muted-foreground">
-                  Of total premium
-                </p>
-              </CardContent>
-            </Card>
+          <div className="flex justify-between items-center mb-4">
+            <h3 id="revenue-per-client-title" className="text-xl font-medium">
+              Revenue Per Client
+            </h3>
+            {isEditMode && (
+              <Button size="sm" variant="outline" onClick={() => handleAddInsight('REVENUE')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Revenue Data
+              </Button>
+            )}
           </div>
 
-          {/* Top Clients by Revenue */}
-          <div>
-            <h4 className="text-lg font-medium mb-3">Top Clients by Revenue</h4>
-            <SortableTable
-              data={topClientsData}
-              columns={topClientsColumns}
-              defaultSortKey="annualRevenue"
-              defaultSortDirection="desc"
-            />
-          </div>
+          {revenueByClientData.length > 0 ? (
+            <Card>
+              <CardContent className="p-6">
+                <SortableTable
+                  data={revenueByClientData}
+                  columns={revenueColumns}
+                  defaultSortKey="annualRevenue"
+                  defaultSortDirection="desc"
+                  isEditMode={isEditMode}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-muted-foreground">No revenue data available</p>
+                {isEditMode && (
+                  <Button className="mt-4" onClick={() => handleAddInsight('REVENUE')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Revenue Data
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </section>
       )}
 
       {/* Risk and Opportunity */}
       {shouldRenderSection('risk-and-opportunity-title') && (
         <section aria-labelledby="risk-and-opportunity-title">
-          <h3
-            id="risk-and-opportunity-title"
-            className="text-xl font-medium mb-2"
-          >
-            Risk and Opportunity
-          </h3>
-
-          <div className="grid gap-6">
-            {/* High Risk Clients */}
-            <div>
-              <h4 className="text-lg font-medium mb-3 text-red-600">
-                High Risk Clients
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border-red-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-red-700">
-                      GlobalTech Inc.
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-red-600 font-medium">
-                      Loss Ratio: 92%
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      285 members • $67,500 revenue
-                    </p>
-                    <p className="text-xs text-red-500 mt-1">
-                      Renewal in 45 days
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-red-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-red-700">
-                      Manufacturing Plus
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-red-600 font-medium">
-                      Loss Ratio: 88%
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      150 members • $42,800 revenue
-                    </p>
-                    <p className="text-xs text-red-500 mt-1">
-                      Claims trending up
-                    </p>
-                  </CardContent>
-                </Card>
+          <div className="flex justify-between items-center mb-4">
+            <h3 id="risk-and-opportunity-title" className="text-xl font-medium">
+              Risk and Opportunity
+            </h3>
+            {isEditMode && (
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => handleAddInsight('RISK')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Risk
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleAddInsight('OPPORTUNITY')}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Opportunity
+                </Button>
               </div>
-            </div>
-
-            {/* Growth Opportunities */}
-            <div>
-              <h4 className="text-lg font-medium mb-3 text-green-600">
-                Growth Opportunities
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="border-green-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-green-700">
-                      Digital Innovations
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-green-600 font-medium">
-                      Expanding by 40%
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Current: 220 members
-                    </p>
-                    <p className="text-xs text-green-500 mt-1">
-                      +$28K potential revenue
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-green-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-green-700">
-                      HealthTech Solutions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-green-600 font-medium">
-                      Wellness program interest
-                    </p>
-                    <p className="text-xs text-muted-foreground">185 members</p>
-                    <p className="text-xs text-green-500 mt-1">
-                      Additional products potential
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-green-200">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base text-green-700">
-                      Finance Corp
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-green-600 font-medium">
-                      Referral opportunity
-                    </p>
-                    <p className="text-xs text-muted-foreground">250 members</p>
-                    <p className="text-xs text-green-500 mt-1">
-                      Sister company interested
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Risk Summary */}
-            <div>
-              <h4 className="text-lg font-medium mb-3">Risk Summary</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">At-Risk Revenue</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-red-600">$184K</p>
-                    <p className="text-xs text-muted-foreground">
-                      3 clients (7% of book)
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">
-                      Growth Potential
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-green-600">$156K</p>
-                    <p className="text-xs text-muted-foreground">
-                      5 opportunities identified
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Action Required</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-orange-600">8</p>
-                    <p className="text-xs text-muted-foreground">
-                      Clients need attention
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Stable Clients</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold text-blue-600">32</p>
-                    <p className="text-xs text-muted-foreground">
-                      74% of client base
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+            )}
           </div>
+
+          {riskOpportunityData.length > 0 ? (
+            <Card>
+              <CardContent className="p-6">
+                <SortableTable
+                  data={riskOpportunityData}
+                  columns={riskOpportunityColumns}
+                  defaultSortKey="riskScore"
+                  defaultSortDirection="desc"
+                  isEditMode={isEditMode}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-muted-foreground">No risk or opportunity data available</p>
+                {isEditMode && (
+                  <div className="flex gap-2 justify-center mt-4">
+                    <Button onClick={() => handleAddInsight('RISK')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Risk Assessment
+                    </Button>
+                    <Button onClick={() => handleAddInsight('OPPORTUNITY')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Opportunity
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </section>
       )}
-
-      {/* Client Search & Filter 
-      <section aria-labelledby="client-search-filter-title">
-        <h3
-          id="client-search-filter-title"
-          className="text-xl font-medium mb-2"
-        >
-          Client Search & Filter
-        </h3>
-
-        <div className="flex flex-col md:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search clients by name, industry, or group number..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by Industry" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Industries</SelectItem>
-              <SelectItem value="tech">Technology</SelectItem>
-              <SelectItem value="healthcare">Healthcare</SelectItem>
-              <SelectItem value="manufacturing">Manufacturing</SelectItem>
-              <SelectItem value="education">Education</SelectItem>
-              <SelectItem value="retail">Retail</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select defaultValue="all">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by Renewal Date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Dates</SelectItem>
-              <SelectItem value="30days">Next 30 Days</SelectItem>
-              <SelectItem value="60days">Next 60 Days</SelectItem>
-              <SelectItem value="90days">Next 90 Days</SelectItem>
-              <SelectItem value="6months">Next 6 Months</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {searchQuery && (
-          <Card className="mt-4">
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">
-                No results for "{searchQuery}". Try a different search term.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-      */}
     </div>
   );
 }
