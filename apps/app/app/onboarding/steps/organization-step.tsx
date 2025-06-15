@@ -12,7 +12,7 @@ import { Upload, Building, Loader2 } from 'lucide-react';
 
 interface OrganizationStepProps {
   data: Partial<OnboardingData>;
-  onContinue: () => void;
+  onContinue: (formData?: Partial<OnboardingData>) => void;
   onBack: () => void;
   onUpdateData: (data: Partial<OnboardingData>) => void;
   loading?: boolean;
@@ -170,11 +170,7 @@ export function OrganizationStep({
 
   const handleContinue = () => {
     if (validateForm()) {
-      onUpdateData({
-        ...formData,
-        organizationLogo: organizationLogo || undefined,
-      });
-      onContinue();
+      onContinue(formData);
     }
   };
 
