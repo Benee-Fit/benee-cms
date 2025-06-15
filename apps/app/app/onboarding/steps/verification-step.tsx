@@ -285,6 +285,7 @@ export function VerificationStep({
         canGoBack={true}
         canContinue={canComplete}
         onBack={onBack}
+        onContinue={handleComplete}
         onComplete={handleComplete}
         isFinalStep={true}
         isLoading={isCompleting}
