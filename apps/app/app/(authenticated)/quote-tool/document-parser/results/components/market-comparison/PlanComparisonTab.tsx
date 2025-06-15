@@ -111,7 +111,9 @@ const DetailRenderer = ({
   editKey?: string;
 }) => {
   if (!details || typeof details !== 'object') {
-    const stringValue = String(details) || '-';
+    const stringValue = details === null || details === undefined || details === '' 
+      ? '-' 
+      : String(details);
     
     if (isEditable && onUpdate) {
       return <EditableTableCell value={stringValue} onUpdate={onUpdate} className="text-sm" />;
@@ -135,7 +137,7 @@ const DetailRenderer = ({
                 editKey={`${editKey}-${key}`}
               />
             ) : (
-              String(value) || '-'
+              value === null || value === undefined || value === '' ? '-' : String(value)
             )}
           </span>
         </li>
@@ -181,20 +183,32 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
         if (!coverage.coverageType) continue;
         
         const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        
+        // Extract ALL fields from coverage object, including nested benefitDetails
+        const { benefitDetails, ...coverageFields } = coverage;
+        
+        // Flatten benefitDetails if it exists
+        let flattenedBenefitDetails = {};
+        if (benefitDetails && typeof benefitDetails === 'object') {
+          // Handle nested objects in benefitDetails
+          Object.entries(benefitDetails).forEach(([key, value]) => {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              // For nested objects, prefix with parent key
+              Object.entries(value).forEach(([subKey, subValue]) => {
+                flattenedBenefitDetails[`${key}_${subKey}`] = subValue;
+              });
+            } else {
+              flattenedBenefitDetails[key] = value;
+            }
+          });
+        }
+        
         benefitData[key] = {
           carrierName: coverage.carrierName || carrierName,
           planOptionName: coverage.planOptionName || 'Default',
           coverageType: coverage.coverageType,
-          monthlyPremium: coverage.monthlyPremium,
-          unitRate: coverage.unitRate,
-          unitRateBasis: coverage.unitRateBasis,
-          volume: coverage.volume,
-          lives: coverage.lives,
-          livesSingle: coverage.livesSingle,
-          livesFamily: coverage.livesFamily,
-          premiumPerSingle: coverage.premiumPerSingle,
-          premiumPerFamily: coverage.premiumPerFamily,
-          ...coverage.benefitDetails
+          ...coverageFields,  // Include ALL coverage fields
+          ...flattenedBenefitDetails  // Include ALL flattened benefit details
         };
       }
     }
@@ -206,20 +220,32 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
         if (!coverage.coverageType) continue;
         
         const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        
+        // Extract ALL fields from coverage object, including nested benefitDetails
+        const { benefitDetails, ...coverageFields } = coverage;
+        
+        // Flatten benefitDetails if it exists
+        let flattenedBenefitDetails = {};
+        if (benefitDetails && typeof benefitDetails === 'object') {
+          // Handle nested objects in benefitDetails
+          Object.entries(benefitDetails).forEach(([key, value]) => {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              // For nested objects, prefix with parent key
+              Object.entries(value).forEach(([subKey, subValue]) => {
+                flattenedBenefitDetails[`${key}_${subKey}`] = subValue;
+              });
+            } else {
+              flattenedBenefitDetails[key] = value;
+            }
+          });
+        }
+        
         benefitData[key] = {
           carrierName: coverage.carrierName || carrierName,
           planOptionName: coverage.planOptionName || 'Default',
           coverageType: coverage.coverageType,
-          monthlyPremium: coverage.monthlyPremium,
-          unitRate: coverage.unitRate,
-          unitRateBasis: coverage.unitRateBasis,
-          volume: coverage.volume,
-          lives: coverage.lives,
-          livesSingle: coverage.livesSingle,
-          livesFamily: coverage.livesFamily,
-          premiumPerSingle: coverage.premiumPerSingle,
-          premiumPerFamily: coverage.premiumPerFamily,
-          ...coverage.benefitDetails
+          ...coverageFields,  // Include ALL coverage fields
+          ...flattenedBenefitDetails  // Include ALL flattened benefit details
         };
       }
     }
@@ -267,6 +293,7 @@ const getAllBenefitFields = (benefitData: Record<string, Record<string, any>>): 
 const formatFieldName = (fieldName: string): string => {
   const fieldMappings: Record<string, string> = {
     'monthlyPremium': 'Monthly Premium',
+    'premium': 'Premium',
     'unitRate': 'Unit Rate',
     'unitRateBasis': 'Rate Basis',
     'volume': 'Volume',
@@ -276,24 +303,51 @@ const formatFieldName = (fieldName: string): string => {
     'premiumPerSingle': 'Premium Per Single',
     'premiumPerFamily': 'Premium Per Family',
     'benefitAmount': 'Benefit Amount',
+    'nonEvidenceMaximum': 'Non-Evidence Maximum',
     'nonEvidenceMax': 'Non-Evidence Max',
     'reductionFormula': 'Reduction Formula',
+    'benefitReductionSchedule': 'Benefit Reduction Schedule',
     'terminationAge': 'Termination Age',
+    'spouseBenefitAmount': 'Spouse Benefit Amount',
+    'childBenefitAmount': 'Child Benefit Amount',
     'spouseAmount': 'Spouse Amount',
     'childAmount': 'Child Amount',
     'deductible': 'Deductible',
     'coinsurance': 'Coinsurance',
     'lifetimeMaximum': 'Lifetime Maximum',
     'drugPlan': 'Drug Plan',
+    'drugCard': 'Drug Card',
+    'drugCoinsurance': 'Drug Coinsurance',
+    'drugMaximum': 'Drug Maximum',
     'paramedicalCoverage': 'Paramedical Coverage',
+    'paramedicalMaximum': 'Paramedical Maximum',
+    'paramedicalCoinsurance': 'Paramedical Coinsurance',
     'hospital': 'Hospital Coverage',
+    'hospitalCoverage': 'Hospital Coverage',
     'annualMaximum': 'Annual Maximum',
+    'overallMaximum': 'Overall Maximum',
     'feeGuide': 'Fee Guide',
     'recallFrequency': 'Recall Frequency',
     'basicCoinsurance': 'Basic Coinsurance',
+    'basicMaximum': 'Basic Maximum',
     'majorCoinsurance': 'Major Coinsurance',
-    'orthoCoinsurance': 'Ortho Coinsurance'
+    'orthoCoinsurance': 'Ortho Coinsurance',
+    'visionMaximum': 'Vision Maximum',
+    'visionCoinsurance': 'Vision Coinsurance',
+    'travelCoverage': 'Travel Coverage',
+    'survivorBenefit': 'Survivor Benefit',
+    'poolingThreshold': 'Pooling Threshold',
+    'formula': 'Formula',
+    'rateGuarantees': 'Rate Guarantees'
   };
+  
+  // Handle nested fields with underscores (e.g., drug_coinsurance)
+  if (fieldName.includes('_')) {
+    const parts = fieldName.split('_');
+    return parts.map(part => 
+      fieldMappings[part] || part.charAt(0).toUpperCase() + part.slice(1)
+    ).join(' - ');
+  }
   
   return fieldMappings[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 };
@@ -540,13 +594,35 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                           const editKey = `${coverageType}-${field}-${carrier.name}-${planOption}`;
                           const editedFieldValue = getEditedValue(editKey, fieldValue);
                           
+                          // Check if this is a premium/cost field for special formatting
+                          const isPremiumField = ['monthlyPremium', 'premium', 'premiumPerSingle', 'premiumPerFamily'].includes(field);
+                          const isPercentageField = field.toLowerCase().includes('coinsurance') || field === 'coinsurance';
+                          
+                          // Format the value for display
+                          let displayValue = editedFieldValue;
+                          if (isPremiumField && typeof editedFieldValue === 'number') {
+                            displayValue = `$${editedFieldValue.toFixed(2)}`;
+                          } else if (isPercentageField && typeof editedFieldValue === 'string' && !editedFieldValue.includes('%')) {
+                            displayValue = `${editedFieldValue}%`;
+                          } else if (editedFieldValue === true) {
+                            displayValue = '✓ Yes';
+                          } else if (editedFieldValue === false) {
+                            displayValue = '✗ No';
+                          }
+                          
+                          // Determine if this value is notably different (for highlighting)
+                          const allValues = carriers.map(c => {
+                            const opt = selectedPlanOptions[c.name] || c.planOptions[0] || 'Default';
+                            return getBenefitDataForCarrierPlan(c.name, opt, coverageType)[field];
+                          }).filter(v => v !== null && v !== undefined && v !== '');
+                          
+                          const hasVariance = allValues.length > 1 && !allValues.every(v => v === allValues[0]);
+                          
                           return (
                             <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
-                              <div className="break-words whitespace-normal">
+                              <div className={`break-words whitespace-normal ${hasVariance ? 'font-medium' : ''} ${isPremiumField ? 'text-green-700' : ''}`}>
                                 <DetailRenderer 
-                                  details={editedFieldValue === true ? 'Yes' :
-                                         editedFieldValue === false ? 'No' :
-                                         editedFieldValue}
+                                  details={displayValue}
                                   isEditable={true}
                                   onUpdate={(value) => updateEditedValue(editKey, value)}
                                   editKey={editKey}
