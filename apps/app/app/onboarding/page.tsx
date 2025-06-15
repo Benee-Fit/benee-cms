@@ -34,6 +34,8 @@ export interface OnboardingData {
   // Business Focus
   linesOfBusiness: string[];
   preferredCarriers: string[];
+  clientIndustries: string[];
+  averageClientSize: string;
   
   // Team Members
   teamMembers: Array<{
@@ -64,7 +66,9 @@ export default function OnboardingPage() {
       country: ''
     },
     linesOfBusiness: [],
-    preferredCarriers: []
+    preferredCarriers: [],
+    clientIndustries: [],
+    averageClientSize: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -135,8 +139,8 @@ export default function OnboardingPage() {
           website: dataToSubmit.website ?? '',
           linesOfBusiness: dataToSubmit.linesOfBusiness ?? [],
           preferredCarriers: dataToSubmit.preferredCarriers ?? [],
-          clientIndustries: [],
-          averageClientSize: '',
+          clientIndustries: dataToSubmit.clientIndustries ?? [],
+          averageClientSize: dataToSubmit.averageClientSize ?? '',
           teamMembers: dataToSubmit.teamMembers ?? [],
           businessAddress: dataToSubmit.businessAddress ?? {
             street: '',
