@@ -301,37 +301,50 @@ export default function DocumentParserPage() {
 
   // Normalize processed result
   const normalizeResult = useCallback((processedResult: Record<string, unknown>, file: FileWithPreview) => {
+    // Check if we have processedData structure (from API response)
+    const hasProcessedData = processedResult.processedData && typeof processedResult.processedData === 'object';
+    const processedData = hasProcessedData ? processedResult.processedData as Record<string, unknown> : processedResult;
+    
+    // Extract metadata from the correct location
+    const metadata = processedData.metadata || processedResult.metadata || {
+      documentType: 'Unknown',
+      clientName: 'Unknown',
+      carrierName: 'Unknown Carrier',
+      effectiveDate: new Date().toISOString().split('T')[0],
+      quoteDate: new Date().toISOString().split('T')[0],
+      fileName: file.name,
+      fileCategory: file.category || 'Current'
+    };
+    
+    // Extract coverages - prefer allCoverages over coverages
+    let coverages = processedData.allCoverages || processedData.coverages || processedResult.coverages || [];
+    
+    // Ensure coverages is an array
+    if (!Array.isArray(coverages) || coverages.length === 0) {
+      coverages = [{
+        coverageType: 'Basic Life',
+        carrierName: (metadata && typeof metadata === 'object' && 'carrierName' in metadata) ? String(metadata.carrierName) : 'Unknown Carrier',
+        planOptionName: 'Default Plan',
+        premium: 0,
+        monthlyPremium: 0,
+        unitRate: 0,
+        unitRateBasis: 'per $1,000',
+        volume: 0,
+        lives: 0,
+        benefitDetails: {
+          note: 'Coverage details could not be extracted from document'
+        }
+      }];
+    }
+    
     return {
       ...processedResult,
       originalFileName: file.name,
       category: file.category,
-      // Ensure metadata exists
-      metadata: processedResult.metadata || {
-        documentType: 'Unknown',
-        clientName: 'Unknown',
-        carrierName: 'Unknown Carrier',
-        effectiveDate: new Date().toISOString().split('T')[0],
-        quoteDate: new Date().toISOString().split('T')[0],
-        fileName: file.name,
-        fileCategory: file.category || 'Current'
-      },
-      // Ensure coverages exists and is an array
-      coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
-        ? processedResult.coverages 
-        : [{
-            coverageType: 'Basic Life',
-            carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
-            planOptionName: 'Default Plan',
-            premium: 0,
-            monthlyPremium: 0,
-            unitRate: 0,
-            unitRateBasis: 'per $1,000',
-            volume: 0,
-            lives: 0,
-            benefitDetails: {
-              note: 'Coverage details could not be extracted from document'
-            }
-          }]
+      metadata: metadata,
+      coverages: coverages,
+      // Include plan options if available
+      planOptions: processedData.planOptions || processedResult.planOptions || []
     };
   }, []);
 

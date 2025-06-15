@@ -54,6 +54,12 @@ export default function RecentReports({ limit = 5, showViewAll = true }: RecentR
 
       const response = await fetch(`/api/reports?limit=${limit}&page=1`);
       
+      // Handle 404 as empty reports, not an error
+      if (response.status === 404) {
+        setReports([]);
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch reports: ${response.status}`);
       }
@@ -209,14 +215,20 @@ export default function RecentReports({ limit = 5, showViewAll = true }: RecentR
       </CardHeader>
       <CardContent>
         {reports.length === 0 ? (
-          <div className="text-center py-8">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No reports yet</h3>
-            <p className="text-gray-600 mb-4">
-              Start by uploading documents in the Document Parser to create your first report.
+          <div className="text-center py-6">
+            <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full mb-3">
+              <FileText className="h-5 w-5 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-500 mb-3">
+              No saved reports yet
             </p>
-            <Button onClick={() => router.push('/quote-tool/document-parser')}>
-              Create First Report
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => router.push('/quote-tool/document-parser')}
+              className="text-sm"
+            >
+              Upload Documents
             </Button>
           </div>
         ) : (

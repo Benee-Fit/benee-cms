@@ -111,7 +111,9 @@ const DetailRenderer = ({
   editKey?: string;
 }) => {
   if (!details || typeof details !== 'object') {
-    const stringValue = String(details) || '-';
+    const stringValue = details === null || details === undefined || details === '' 
+      ? '-' 
+      : String(details);
     
     if (isEditable && onUpdate) {
       return <EditableTableCell value={stringValue} onUpdate={onUpdate} className="text-sm" />;
@@ -135,7 +137,7 @@ const DetailRenderer = ({
                 editKey={`${editKey}-${key}`}
               />
             ) : (
-              String(value) || '-'
+              value === null || value === undefined || value === '' ? '-' : String(value)
             )}
           </span>
         </li>
