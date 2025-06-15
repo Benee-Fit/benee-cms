@@ -3,6 +3,7 @@ import { Button } from '@repo/design-system/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@repo/design-system/components/ui/dialog';
@@ -279,9 +280,9 @@ export default function QuoteQuestionnaireModal({
           <DialogTitle className="text-xl font-semibold">
             Quote Information
           </DialogTitle>
-          <p className="text-sm text-gray-600 mt-1">
+          <DialogDescription>
             Please provide details while we process your documents
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         {/* Progress Bar */}
