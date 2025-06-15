@@ -188,7 +188,7 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
         const { benefitDetails, ...coverageFields } = coverage;
         
         // Flatten benefitDetails if it exists
-        let flattenedBenefitDetails = {};
+        let flattenedBenefitDetails: Record<string, any> = {};
         if (benefitDetails && typeof benefitDetails === 'object') {
           // Handle nested objects in benefitDetails
           Object.entries(benefitDetails).forEach(([key, value]) => {
@@ -225,7 +225,7 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
         const { benefitDetails, ...coverageFields } = coverage;
         
         // Flatten benefitDetails if it exists
-        let flattenedBenefitDetails = {};
+        let flattenedBenefitDetails: Record<string, any> = {};
         if (benefitDetails && typeof benefitDetails === 'object') {
           // Handle nested objects in benefitDetails
           Object.entries(benefitDetails).forEach(([key, value]) => {
