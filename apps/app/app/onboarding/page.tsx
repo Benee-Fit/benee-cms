@@ -83,7 +83,7 @@ export default function OnboardingPage() {
     setOnboardingData(prev => ({ ...prev, ...stepData }));
   };
 
-  const handleCompleteOnboarding = async () => {
+  const handleCompleteOnboarding = async (formData?: Partial<OnboardingData>) => {
     // Check if user exists from Clerk
     console.log('Current user:', user);
     if (!user) {
@@ -93,19 +93,22 @@ export default function OnboardingPage() {
       return;
     }
 
+    // Use provided form data or fall back to state
+    const dataToSubmit = formData ? { ...onboardingData, ...formData } : onboardingData;
+
     try {
       setLoading(true);
       console.log('Submitting organization data:', {
-        firstName: onboardingData.firstName,
-        lastName: onboardingData.lastName,
-        email: onboardingData.email,
-        phone: onboardingData.phone,
-        title: onboardingData.title,
-        organizationName: onboardingData.organizationName,
-        organizationType: onboardingData.organizationType,
-        companySize: onboardingData.companySize,
-        website: onboardingData.website,
-        businessAddress: onboardingData.businessAddress
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.emailAddresses[0]?.emailAddress || '',
+        phone: user.phoneNumbers[0]?.phoneNumber || '',
+        title: dataToSubmit.title || '',
+        organizationName: dataToSubmit.organizationName,
+        organizationType: dataToSubmit.organizationType,
+        companySize: dataToSubmit.companySize,
+        website: dataToSubmit.website,
+        businessAddress: dataToSubmit.businessAddress
       });
       
       console.log('Submitting to API...');
@@ -116,21 +119,21 @@ export default function OnboardingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          firstName: onboardingData.firstName ?? '',
-          lastName: onboardingData.lastName ?? '',
-          email: onboardingData.email ?? '',
-          phone: onboardingData.phone ?? '',
-          title: onboardingData.title ?? '',
-          organizationName: onboardingData.organizationName ?? '',
-          organizationType: onboardingData.organizationType ?? '',
-          companySize: onboardingData.companySize ?? '',
-          website: onboardingData.website ?? '',
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          email: user.emailAddresses[0]?.emailAddress || '',
+          phone: user.phoneNumbers[0]?.phoneNumber || '',
+          title: dataToSubmit.title || '',
+          organizationName: dataToSubmit.organizationName ?? '',
+          organizationType: dataToSubmit.organizationType ?? '',
+          companySize: dataToSubmit.companySize ?? '',
+          website: dataToSubmit.website ?? '',
           linesOfBusiness: [],
           preferredCarriers: [],
           clientIndustries: [],
           averageClientSize: '',
-          teamMembers: onboardingData.teamMembers ?? [],
-          businessAddress: onboardingData.businessAddress ?? {
+          teamMembers: dataToSubmit.teamMembers ?? [],
+          businessAddress: dataToSubmit.businessAddress ?? {
             street: '',
             city: '',
             state: '',
@@ -148,26 +151,30 @@ export default function OnboardingPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Organization creation failed:', {
+        const errorData = await response.json();
+        console.log('Organization creation failed:', {
           status: response.status,
           statusText: response.statusText,
           url: response.url,
           errorData,
-          responseHeaders: Object.fromEntries(response.headers.entries())
+          responseHeaders: Object.fromEntries(response.headers)
         });
         
-        if (response.status === 404) {
-          throw new Error('API endpoint not found. Please check if the server is running correctly.');
-        } else if (response.status === 401) {
-          throw new Error('Authentication required. Please sign in and try again.');
+        console.error('Detailed error:', errorData.error);
+        console.error('Error details:', errorData.details);
+        console.error('Error type:', typeof errorData.error);
+        
+        // Display specific field errors if available
+        if (errorData.details?.fieldErrors) {
+          console.error('Field errors:', errorData.details.fieldErrors);
+          const fieldErrors = Object.entries(errorData.details.fieldErrors)
+            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+            .join('\n');
+          alert(`Validation errors:\n${fieldErrors}`);
         } else {
-          const detailedError = errorData.error || `Failed to create organization (${response.status}: ${response.statusText})`;
-          console.error('Detailed error:', detailedError);
-          console.error('Error details:', errorData.details);
-          console.error('Error type:', errorData.errorType);
-          throw new Error(detailedError);
+          alert(`Error creating organization: ${errorData.error || 'Unknown error'}`);
         }
+        throw new Error(errorData.error || 'Failed to create organization');
       }
 
       let result;

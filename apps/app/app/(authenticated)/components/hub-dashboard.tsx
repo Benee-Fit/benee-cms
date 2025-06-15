@@ -147,7 +147,7 @@ export function HubDashboard() {
 
             {/* News Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-              <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-200">
+              <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-200 py-0">
                 <div className="h-32 bg-gray-800 relative">
                   <div className="absolute bottom-4 left-4 text-white">
                     <div className="text-lg font-semibold">Benee CMS</div>
