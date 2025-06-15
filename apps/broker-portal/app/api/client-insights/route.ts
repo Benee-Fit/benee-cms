@@ -9,12 +9,12 @@ const InsightDataSchema = z.object({
   category: z.enum(['METRIC', 'REVENUE', 'RISK', 'OPPORTUNITY']),
   type: z.string(),
   title: z.string(),
-  description: z.string().optional(),
-  value: z.any(), // JSON value
-  metadata: z.any().optional(), // JSON metadata
-  period: z.string().optional(),
-  targetValue: z.any().optional(), // JSON target value
-  sortOrder: z.number().optional(),
+  description: z.string().nullable().optional(),
+  value: z.any().default({}), // JSON value - required but with default
+  metadata: z.any().nullable().optional(), // JSON metadata
+  period: z.string().nullable().optional(),
+  targetValue: z.any().nullable().optional(), // JSON target value
+  sortOrder: z.number().nullable().optional(),
 });
 
 const BulkOperationSchema = z.object({
@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
             id: true,
             companyName: true,
             policyNumber: true,
+            industry: true,
+            headcount: true,
+            revenue: true,
           },
         },
         timeSeries: includeTimeSeries ? {
@@ -123,132 +126,190 @@ export async function POST(request: NextRequest) {
 
 // Helper functions
 async function handleCreate(data: any, brokerId: string) {
-  const validatedData = InsightDataSchema.parse(data);
-  
-  const insight = await database.clientInsightData.create({
-    data: {
-      ...validatedData,
-      brokerId,
-    },
-    include: {
-      client: {
-        select: {
-          id: true,
-          companyName: true,
-          policyNumber: true,
+  try {
+    console.log('Creating insight with data:', JSON.stringify(data, null, 2));
+    const validatedData = InsightDataSchema.parse(data);
+    console.log('Validated data:', JSON.stringify(validatedData, null, 2));
+    
+    const insight = await database.clientInsightData.create({
+      data: {
+        ...validatedData,
+        brokerId,
+        value: validatedData.value || {}, // Ensure value is always present
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            companyName: true,
+            policyNumber: true,
+            industry: true,
+            headcount: true,
+            revenue: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return NextResponse.json({
-    success: true,
-    data: insight,
-  }, { status: 201 });
+    return NextResponse.json({
+      success: true,
+      data: insight,
+    }, { status: 201 });
+  } catch (error) {
+    console.error('Error in handleCreate:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+    throw error;
+  }
 }
 
 async function handleUpdate(id: string, data: any, brokerId: string) {
-  const validatedData = InsightDataSchema.partial().parse(data);
-  
-  // Verify ownership
-  const existing = await database.clientInsightData.findFirst({
-    where: { id, brokerId },
-  });
+  try {
+    console.log('Updating insight with id:', id, 'and data:', JSON.stringify(data, null, 2));
+    const validatedData = InsightDataSchema.partial().parse(data);
+    console.log('Validated data:', JSON.stringify(validatedData, null, 2));
+    
+    // Verify ownership
+    const existing = await database.clientInsightData.findFirst({
+      where: { id, brokerId },
+    });
 
-  if (!existing) {
-    return NextResponse.json(
-      { error: 'Insight not found or access denied' },
-      { status: 404 }
-    );
-  }
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Insight not found or access denied' },
+        { status: 404 }
+      );
+    }
 
-  const insight = await database.clientInsightData.update({
-    where: { id },
-    data: validatedData,
-    include: {
-      client: {
-        select: {
-          id: true,
-          companyName: true,
-          policyNumber: true,
+    const insight = await database.clientInsightData.update({
+      where: { id },
+      data: validatedData,
+      include: {
+        client: {
+          select: {
+            id: true,
+            companyName: true,
+            policyNumber: true,
+            industry: true,
+            headcount: true,
+            revenue: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return NextResponse.json({
-    success: true,
-    data: insight,
-  });
+    return NextResponse.json({
+      success: true,
+      data: insight,
+    });
+  } catch (error) {
+    console.error('Error in handleUpdate:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+    throw error;
+  }
 }
 
 async function handleDelete(id: string, brokerId: string) {
-  // Verify ownership
-  const existing = await database.clientInsightData.findFirst({
-    where: { id, brokerId },
-  });
+  try {
+    console.log('Deleting insight with id:', id);
+    
+    // Verify ownership
+    const existing = await database.clientInsightData.findFirst({
+      where: { id, brokerId },
+    });
 
-  if (!existing) {
-    return NextResponse.json(
-      { error: 'Insight not found or access denied' },
-      { status: 404 }
-    );
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Insight not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    await database.clientInsightData.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Insight deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error in handleDelete:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+    throw error;
   }
-
-  await database.clientInsightData.delete({
-    where: { id },
-  });
-
-  return NextResponse.json({
-    success: true,
-    message: 'Insight deleted successfully',
-  });
 }
 
 async function handleBulkOperation(operations: any[], brokerId: string) {
-  const validatedOps = z.array(BulkOperationSchema).parse(operations);
-  const results = [];
+  try {
+    console.log('Performing bulk operation with operations:', JSON.stringify(operations, null, 2));
+    const validatedOps = z.array(BulkOperationSchema).parse(operations);
+    const results = [];
 
-  for (const operation of validatedOps) {
-    try {
-      let result;
-      switch (operation.action) {
-        case 'create':
-          for (const item of operation.items) {
-            if (item.data) {
-              result = await handleCreate(item.data, brokerId);
-              results.push({ action: 'create', success: true, data: result });
+    for (const operation of validatedOps) {
+      try {
+        let result;
+        switch (operation.action) {
+          case 'create':
+            for (const item of operation.items) {
+              if (item.data) {
+                result = await handleCreate(item.data, brokerId);
+                results.push({ action: 'create', success: true, data: result });
+              }
             }
-          }
-          break;
-        case 'update':
-          for (const item of operation.items) {
-            if (item.id && item.data) {
-              result = await handleUpdate(item.id, item.data, brokerId);
-              results.push({ action: 'update', success: true, data: result });
+            break;
+          case 'update':
+            for (const item of operation.items) {
+              if (item.id && item.data) {
+                result = await handleUpdate(item.id, item.data, brokerId);
+                results.push({ action: 'update', success: true, data: result });
+              }
             }
-          }
-          break;
-        case 'delete':
-          for (const item of operation.items) {
-            if (item.id) {
-              result = await handleDelete(item.id, brokerId);
-              results.push({ action: 'delete', success: true, data: result });
+            break;
+          case 'delete':
+            for (const item of operation.items) {
+              if (item.id) {
+                result = await handleDelete(item.id, brokerId);
+                results.push({ action: 'delete', success: true, data: result });
+              }
             }
-          }
-          break;
+            break;
+        }
+      } catch (error) {
+        results.push({ 
+          action: operation.action, 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        });
       }
-    } catch (error) {
-      results.push({ 
-        action: operation.action, 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
     }
-  }
 
-  return NextResponse.json({
-    success: true,
-    results,
-  });
+    return NextResponse.json({
+      success: true,
+      results,
+    });
+  } catch (error) {
+    console.error('Error in handleBulkOperation:', error);
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+    throw error;
+  }
 }

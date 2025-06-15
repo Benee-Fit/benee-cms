@@ -9,21 +9,24 @@ export interface ClientInsightData {
   category: 'METRIC' | 'REVENUE' | 'RISK' | 'OPPORTUNITY';
   type: string;
   title: string;
-  description?: string;
+  description?: string | null;
   value: any;
-  metadata?: any;
-  period?: string;
-  targetValue?: any;
+  metadata?: any | null;
+  period?: string | null;
+  targetValue?: any | null;
   isActive: boolean;
-  sortOrder?: number;
+  sortOrder?: number | null;
   createdAt: string;
   updatedAt: string;
   client: {
     id: string;
     companyName: string;
     policyNumber: string;
+    industry?: string | null;
+    headcount?: number | null;
+    revenue?: string | null;
   };
-  timeSeries?: TimeSeriesData[];
+  timeSeries?: TimeSeriesData[] | null;
 }
 
 export interface TimeSeriesData {
