@@ -38,16 +38,16 @@ const quickActions: QuickAction[] = [
     description: 'Upload documents to prepare a new quote',
   },
   {
-    title: 'View Comparisons',
+    title: 'Resume Draft',
     href: '/quote-tool/document-parser/results',
     icon: BarChart3,
-    description: 'Market analysis',
+    description: 'Resume previous draft',
   },
   {
-    title: 'Recent Reports',
+    title: 'Saved Quotes',
     href: '/quote-tool/reports',
     icon: FileCheck,
-    description: 'Saved analyses',
+    description: 'View saved quotes',
   },
 ];
 

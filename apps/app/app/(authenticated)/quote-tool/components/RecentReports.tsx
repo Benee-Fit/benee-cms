@@ -143,7 +143,7 @@ export default function RecentReports({ limit = 5, showViewAll = true }: RecentR
         <CardHeader>
           <CardTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
-            Recent Reports
+            Saved Quotes
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -171,7 +171,7 @@ export default function RecentReports({ limit = 5, showViewAll = true }: RecentR
         <CardHeader>
           <CardTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
-            Recent Reports
+            Saved Quotes
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -198,7 +198,7 @@ export default function RecentReports({ limit = 5, showViewAll = true }: RecentR
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
             <FileText className="h-5 w-5 mr-2" />
-            Recent Reports
+            Saved Quotes
           </CardTitle>
           {showViewAll && reports.length > 0 && (
             <Button
