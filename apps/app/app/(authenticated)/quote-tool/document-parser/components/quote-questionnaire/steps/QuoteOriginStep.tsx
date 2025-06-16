@@ -2,7 +2,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@repo/design-system/components/ui/label';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
 import { DollarSign, TrendingUp, PhoneOutgoing, Users, Award, Calendar } from 'lucide-react';
-
 import { useState } from 'react';
 
 interface QuoteOriginStepProps {

@@ -13,6 +13,8 @@ export interface QuoteQuestionnaireData {
   brokerSplits: BrokerSplit[];
   quoteRequestOrigin: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops' | null;
   quoteRequestOriginSubcategory?: string | null;
+  includesHSA: boolean | null;
+  hsaCarrierName: string;
   completedAt?: string;
 }
 

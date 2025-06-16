@@ -44,7 +44,7 @@ export default function CompanyDetailsStep({
   return (
     <div className="space-y-2">
         {/* Company Name */}
-        <Card>
+        <Card style={{ borderRadius: '8px' }}>
           <CardContent className="p-3">
             <div className="space-y-2">
               <Label htmlFor="company-name" className="text-sm font-medium">
