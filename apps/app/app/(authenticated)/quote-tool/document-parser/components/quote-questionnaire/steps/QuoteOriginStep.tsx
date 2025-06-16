@@ -3,9 +3,13 @@ import { Label } from '@repo/design-system/components/ui/label';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
 import { DollarSign, TrendingUp, PhoneOutgoing, Users, Award, Calendar } from 'lucide-react';
 
+import { useState } from 'react';
+
 interface QuoteOriginStepProps {
   value: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops' | null;
   onChange: (value: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops') => void;
+  subValue?: string | null;
+  onSubValueChange?: (value: string | null) => void;
 }
 
 const originOptions = [
@@ -53,8 +57,64 @@ const originOptions = [
   }
 ];
 
-export default function QuoteOriginStep({ value, onChange }: QuoteOriginStepProps) {
+const subCategories = {
+  'paid-advertising': [
+    'Google Search Ads',
+    'Google Display Network',
+    'Facebook / Instagram Ads',
+    'TikTok Ads',
+    'LinkedIn Ads',
+    'YouTube Ads',
+    'Sponsored Podcast or Influencer Ads or events',
+    'Other'
+  ],
+  'organic-inbound': [
+    'SEO (Search Engine Optimization)',
+    'Blog Content',
+    'YouTube Channel (educational, product content)',
+    'Podcast (hosted or guesting)',
+    'Webinars (live or pre-recorded)',
+    'Email Newsletters',
+    'Organic Social (LinkedIn, TikTok, Instagram, etc.)',
+    'Online Communities (Reddit, Slack, Quora, Facebook Groups)',
+    'PR / Earned Media Mentions',
+    'Guest Blogging or Publishing',
+    'Other'
+  ],
+  'outbound-direct': [
+    'Cold Email',
+    'Cold Calling',
+    'LinkedIn DMs',
+    'Company Drop-Ins',
+    'Direct Mail',
+    'SMS Campaigns',
+    'Other'
+  ],
+  'referrals-partnerships': [
+    'Client Referrals',
+    'Partner / Channel Referrals (e.g., financial advisors, payroll companies)',
+    'Affiliate Programs',
+    'Business Networking Events',
+    'Alumni / Personal Network Outreach',
+    'Other'
+  ],
+  'authority-building': [
+    'Speaking Gigs / Panels',
+    'Books / Whitepapers',
+    'Awards / Industry Recognition',
+    'Other'
+  ],
+  'events-workshops': [
+    'Trade Shows / Industry Conferences',
+    'In-person Workshops / Masterclasses',
+    'Lunch & Learns (in-office or virtual)',
+    'Other'
+  ]
+};
+
+export default function QuoteOriginStep({ value, onChange, subValue, onSubValueChange }: QuoteOriginStepProps) {
   const selectedOption = originOptions.find(option => option.value === value);
+  const [showSubcategory, setShowSubcategory] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -72,7 +132,13 @@ export default function QuoteOriginStep({ value, onChange }: QuoteOriginStepProp
             
             <Select
               value={value || ''}
-              onValueChange={(newValue) => onChange(newValue as any)}
+              onValueChange={(newValue) => {
+                onChange(newValue as any);
+                setShowSubcategory(true);
+                if (onSubValueChange) {
+                  onSubValueChange(null); // Reset subcategory when main category changes
+                }
+              }}
             >
               <SelectTrigger id="quote-origin" className="w-full">
                 <SelectValue placeholder="Select the origin of this quote request" />
@@ -108,6 +174,34 @@ export default function QuoteOriginStep({ value, onChange }: QuoteOriginStepProp
                     <div className="text-sm text-gray-600">{selectedOption.description}</div>
                   </div>
                 </div>
+              </div>
+            )}
+            
+            {/* Subcategory Selection */}
+            {value && showSubcategory && subCategories[value] && (
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="quote-subcategory" className="text-sm font-medium">
+                  Specific Source *
+                </Label>
+                <Select
+                  value={subValue || ''}
+                  onValueChange={(newValue) => {
+                    if (onSubValueChange) {
+                      onSubValueChange(newValue);
+                    }
+                  }}
+                >
+                  <SelectTrigger id="quote-subcategory" className="w-full">
+                    <SelectValue placeholder="Select specific source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subCategories[value].map((subCat) => (
+                      <SelectItem key={subCat} value={subCat}>
+                        {subCat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>

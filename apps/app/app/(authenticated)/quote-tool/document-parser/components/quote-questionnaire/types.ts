@@ -12,6 +12,7 @@ export interface QuoteQuestionnaireData {
   isJointCase: boolean | null;
   brokerSplits: BrokerSplit[];
   quoteRequestOrigin: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops' | null;
+  quoteRequestOriginSubcategory?: string | null;
   completedAt?: string;
 }
 

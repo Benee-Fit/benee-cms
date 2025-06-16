@@ -79,7 +79,7 @@ export const validateStep = (step: number, data: QuoteQuestionnaireData): boolea
       return true;
     
     case 5: // Quote Origin
-      return data.quoteRequestOrigin !== null;
+      return data.quoteRequestOrigin !== null && data.quoteRequestOriginSubcategory !== null && data.quoteRequestOriginSubcategory !== '';
     
     default:
       return false;

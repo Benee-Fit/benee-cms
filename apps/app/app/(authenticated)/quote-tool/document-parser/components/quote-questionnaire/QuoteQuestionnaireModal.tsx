@@ -34,6 +34,7 @@ const initialData: QuoteQuestionnaireData = {
   isJointCase: null,
   brokerSplits: [],
   quoteRequestOrigin: null,
+  quoteRequestOriginSubcategory: null,
 };
 
 const steps = [
@@ -267,6 +268,8 @@ export default function QuoteQuestionnaireModal({
           <QuoteOriginStep
             value={data.quoteRequestOrigin}
             onChange={(value) => updateData({ quoteRequestOrigin: value })}
+            subValue={data.quoteRequestOriginSubcategory}
+            onSubValueChange={(value) => updateData({ quoteRequestOriginSubcategory: value })}
           />
         );
       default:
