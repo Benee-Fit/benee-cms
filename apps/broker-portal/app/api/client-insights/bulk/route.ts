@@ -227,8 +227,20 @@ async function handleSeedData(body: any, brokerId: string) {
     );
   }
 
-  const seedData = [];
-  const timeSeriesData = [];
+  const seedData: Array<{
+    clientId: string;
+    brokerId: string;
+    category: 'METRIC' | 'REVENUE' | 'RISK' | 'OPPORTUNITY';
+    type: string;
+    title: string;
+    value: any;
+    period: string;
+  }> = [];
+  const timeSeriesData: Array<{
+    date: Date;
+    value: any;
+    metadata: any;
+  }> = [];
 
   for (const client of clients) {
     // Create basic metrics
@@ -291,7 +303,7 @@ async function handleSeedData(body: any, brokerId: string) {
   );
 
   // Create time series data for revenue insights if requested
-  let createdTimeSeries = [];
+  let createdTimeSeries: any[] = [];
   if (includeHistoricalData && timeSeriesData.length > 0) {
     const revenueInsights = createdInsights.filter(insight => insight.type === 'annual_revenue');
     
