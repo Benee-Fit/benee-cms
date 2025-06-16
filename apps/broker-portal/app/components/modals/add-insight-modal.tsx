@@ -331,7 +331,7 @@ export function AddInsightModal({
               rows={3}
             />
             <div className="text-xs text-muted-foreground">
-              Examples: 45000, {"amount": 45000, "currency": "USD"}, {"count": 150}
+              Examples: 45000, {`{"amount": 45000, "currency": "USD"}`}, {`{"count": 150}`}
             </div>
           </div>
 
