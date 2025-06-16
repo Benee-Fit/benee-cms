@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { DocumentUpload } from './document-library/DocumentUpload';
 import { DocumentList } from './document-library/DocumentList';
+import { ClientWizard } from './client-wizard';
 
 // Extended interface for detailed client view
 interface DetailedClient {
@@ -600,6 +601,19 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           </div>
         </div>
       </div>
+
+      {/* Add Division Modal */}
+      {showAddDivision && (
+        <ClientWizard
+          open={showAddDivision}
+          onClose={() => setShowAddDivision(false)}
+          parentId={client.id}
+          onSuccess={() => {
+            setShowAddDivision(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
