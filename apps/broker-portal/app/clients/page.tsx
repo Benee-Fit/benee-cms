@@ -255,7 +255,7 @@ export default function ClientListPage() {
 
   return (
     <PageLayout>
-      <div className="container mx-auto pt-12">
+      <div className="container mx-auto pt-6">
         {showAlert && (
           <Alert 
             variant={alertType === 'error' ? 'destructive' : 'default'}
@@ -311,8 +311,8 @@ export default function ClientListPage() {
           </div>
         </div>
 
-        <Card className={`mb-6 ${isEditMode ? 'border-orange-500' : ''}`}>
-          <div className="px-6 pt-6 pb-2">
+        <Card className={`${isEditMode ? 'border-orange-500' : ''}`}>
+          <div className="px-4 py-3">
             {isEditMode && (
               <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
                 <p className="text-sm text-orange-800 dark:text-orange-200 font-medium">
