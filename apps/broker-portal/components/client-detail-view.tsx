@@ -268,7 +268,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           {client.divisions && client.divisions.length > 0 && (
             <div className="flex items-center mt-2 text-sm text-green-600">
               <Building2 className="mr-1 h-4 w-4" />
-              <span>Holding Company with {client.divisions.length} division{client.divisions.length > 1 ? 's' : ''}</span>
+              <span>This company has {client.divisions.length} division{client.divisions.length > 1 ? 's' : ''}</span>
             </div>
           )}
         </div>
