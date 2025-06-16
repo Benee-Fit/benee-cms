@@ -848,8 +848,8 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
 
   return (
     <Card className="shadow-sm overflow-hidden">
-      <CardHeader className="bg-muted/30 pb-4">
-        <div className="flex justify-between items-center">
+      <CardHeader className="bg-muted/30 pb-4 pt-6" style={{ marginTop: '-24px' }}>
+        <div className="flex justify-between items-center ">
           <CardTitle>Plan Comparison</CardTitle>
           <div className="flex items-center gap-2">
             {/* Undo/Redo buttons with enhanced UX */}
