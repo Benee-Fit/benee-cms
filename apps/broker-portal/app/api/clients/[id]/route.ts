@@ -18,6 +18,26 @@ export async function GET(
             email: true,
           },
         },
+        parent: {
+          select: {
+            id: true,
+            companyName: true,
+          },
+        },
+        divisions: {
+          select: {
+            id: true,
+            companyName: true,
+            headcount: true,
+            premium: true,
+            revenue: true,
+            renewalDate: true,
+            industry: true,
+            policyNumber: true,
+            createdAt: true,
+          },
+          orderBy: { companyName: 'asc' },
+        },
         documents: {
           orderBy: { uploadDate: 'desc' },
           include: {
@@ -69,6 +89,30 @@ export async function GET(
       
       // Broker email for UI
       brokerEmail: client.broker?.email || null,
+      
+      // Parent company information
+      parent: client.parent ? {
+        id: client.parent.id,
+        companyName: client.parent.companyName,
+      } : null,
+      
+      // Division information
+      divisions: client.divisions.map((division: any) => ({
+        id: division.id,
+        companyName: division.companyName,
+        headcount: division.headcount,
+        premium: Number(division.premium),
+        revenue: Number(division.revenue),
+        renewalDate: division.renewalDate.toISOString(),
+        industry: division.industry,
+        policyNumber: division.policyNumber,
+        createdAt: division.createdAt.toISOString(),
+      })),
+      
+      // Total headcount (including divisions if this is a holding company)
+      totalHeadcount: client.divisions.length > 0 
+        ? client.headcount + client.divisions.reduce((sum: number, div: any) => sum + div.headcount, 0)
+        : client.headcount,
       
       // Documents
       documents: client.documents.map((doc: any) => ({
@@ -147,6 +191,54 @@ export async function PUT(
     if (body.currentCarrier !== undefined) updateData.currentCarrier = body.currentCarrier;
     if (body.withCarrierSince !== undefined) updateData.withCarrierSince = body.withCarrierSince ? new Date(body.withCarrierSince) : null;
     if (body.planType !== undefined) updateData.planType = body.planType;
+    
+    // Handle parent relationship
+    if (body.parentId !== undefined) {
+      if (body.parentId) {
+        // Validate parent relationship
+        if (body.parentId === id) {
+          return NextResponse.json(
+            { error: 'A client cannot be its own parent' },
+            { status: 400 }
+          );
+        }
+        
+        // Check if parent exists
+        const parent = await database.brokerClient.findUnique({
+          where: { id: body.parentId },
+          include: { parent: true },
+        });
+        
+        if (!parent) {
+          return NextResponse.json(
+            { error: 'Parent company not found' },
+            { status: 400 }
+          );
+        }
+        
+        // Prevent creating divisions under divisions (enforce one-level hierarchy)
+        if (parent.parent) {
+          return NextResponse.json(
+            { error: 'Cannot assign a division as parent. Divisions can only be created under holding companies.' },
+            { status: 400 }
+          );
+        }
+        
+        // Check if this client has divisions - holding companies cannot become divisions
+        const currentClient = await database.brokerClient.findUnique({
+          where: { id },
+          include: { divisions: true },
+        });
+        
+        if (currentClient?.divisions && currentClient.divisions.length > 0) {
+          return NextResponse.json(
+            { error: 'Cannot assign a parent to a holding company that has divisions' },
+            { status: 400 }
+          );
+        }
+      }
+      updateData.parentId = body.parentId;
+    }
     
     // Handle backward compatibility fields
     if (body.location !== undefined && !body.companyLocation) updateData.companyLocation = body.location;

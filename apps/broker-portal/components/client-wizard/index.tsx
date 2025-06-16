@@ -30,6 +30,8 @@ interface ClientWizardProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  parentId?: string | null;
+  title?: string;
 }
 
 const industries = [
@@ -45,7 +47,7 @@ const industries = [
   'Logistics',
 ];
 
-export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
+export function ClientWizard({ open, onClose, onSuccess, parentId, title = "Add New Client" }: ClientWizardProps) {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,10 +135,15 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
 
     try {
       // Create client
+      const clientData = {
+        ...data,
+        parentId: parentId || null,
+      };
+      
       const response = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(clientData),
       });
 
       if (!response.ok) {
@@ -189,7 +196,12 @@ export function ClientWizard({ open, onClose, onSuccess }: ClientWizardProps) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Client - Step {step} of 3</DialogTitle>
+          <DialogTitle>{title} - Step {step} of 3</DialogTitle>
+          {parentId && (
+            <p className="text-sm text-muted-foreground">
+              Creating a division under the selected holding company
+            </p>
+          )}
         </DialogHeader>
 
         <Form {...form}>

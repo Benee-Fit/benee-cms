@@ -44,6 +44,21 @@ interface Client {
   premium: number;
   revenue: number;
   industry: string;
+  parentId?: string;
+  parent?: {
+    id: string;
+    companyName: string;
+  };
+  divisions?: {
+    id: string;
+    companyName: string;
+    headcount: number;
+    premium: number;
+    revenue: number;
+    renewalDate: string;
+    industry: string;
+    policyNumber: string;
+  }[];
 }
 
 export default function ClientListPage() {
@@ -55,6 +70,8 @@ export default function ClientListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [showMassUpload, setShowMassUpload] = useState(false);
+  const [showAddDivision, setShowAddDivision] = useState(false);
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Client | null;
     direction: 'ascending' | 'descending';
@@ -79,19 +96,53 @@ export default function ClientListPage() {
       const response = await fetch('/api/clients');
       const data = await response.json();
       
-      // Transform data to match our interface
-      const transformedClients = data.map((client: any) => ({
-        id: client.id,
-        companyName: client.companyName,
-        policyNumber: client.policyNumber,
-        renewalDate: client.renewalDate.split('T')[0],
-        headcount: client.headcount,
-        premium: Number(client.premium),
-        revenue: Number(client.revenue),
-        industry: client.industry,
-      }));
+      // Transform data to match our interface and create flattened hierarchy
+      const flattenedClients: Client[] = [];
       
-      setClients(transformedClients);
+      data.forEach((client: any) => {
+        // Add main client
+        const transformedClient: Client = {
+          id: client.id,
+          companyName: client.companyName,
+          policyNumber: client.policyNumber,
+          renewalDate: client.renewalDate.split('T')[0],
+          headcount: client.headcount,
+          premium: Number(client.premium),
+          revenue: Number(client.revenue),
+          industry: client.industry,
+          parentId: client.parentId,
+          parent: client.parent,
+          divisions: client.divisions,
+        };
+        
+        // Only add holding companies and standalone clients (not divisions)
+        if (!client.parentId) {
+          flattenedClients.push(transformedClient);
+          
+          // Add divisions immediately after their parent
+          if (client.divisions && client.divisions.length > 0) {
+            client.divisions.forEach((division: any) => {
+              flattenedClients.push({
+                id: division.id,
+                companyName: division.companyName,
+                policyNumber: division.policyNumber,
+                renewalDate: division.renewalDate.split('T')[0],
+                headcount: division.headcount,
+                premium: Number(division.premium),
+                revenue: Number(division.revenue),
+                industry: division.industry,
+                parentId: client.id,
+                parent: {
+                  id: client.id,
+                  companyName: client.companyName,
+                },
+              });
+            });
+          }
+        }
+      });
+      
+      setClients(flattenedClients);
     } catch (error) {
       console.error('Error fetching clients:', error);
     } finally {
@@ -405,12 +456,51 @@ export default function ClientListPage() {
                         )}
                         <TableCell className="font-semibold text-gray-900 py-4 px-6">
                           <div className="flex items-center justify-between">
-                            <span className={!isEditMode ? "group-hover:text-blue-600 transition-colors" : ""}>
-                              {client.companyName}
-                            </span>
-                            {!isEditMode && (
-                              <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all ml-2" />
-                            )}
+                            <div className="flex items-center">
+                              {client.parentId && (
+                                <div className="flex items-center mr-3">
+                                  <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 mr-2 mb-2"></div>
+                                  <span className="text-xs text-gray-500 mr-2">Division of:</span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/clients/${client.parent?.id}`);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 underline text-sm"
+                                  >
+                                    {client.parent?.companyName}
+                                  </button>
+                                </div>
+                              )}
+                              <span className={`${client.parentId ? 'ml-6' : ''} ${!isEditMode ? "group-hover:text-blue-600 transition-colors" : ""}`}>
+                                {client.companyName}
+                              </span>
+                              {!client.parentId && client.divisions && client.divisions.length > 0 && (
+                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  Holding Company ({client.divisions.length} divisions)
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center">
+                              {!isEditMode && !client.parentId && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedParentId(client.id);
+                                    setShowAddDivision(true);
+                                  }}
+                                  className="mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                  Add Division
+                                </Button>
+                              )}
+                              {!isEditMode && (
+                                <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all" />
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-gray-600 py-4 px-6">{client.policyNumber}</TableCell>
@@ -489,6 +579,21 @@ export default function ClientListPage() {
           setShowMassUpload(false);
           fetchClients();
         }}
+      />
+
+      <ClientWizard
+        open={showAddDivision}
+        onClose={() => {
+          setShowAddDivision(false);
+          setSelectedParentId(null);
+        }}
+        onSuccess={() => {
+          setShowAddDivision(false);
+          setSelectedParentId(null);
+          fetchClients();
+        }}
+        parentId={selectedParentId}
+        title="Add Division"
       />
     </PageLayout>
   );

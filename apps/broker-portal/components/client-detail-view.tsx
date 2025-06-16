@@ -21,7 +21,9 @@ import {
   Crown,
   UserCheck,
   Briefcase,
-  Shield
+  Shield,
+  ArrowRight,
+  Plus
 } from 'lucide-react';
 import { DocumentUpload } from './document-library/DocumentUpload';
 import { DocumentList } from './document-library/DocumentList';
@@ -77,6 +79,24 @@ interface DetailedClient {
   
   // Additional metadata
   brokerEmail?: string;
+  
+  // Parent-child relationships
+  parent?: {
+    id: string;
+    companyName: string;
+  };
+  divisions?: {
+    id: string;
+    companyName: string;
+    headcount: number;
+    premium: number;
+    revenue: number;
+    renewalDate: string;
+    industry: string;
+    policyNumber: string;
+    createdAt: string;
+  }[];
+  totalHeadcount?: number;
 }
 
 interface ClientDetailViewProps {
@@ -90,6 +110,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
   const [isEditing, setIsEditing] = useState(false);
   const [editedClient, setEditedClient] = useState(client);
   const [isSaving, setIsSaving] = useState(false);
+  const [showAddDivision, setShowAddDivision] = useState(false);
 
   useEffect(() => {
     setEditedClient(client);
@@ -231,6 +252,24 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
         <div>
           <h1 className="text-3xl font-bold">{client.companyName}</h1>
           <p className="text-muted-foreground">Policy #{client.policyNumber}</p>
+          {client.parent && (
+            <div className="flex items-center mt-2 text-sm text-blue-600">
+              <span>Division of: </span>
+              <button 
+                onClick={() => window.location.href = `/clients/${client.parent?.id}`}
+                className="ml-1 underline hover:text-blue-800 font-medium"
+              >
+                {client.parent.companyName}
+              </button>
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </div>
+          )}
+          {client.divisions && client.divisions.length > 0 && (
+            <div className="flex items-center mt-2 text-sm text-green-600">
+              <Building2 className="mr-1 h-4 w-4" />
+              <span>Holding Company with {client.divisions.length} division{client.divisions.length > 1 ? 's' : ''}</span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           {!isEditing ? (
@@ -268,6 +307,75 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           )}
         </div>
       </div>
+
+      {/* 🏢 Divisions Section */}
+      {client.divisions && client.divisions.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Divisions ({client.divisions.length})
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddDivision(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Division
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {client.divisions.map((division) => (
+                <div key={division.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+                      <div>
+                        <button 
+                          className="font-semibold text-blue-600 hover:text-blue-800 text-left"
+                          onClick={() => window.location.href = `/clients/${division.id}`}
+                        >
+                          {division.companyName}
+                        </button>
+                        <p className="text-sm text-muted-foreground">Policy: {division.policyNumber}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Industry</p>
+                        <p className="font-medium">{division.industry}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Headcount</p>
+                        <p className="font-medium flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {division.headcount.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Revenue</p>
+                        <p className="font-medium text-green-600">{formatCurrency(division.revenue)}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        window.location.href = `/clients/${division.id}`;
+                      }}
+                      className="ml-4"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 💰 Revenue & Growth - Top Section */}
       <Card className="mb-6">
@@ -334,7 +442,9 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Headcount</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Headcount {client.divisions && client.divisions.length > 0 && '(Including Divisions)'}
+                </p>
                 {isEditing ? (
                   <Input 
                     type="number"
@@ -342,10 +452,17 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                     onChange={(e) => handleFieldChange('headcount', Number.parseInt(e.target.value) || 0)}
                   />
                 ) : (
-                  <p className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {editedClient?.headcount || 0}
-                  </p>
+                  <div>
+                    <p className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      {client.totalHeadcount || client.headcount || 0}
+                    </p>
+                    {client.divisions && client.divisions.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Company: {client.headcount}, Divisions: {client.totalHeadcount! - client.headcount}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -462,6 +579,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
         </Card>
 
       </div>
+
 
       {/* 📄 Document Library */}
       <div className="mt-6">
