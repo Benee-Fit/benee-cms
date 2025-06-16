@@ -620,6 +620,9 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   const [editingFieldName, setEditingFieldName] = useState<string | null>(null);
   const [tempFieldName, setTempFieldName] = useState<string>('');
   
+  // State for action feedback
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -713,6 +716,36 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
       hiddenFields: new Set()
     }));
   };
+  
+  // Enhanced undo with feedback
+  const handleUndo = () => {
+    undo();
+    setActionFeedback('Undid last change');
+    setTimeout(() => setActionFeedback(null), 2000);
+  };
+  
+  // Enhanced redo with feedback
+  const handleRedo = () => {
+    redo();
+    setActionFeedback('Redid last change');
+    setTimeout(() => setActionFeedback(null), 2000);
+  };
+  
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) handleUndo();
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedo) handleRedo();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo]);
   
   if (!results || results.length === 0) {
     return (
@@ -819,29 +852,49 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
         <div className="flex justify-between items-center">
           <CardTitle>Plan Comparison</CardTitle>
           <div className="flex items-center gap-2">
-            {/* Undo/Redo buttons */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={undo}
-                disabled={!canUndo}
-                className="h-8 w-8 p-0"
-                title="Undo"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={redo}
-                disabled={!canRedo}
-                className="h-8 w-8 p-0"
-                title="Redo"
-              >
-                <RotateCw className="h-4 w-4" />
-              </Button>
-            </div>
+            {/* Undo/Redo buttons with enhanced UX */}
+            {(canUndo || canRedo) && (
+              <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className={`group h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                    canUndo 
+                      ? 'hover:bg-blue-50 hover:text-blue-700 text-gray-700 hover:shadow-sm' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={canUndo ? "Undo last change (Ctrl+Z)" : "Nothing to undo"}
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 mr-1.5 transition-transform duration-200 ${canUndo ? 'group-hover:-rotate-12' : ''}`} />
+                  Undo
+                </Button>
+                <div className="w-px h-5 bg-gray-200" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className={`group h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                    canRedo 
+                      ? 'hover:bg-blue-50 hover:text-blue-700 text-gray-700 hover:shadow-sm' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={canRedo ? "Redo last undone change (Ctrl+Y)" : "Nothing to redo"}
+                >
+                  <RotateCw className={`h-3.5 w-3.5 mr-1.5 transition-transform duration-200 ${canRedo ? 'group-hover:rotate-12' : ''}`} />
+                  Redo
+                </Button>
+              </div>
+            )}
+            
+            {/* Action feedback */}
+            {actionFeedback && (
+              <div className="absolute top-12 right-0 z-50 bg-green-100 border border-green-200 text-green-800 px-3 py-2 rounded-md shadow-sm text-xs font-medium animate-in fade-in slide-in-from-top-2 duration-200">
+                {actionFeedback}
+              </div>
+            )}
             
             <div className="relative">
               <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
