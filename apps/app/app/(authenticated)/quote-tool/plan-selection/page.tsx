@@ -27,7 +27,8 @@ import {
   Info,
   DollarSign,
   Users,
-  Shield
+  Shield,
+  Plus
 } from 'lucide-react';
 
 interface DetectedPlan {
@@ -41,10 +42,10 @@ interface DocumentWithPlans {
   documentId: string;
   fileName: string;
   carrierName: string;
-  documentType: 'Current' | 'Renegotiated' | 'Alternative';
   detectedPlans: DetectedPlan[];
   processedData: any;
   selectedPlans: string[];
+  planQuoteTypes: Record<string, string>; // planName -> quoteType mapping
   includeHSA: boolean;
   hsaDetails?: {
     employerContribution: number;
@@ -61,12 +62,110 @@ interface HSADetails {
   eligibilityRequirements: string;
 }
 
+// Quote Type Selector Component
+interface QuoteTypeSelectorProps {
+  documentId: string;
+  planName: string;
+  currentQuoteType: string;
+  availableTypes: string[];
+  onQuoteTypeChange: (documentId: string, planName: string, quoteType: string) => void;
+  onAddCustomType: (customType: string) => void;
+}
+
+function QuoteTypeSelector({ 
+  documentId, 
+  planName,
+  currentQuoteType, 
+  availableTypes, 
+  onQuoteTypeChange, 
+  onAddCustomType 
+}: QuoteTypeSelectorProps) {
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customTypeInput, setCustomTypeInput] = useState('');
+
+  const handleCustomTypeSubmit = () => {
+    if (customTypeInput.trim()) {
+      onAddCustomType(customTypeInput.trim());
+      onQuoteTypeChange(documentId, planName, customTypeInput.trim());
+      setCustomTypeInput('');
+      setShowCustomInput(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCustomTypeSubmit();
+    } else if (e.key === 'Escape') {
+      setShowCustomInput(false);
+      setCustomTypeInput('');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Select
+        value={currentQuoteType}
+        onValueChange={(value) => {
+          if (value === 'custom') {
+            setShowCustomInput(true);
+          } else {
+            onQuoteTypeChange(documentId, planName, value);
+          }
+        }}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {availableTypes.map((type) => (
+            <SelectItem key={type} value={type}>
+              {type}
+            </SelectItem>
+          ))}
+          <SelectItem value="custom">
+            <div className="flex items-center space-x-2">
+              <Plus className="h-3 w-3" />
+              <span>Add Custom Type</span>
+            </div>
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      
+      {showCustomInput && (
+        <div className="flex space-x-2">
+          <Input
+            placeholder="Enter custom quote type"
+            value={customTypeInput}
+            onChange={(e) => setCustomTypeInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            autoFocus
+          />
+          <Button onClick={handleCustomTypeSubmit} size="sm">
+            Add
+          </Button>
+          <Button 
+            onClick={() => {
+              setShowCustomInput(false);
+              setCustomTypeInput('');
+            }} 
+            variant="outline" 
+            size="sm"
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PlanSelectionPage() {
   const router = useRouter();
   const [documents, setDocuments] = useState<DocumentWithPlans[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [customQuoteTypes, setCustomQuoteTypes] = useState<string[]>([]);
 
   // Load processed documents from localStorage
   useEffect(() => {
@@ -88,14 +187,22 @@ export default function PlanSelectionPage() {
           const carrierName = extractCarrierName(result);
           const detectedPlans = extractPlansFromResult(result);
           
+          // Initialize planQuoteTypes with default 'Current' for each plan
+          const planQuoteTypes: Record<string, string> = {};
+          detectedPlans.forEach(plan => {
+            if (plan && plan.planOptionName) {
+              planQuoteTypes[plan.planOptionName] = 'Current';
+            }
+          });
+
           return {
             documentId,
             fileName: result.originalFileName || `Document ${index + 1}`,
             carrierName,
-            documentType: result.category || 'Current',
             detectedPlans,
             processedData: result,
             selectedPlans: [],
+            planQuoteTypes,
             includeHSA: false,
             hsaDetails: {
               employerContribution: 1000,
@@ -186,13 +293,32 @@ export default function PlanSelectionPage() {
     )];
   };
 
-  // Update document type
-  const updateDocumentType = (documentId: string, type: 'Current' | 'Renegotiated' | 'Alternative') => {
+  // Update quote type for a specific plan
+  const updateQuoteType = (documentId: string, planName: string, quoteType: string) => {
     setDocuments(prev => prev.map(doc => 
       doc.documentId === documentId 
-        ? { ...doc, documentType: type }
+        ? { 
+            ...doc, 
+            planQuoteTypes: {
+              ...(doc.planQuoteTypes || {}),
+              [planName]: quoteType
+            }
+          }
         : doc
     ));
+  };
+
+  // Add custom quote type
+  const addCustomQuoteType = (customType: string) => {
+    if (customType && !customQuoteTypes.includes(customType)) {
+      setCustomQuoteTypes(prev => [...prev, customType]);
+    }
+  };
+
+  // Get all available quote types
+  const getAvailableQuoteTypes = () => {
+    const defaultTypes = ['Current', 'Go To Market', 'Negotiated', 'Alternative'];
+    return [...defaultTypes, ...customQuoteTypes];
   };
 
   // Update selected plans for a document
@@ -252,7 +378,7 @@ export default function PlanSelectionPage() {
             documentId: doc.documentId,
             fileName: doc.fileName,
             carrierName: doc.carrierName,
-            documentType: doc.documentType,
+            planQuoteTypes: doc.planQuoteTypes || {},
             selectedPlans: doc.selectedPlans,
             includeHSA: doc.includeHSA,
             hsaDetails: doc.hsaDetails,
@@ -269,7 +395,7 @@ export default function PlanSelectionPage() {
       const filteredDocuments = documents.map(doc => ({
         ...doc.processedData,
         selectedPlans: doc.selectedPlans,
-        documentType: doc.documentType,
+        planQuoteTypes: doc.planQuoteTypes || {},
         includeHSA: doc.includeHSA,
         hsaDetails: doc.hsaDetails
       }));
@@ -360,26 +486,6 @@ export default function PlanSelectionPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-6">
-                  {/* Document Type Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor={`doc-type-${document.documentId}`}>Document Type</Label>
-                    <Select
-                      value={document.documentType}
-                      onValueChange={(value: 'Current' | 'Renegotiated' | 'Alternative') => 
-                        updateDocumentType(document.documentId, value)
-                      }
-                    >
-                      <SelectTrigger id={`doc-type-${document.documentId}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Current">Current Plan</SelectItem>
-                        <SelectItem value="Renegotiated">Renegotiated</SelectItem>
-                        <SelectItem value="Alternative">Alternative</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   {/* Plan Selection */}
                   <div className="space-y-3">
                     <Label>Available Plans</Label>
@@ -390,27 +496,40 @@ export default function PlanSelectionPage() {
                         {document.detectedPlans.map((plan) => (
                           <div
                             key={plan.planOptionName}
-                            className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                            className={`border rounded-lg p-4 transition-colors ${
                               document.selectedPlans.includes(plan.planOptionName)
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border hover:border-primary/50'
                             }`}
-                            onClick={() => {
-                              const isSelected = document.selectedPlans.includes(plan.planOptionName);
-                              if (isSelected) {
-                                // Deselect if clicking the already selected plan
-                                updateSelectedPlans(document.documentId, []);
-                              } else {
-                                // Select only this plan (single selection)
-                                updateSelectedPlans(document.documentId, [plan.planOptionName]);
-                              }
-                            }}
                           >
-                            <div className="flex flex-col h-full">
-                              <div className="space-y-2 flex-1">
+                            <div className="flex flex-col h-full space-y-3">
+                              {/* Plan Header */}
+                              <div 
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  const isSelected = document.selectedPlans.includes(plan.planOptionName);
+                                  if (isSelected) {
+                                    // Deselect if clicking the already selected plan
+                                    updateSelectedPlans(document.documentId, []);
+                                  } else {
+                                    // Select only this plan (single selection)
+                                    updateSelectedPlans(document.documentId, [plan.planOptionName]);
+                                  }
+                                }}
+                              >
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="flex-1">
                                     <h4 className="font-medium">{plan.planOptionName}</h4>
+                                    <div className="mt-2">
+                                      <QuoteTypeSelector
+                                        documentId={document.documentId}
+                                        planName={plan.planOptionName}
+                                        currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current'}
+                                        availableTypes={getAvailableQuoteTypes()}
+                                        onQuoteTypeChange={updateQuoteType}
+                                        onAddCustomType={addCustomQuoteType}
+                                      />
+                                    </div>
                                     {document.selectedPlans.includes(plan.planOptionName) && (
                                       <Badge variant="default" className="text-xs mt-1">Selected</Badge>
                                     )}
@@ -421,13 +540,13 @@ export default function PlanSelectionPage() {
                                 </div>
                                 
                                 {plan.rateGuarantee && (
-                                  <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                                  <div className="flex items-center space-x-1 text-sm text-muted-foreground mt-2">
                                     <Shield className="h-3 w-3" />
                                     <span>{plan.rateGuarantee}</span>
                                   </div>
                                 )}
 
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1 mt-2">
                                   {plan.coverageTypes.map((coverage) => (
                                     <Badge key={coverage} variant="outline" className="text-xs">
                                       {coverage}

@@ -198,7 +198,9 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
                 flattenedBenefitDetails[`${key}_${subKey}`] = subValue;
               });
             } else {
-              flattenedBenefitDetails[key] = value;
+              // Handle backward compatibility: rename 'formula' to 'benefitAmount'
+              const normalizedKey = key === 'formula' ? 'benefitAmount' : key;
+              flattenedBenefitDetails[normalizedKey] = value;
             }
           });
         }
@@ -235,7 +237,9 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
                 flattenedBenefitDetails[`${key}_${subKey}`] = subValue;
               });
             } else {
-              flattenedBenefitDetails[key] = value;
+              // Handle backward compatibility: rename 'formula' to 'benefitAmount'
+              const normalizedKey = key === 'formula' ? 'benefitAmount' : key;
+              flattenedBenefitDetails[normalizedKey] = value;
             }
           });
         }
@@ -337,7 +341,7 @@ const formatFieldName = (fieldName: string): string => {
     'travelCoverage': 'Travel Coverage',
     'survivorBenefit': 'Survivor Benefit',
     'poolingThreshold': 'Pooling Threshold',
-    'formula': 'Formula',
+    'benefitAmount': 'Benefit Amount',
     'rateGuarantees': 'Rate Guarantees'
   };
   
