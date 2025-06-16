@@ -216,7 +216,12 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
     if (!dateString) {
       return 'N/A';
     }
-    return new Date(dateString).toLocaleDateString();
+    // Extract just the date part if it's a full datetime string
+    const datePart = dateString.split('T')[0];
+    // Parse as YYYY-MM-DD and format without timezone issues
+    const [year, month, day] = datePart.split('-');
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return date.toLocaleDateString('en-US');
   };
 
   return (

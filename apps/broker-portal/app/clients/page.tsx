@@ -84,7 +84,7 @@ export default function ClientListPage() {
         id: client.id,
         companyName: client.companyName,
         policyNumber: client.policyNumber,
-        renewalDate: new Date(client.renewalDate).toISOString().split('T')[0],
+        renewalDate: client.renewalDate.split('T')[0],
         headcount: client.headcount,
         premium: Number(client.premium),
         revenue: Number(client.revenue),
