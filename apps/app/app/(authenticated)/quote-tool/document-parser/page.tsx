@@ -207,20 +207,34 @@ export default function DocumentParserPage() {
       
       // Create an AbortController to handle fetch timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout (Gemini API can take a while)
+      const timeoutId = setTimeout(() => {
+        console.log(`[DEBUG] Timeout reached for file: ${file.name}`);
+        controller.abort();
+      }, 480000); // 8 minute timeout (Gemini API can take a while for complex documents)
       
-      const response = await fetch('/api/process-document', {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json'
-        },
-        cache: 'no-store'
-      });
-      
-      // Clear the timeout as the request completed
-      clearTimeout(timeoutId);
+      let response;
+      try {
+        response = await fetch('/api/process-document', {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json'
+          },
+          cache: 'no-store'
+        });
+        
+        // Clear the timeout as the request completed successfully
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        // Clear timeout on any fetch error
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+          throw new Error(`Processing timeout for file ${file.name}. The request took longer than 8 minutes.`);
+        }
+        throw fetchError;
+      }
       
       if (!response.ok) {
         let errorMessage = 'Failed to process document';
@@ -257,9 +271,15 @@ export default function DocumentParserPage() {
       
       return processedResult;
     } catch (fetchError: unknown) {
-      const errorMessage = fetchError instanceof DOMException && fetchError.name === 'AbortError' 
-        ? `Processing timeout for file ${file.name}. The request took too long.`
-        : (fetchError instanceof Error ? fetchError.message : 'Unknown error occurred');
+      let errorMessage = 'Unknown error occurred';
+      
+      if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+        errorMessage = `Processing timeout for file ${file.name}. The request took longer than 8 minutes.`;
+      } else if (fetchError instanceof Error) {
+        errorMessage = fetchError.message;
+      }
+      
+      console.error(`[DEBUG] Processing error for ${file.name}:`, errorMessage);
       
       // Mark current stage as failed
       const currentStage = processingStages.find(stage => stage.status === 'in_progress');
@@ -267,7 +287,7 @@ export default function DocumentParserPage() {
         updateProcessingStage(currentStage.id, { status: 'failed', details: errorMessage });
       }
       
-      throw fetchError; // Re-throw to be handled in the outer catch
+      throw new Error(errorMessage); // Throw a new Error with the message for consistent handling
     }
   };
   
