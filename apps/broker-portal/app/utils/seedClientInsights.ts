@@ -23,6 +23,7 @@ export async function seedClientInsightsData(brokerId: string) {
       title: string;
       description?: string;
       value: any;
+      metadata?: any;
       period?: string;
       targetValue?: any;
       sortOrder?: number;

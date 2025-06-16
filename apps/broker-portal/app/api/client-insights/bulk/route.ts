@@ -233,8 +233,12 @@ async function handleSeedData(body: any, brokerId: string) {
     category: 'METRIC' | 'REVENUE' | 'RISK' | 'OPPORTUNITY';
     type: string;
     title: string;
+    description?: string;
     value: any;
-    period: string;
+    metadata?: any;
+    period?: string;
+    targetValue?: any;
+    sortOrder?: number;
   }> = [];
   const timeSeriesData: Array<{
     date: Date;
