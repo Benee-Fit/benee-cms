@@ -512,11 +512,11 @@ export default function PlanSelectionPage() {
                                   onClick={() => {
                                     const isSelected = document.selectedPlans.includes(plan.planOptionName);
                                     if (isSelected) {
-                                      // Deselect if clicking the already selected plan
-                                      updateSelectedPlans(document.documentId, []);
+                                      // Deselect this plan (remove from array)
+                                      updateSelectedPlans(document.documentId, document.selectedPlans.filter(p => p !== plan.planOptionName));
                                     } else {
-                                      // Select only this plan (single selection)
-                                      updateSelectedPlans(document.documentId, [plan.planOptionName]);
+                                      // Add this plan to selection (multiple selection)
+                                      updateSelectedPlans(document.documentId, [...document.selectedPlans, plan.planOptionName]);
                                     }
                                   }}
                                 >
