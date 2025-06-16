@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
     const result = await seedClientInsightsData(user.id);
     
     return NextResponse.json({
-      success: true,
       message: 'Client insights data seeded successfully',
       ...result,
     }, { status: 201 });
