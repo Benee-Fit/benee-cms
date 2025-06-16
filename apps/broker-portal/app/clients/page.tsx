@@ -1,7 +1,13 @@
 'use client';
 
+import {
+  Alert,
+  AlertDescription,
+} from '@repo/design-system/components/ui/alert';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card } from '@repo/design-system/components/ui/card';
+import { Checkbox } from '@repo/design-system/components/ui/checkbox';
+import { Input } from '@repo/design-system/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -20,20 +26,19 @@ import {
 import {
   ArrowUpDown,
   ChevronDown,
-  ChevronUp,
-  Plus,
-  Upload,
-  Edit,
-  Trash,
   ChevronRight,
+  ChevronUp,
+  Edit,
+  Plus,
+  Search,
+  Trash,
+  Upload,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { PageLayout } from '../page-layout';
 import { ClientWizard } from '../../components/client-wizard';
 import { MassUploadWizard } from '../../components/mass-upload-wizard';
-import { Checkbox } from '@repo/design-system/components/ui/checkbox';
-import { Alert, AlertDescription } from '@repo/design-system/components/ui/alert';
+import { PageLayout } from '../page-layout';
 
 interface Client {
   id: string;
@@ -62,28 +67,27 @@ interface Client {
 }
 
 export default function ClientListPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const searchTerm = searchParams.get('search') || '';
-  
+
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   const [showMassUpload, setShowMassUpload] = useState(false);
-  const [showAddDivision, setShowAddDivision] = useState(false);
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Client | null;
     direction: 'ascending' | 'descending';
   }>({ key: null, direction: 'ascending' });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15); // Default to 15
-  
+
   // Bulk edit state
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(
+    new Set()
+  );
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Alert state
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
@@ -95,18 +99,24 @@ export default function ClientListPage() {
       setIsLoading(true);
       const response = await fetch('/api/clients');
       const data = await response.json();
-      
+
       // Transform data to match our interface and create flattened hierarchy
       const flattenedClients: Client[] = [];
-      
-      data.forEach((client: any) => {
+
+      for (const client of data) {
+        // Calculate total headcount from divisions if company has divisions
+        let headcount = client.headcount;
+        if (client.divisions && client.divisions.length > 0) {
+          headcount = client.divisions.reduce((total: number, division: any) => total + division.headcount, 0);
+        }
+
         // Add main client
         const transformedClient: Client = {
           id: client.id,
           companyName: client.companyName,
           policyNumber: client.policyNumber,
           renewalDate: client.renewalDate.split('T')[0],
-          headcount: client.headcount,
+          headcount: headcount,
           premium: Number(client.premium),
           revenue: Number(client.revenue),
           industry: client.industry,
@@ -114,37 +124,16 @@ export default function ClientListPage() {
           parent: client.parent,
           divisions: client.divisions,
         };
-        
+
         // Only add holding companies and standalone clients (not divisions)
         if (!client.parentId) {
           flattenedClients.push(transformedClient);
-          
-          // Add divisions immediately after their parent
-          if (client.divisions && client.divisions.length > 0) {
-            client.divisions.forEach((division: any) => {
-              flattenedClients.push({
-                id: division.id,
-                companyName: division.companyName,
-                policyNumber: division.policyNumber,
-                renewalDate: division.renewalDate.split('T')[0],
-                headcount: division.headcount,
-                premium: Number(division.premium),
-                revenue: Number(division.revenue),
-                industry: division.industry,
-                parentId: client.id,
-                parent: {
-                  id: client.id,
-                  companyName: client.companyName,
-                },
-              });
-            });
-          }
         }
-      });
-      
+      }
+
       setClients(flattenedClients);
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      // Error fetching clients
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +151,7 @@ export default function ClientListPage() {
     if (selectedClients.size === sortedClients.length) {
       setSelectedClients(new Set());
     } else {
-      setSelectedClients(new Set(sortedClients.map(client => client.id)));
+      setSelectedClients(new Set(sortedClients.map((client) => client.id)));
     }
   };
 
@@ -186,12 +175,14 @@ export default function ClientListPage() {
       `Are you sure you want to delete ${deleteCount} client${deleteCount > 1 ? 's' : ''}? This action cannot be undone.`
     );
 
-    if (!confirmDelete) return;
+    if (!confirmDelete) {
+      return;
+    }
 
     setIsDeleting(true);
     try {
       // Delete each selected client
-      const deletePromises = Array.from(selectedClients).map(clientId =>
+      const deletePromises = Array.from(selectedClients).map((clientId) =>
         fetch(`/api/clients/${clientId}`, { method: 'DELETE' })
       );
 
@@ -199,26 +190,28 @@ export default function ClientListPage() {
 
       // Refresh client list
       await fetchClients();
-      
+
       // Clear selection and exit edit mode
       setSelectedClients(new Set());
       setIsEditMode(false);
-      
+
       // Show success alert
-      setAlertMessage(`${deleteCount} client${deleteCount > 1 ? 's' : ''} deleted successfully`);
+      setAlertMessage(
+        `${deleteCount} client${deleteCount > 1 ? 's' : ''} deleted successfully`
+      );
       setAlertType('success');
       setShowAlert(true);
-      
+
       // Hide alert after 3 seconds
       setTimeout(() => setShowAlert(false), 3000);
     } catch (error) {
-      console.error('Error deleting clients:', error);
-      
+      // Error deleting clients
+
       // Show error alert
       setAlertMessage('Failed to delete clients. Please try again.');
       setAlertType('error');
       setShowAlert(true);
-      
+
       // Hide alert after 5 seconds
       setTimeout(() => setShowAlert(false), 5000);
     } finally {
@@ -228,16 +221,20 @@ export default function ClientListPage() {
 
   useEffect(() => {
     fetchClients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sortedClients = useMemo(() => {
     // First, filter clients based on search term
     let filteredClients = [...clients];
     if (searchTerm) {
-      filteredClients = clients.filter(client => 
-        client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.industry.toLowerCase().includes(searchTerm.toLowerCase())
+      filteredClients = clients.filter(
+        (client) =>
+          client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          client.policyNumber
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          client.industry.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -247,6 +244,9 @@ export default function ClientListPage() {
       filteredClients.sort((a, b) => {
         const valA = a[key];
         const valB = b[key];
+        if (valA === undefined || valB === undefined) {
+          return 0;
+        }
         if (valA < valB) {
           return direction === 'ascending' ? -1 : 1;
         }
@@ -308,20 +308,23 @@ export default function ClientListPage() {
     <PageLayout>
       <div className="container mx-auto pt-6">
         {showAlert && (
-          <Alert 
+          <Alert
             variant={alertType === 'error' ? 'destructive' : 'default'}
             className="mb-4"
           >
             <AlertDescription>{alertMessage}</AlertDescription>
           </Alert>
         )}
-        
+
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-semibold text-gray-900">Client List</h1>
+            <h1 className="text-3xl font-semibold text-gray-900">
+              Client List
+            </h1>
             {searchTerm && (
               <p className="text-gray-600 mt-2">
-                Showing results for "{searchTerm}" ({sortedClients.length} found)
+                Showing results for "{searchTerm}" ({sortedClients.length}{' '}
+                found)
               </p>
             )}
           </div>
@@ -351,7 +354,10 @@ export default function ClientListPage() {
                 <Button onClick={() => setShowWizard(true)}>
                   <Plus className="mr-2 h-4 w-4" /> Add Client
                 </Button>
-                <Button variant="outline" onClick={() => setShowMassUpload(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowMassUpload(true)}
+                >
                   <Upload className="mr-2 h-4 w-4" /> Mass Upload
                 </Button>
                 <Button variant="outline" onClick={() => setIsEditMode(true)}>
@@ -359,6 +365,23 @@ export default function ClientListPage() {
                 </Button>
               </>
             )}
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search clients by name, policy number, or industry..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // Reset to first page when searching
+              }}
+              className="pl-10 w-full md:w-full"
+            />
           </div>
         </div>
 
@@ -371,18 +394,25 @@ export default function ClientListPage() {
                 </p>
               </div>
             )}
-            {isLoading ? (
-              <div className="flex justify-center items-center h-64">
-                <p className="text-muted-foreground">Loading clients...</p>
-              </div>
-            ) : clients.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                <p className="text-muted-foreground">No clients found</p>
-                <Button onClick={() => setShowWizard(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Your First Client
-                </Button>
-              </div>
-            ) : (
+            {(() => {
+              if (isLoading) {
+                return (
+                  <div className="flex justify-center items-center h-64">
+                    <p className="text-muted-foreground">Loading clients...</p>
+                  </div>
+                );
+              }
+              if (clients.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                    <p className="text-muted-foreground">No clients found</p>
+                    <Button onClick={() => setShowWizard(true)}>
+                      <Plus className="mr-2 h-4 w-4" /> Add Your First Client
+                    </Button>
+                  </div>
+                );
+              }
+              return (
               <>
                 <Table>
                   <TableHeader>
@@ -390,7 +420,10 @@ export default function ClientListPage() {
                       {isEditMode && (
                         <TableHead className="w-12">
                           <Checkbox
-                            checked={selectedClients.size === sortedClients.length && sortedClients.length > 0}
+                            checked={
+                              selectedClients.size === sortedClients.length &&
+                              sortedClients.length > 0
+                            }
                             onCheckedChange={toggleSelectAll}
                           />
                         </TableHead>
@@ -403,7 +436,9 @@ export default function ClientListPage() {
                           Company Name {getSortIcon('companyName')}
                         </div>
                       </TableHead>
-                      <TableHead className="py-2 px-6 font-semibold text-gray-900">Policy #</TableHead>
+                      <TableHead className="py-2 px-6 font-semibold text-gray-900">
+                        Policy #
+                      </TableHead>
                       <TableHead
                         className="cursor-pointer hover:bg-gray-50 py-2 px-6 font-semibold text-gray-900"
                         onClick={() => handleSortRequest('renewalDate')}
@@ -436,129 +471,120 @@ export default function ClientListPage() {
                           Revenue {getSortIcon('revenue')}
                         </div>
                       </TableHead>
-                      <TableHead className="py-2 px-6 font-semibold text-gray-900">Industry</TableHead>
+                      <TableHead className="py-2 px-6 font-semibold text-gray-900">
+                        Industry
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedClients.map((client) => (
-                      <TableRow 
+                      <TableRow
                         key={client.id}
-                        className={`${!isEditMode ? 'cursor-pointer group' : ''} hover:bg-gray-50 transition-colors border-b border-gray-100`}
+                        className={`${isEditMode ? '' : 'cursor-pointer group'} hover:bg-gray-50 transition-colors border-b border-gray-100`}
                         onClick={() => handleClientClick(client.id)}
                       >
                         {isEditMode && (
-                          <TableCell className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                          <TableCell
+                            className="py-4 px-6"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Checkbox
                               checked={selectedClients.has(client.id)}
-                              onCheckedChange={() => toggleClientSelection(client.id)}
+                              onCheckedChange={() =>
+                                toggleClientSelection(client.id)
+                              }
                             />
                           </TableCell>
                         )}
                         <TableCell className="font-semibold text-gray-900 py-4 px-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center">
-                              {client.parentId && (
-                                <div className="flex items-center mr-3">
-                                  <div className="w-4 h-4 border-l-2 border-b-2 border-gray-300 mr-2 mb-2"></div>
-                                  <span className="text-xs text-gray-500 mr-2">Division of:</span>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      router.push(`/clients/${client.parent?.id}`);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800 underline text-sm"
-                                  >
-                                    {client.parent?.companyName}
-                                  </button>
-                                </div>
-                              )}
-                              <span className={`${client.parentId ? 'ml-6' : ''} ${!isEditMode ? "group-hover:text-blue-600 transition-colors" : ""}`}>
+                              <span
+                                className={`${isEditMode ? '' : 'group-hover:text-blue-600 transition-colors'}`}
+                              >
                                 {client.companyName}
                               </span>
-                              {!client.parentId && client.divisions && client.divisions.length > 0 && (
-                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  Holding Company ({client.divisions.length} divisions)
-                                </span>
-                              )}
+                              {!client.parentId &&
+                                client.divisions &&
+                                client.divisions.length > 0 && (
+                                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    {client.divisions.length}{' '}
+                                    {client.divisions.length === 1 ? 'Division' : 'Divisions'}
+                                  </span>
+                                )}
                             </div>
                             <div className="flex items-center">
-                              {!isEditMode && !client.parentId && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedParentId(client.id);
-                                    setShowAddDivision(true);
-                                  }}
-                                  className="mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                  Add Division
-                                </Button>
-                              )}
                               {!isEditMode && (
                                 <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all" />
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-600 py-4 px-6">{client.policyNumber}</TableCell>
-                        <TableCell className="text-gray-600 py-4 px-6">{client.renewalDate}</TableCell>
-                        <TableCell className="text-gray-600 py-4 px-6">{client.headcount.toLocaleString()}</TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">
+                          {client.policyNumber}
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">
+                          {client.renewalDate}
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">
+                          {client.headcount.toLocaleString()}
+                        </TableCell>
                         <TableCell className="text-right font-medium text-gray-900 py-4 px-6">{`$${client.premium.toLocaleString()}`}</TableCell>
                         <TableCell className="text-right font-medium text-gray-900 py-4 px-6">{`$${client.revenue.toLocaleString()}`}</TableCell>
-                        <TableCell className="text-gray-600 py-4 px-6">{client.industry}</TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6">
+                          {client.industry}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center space-x-4">
-                <Select
-                  value={String(rowsPerPage)}
-                  onValueChange={handleRowsPerPageChange}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Rows per page" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 rows per page</SelectItem>
-                    <SelectItem value="30">30 rows per page</SelectItem>
-                    <SelectItem value="50">50 rows per page</SelectItem>
-                    <SelectItem value="100">100 rows per page</SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                {!isEditMode && sortedClients.length > 0 && (
-                  <span className="text-xs text-gray-500 italic">
-                    Click any row to view client details
-                  </span>
-                )}
-              </div>
-              <div className="space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange('prev')}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange('next')}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-            </>
-            )}
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center space-x-4">
+                    <Select
+                      value={String(rowsPerPage)}
+                      onValueChange={handleRowsPerPageChange}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Rows per page" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 rows per page</SelectItem>
+                        <SelectItem value="30">30 rows per page</SelectItem>
+                        <SelectItem value="50">50 rows per page</SelectItem>
+                        <SelectItem value="100">100 rows per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    {!isEditMode && sortedClients.length > 0 && (
+                      <span className="text-xs text-gray-500 italic">
+                        Click any row to view client details
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange('prev')}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange('next')}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
+              );
+            })()}
           </div>
         </Card>
       </div>
@@ -581,20 +607,6 @@ export default function ClientListPage() {
         }}
       />
 
-      <ClientWizard
-        open={showAddDivision}
-        onClose={() => {
-          setShowAddDivision(false);
-          setSelectedParentId(null);
-        }}
-        onSuccess={() => {
-          setShowAddDivision(false);
-          setSelectedParentId(null);
-          fetchClients();
-        }}
-        parentId={selectedParentId}
-        title="Add Division"
-      />
     </PageLayout>
   );
 }

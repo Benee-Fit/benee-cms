@@ -444,7 +444,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Headcount {client.divisions && client.divisions.length > 0 && '(Including Divisions)'}
+                  Headcount{client.divisions && client.divisions.length > 0 && ' (All Divisions)'}
                 </p>
                 {isEditing ? (
                   <Input 
@@ -456,13 +456,11 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                   <div>
                     <p className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      {client.totalHeadcount || client.headcount || 0}
+                      {client.divisions && client.divisions.length > 0 
+                        ? (client.divisions.reduce((total, div) => total + div.headcount, 0))
+                        : (client.headcount || 0)
+                      }
                     </p>
-                    {client.divisions && client.divisions.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Company: {client.headcount}, Divisions: {client.totalHeadcount! - client.headcount}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
