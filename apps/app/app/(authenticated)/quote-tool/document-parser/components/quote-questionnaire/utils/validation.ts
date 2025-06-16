@@ -20,8 +20,8 @@ export const validatePlanManagementFee = (fee: number | null): string | null => 
   if (fee < 0) {
     return 'Plan management fee cannot be negative';
   }
-  if (fee > 100) {
-    return 'Plan management fee cannot exceed 100%';
+  if (fee > 15) {
+    return 'Plan management fee cannot exceed 15%';
   }
   return null;
 };

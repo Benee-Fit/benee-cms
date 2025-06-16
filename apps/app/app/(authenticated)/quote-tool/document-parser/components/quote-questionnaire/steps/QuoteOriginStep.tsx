@@ -1,48 +1,55 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
-import { FileText, Users, Globe, Phone, HelpCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, PhoneOutgoing, Users, Award, Calendar } from 'lucide-react';
 
 interface QuoteOriginStepProps {
-  value: 'internal' | 'partner-referral' | 'online-form' | 'sales-outreach' | 'other' | null;
-  onChange: (value: 'internal' | 'partner-referral' | 'online-form' | 'sales-outreach' | 'other') => void;
+  value: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops' | null;
+  onChange: (value: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops') => void;
 }
 
 const originOptions = [
   {
-    value: 'internal' as const,
-    label: 'Internal',
-    description: 'Request originated from internal team',
-    icon: FileText,
+    value: 'paid-advertising' as const,
+    label: 'Paid Advertising',
+    description: 'From paid ads, campaigns, or sponsored content',
+    icon: DollarSign,
     color: 'blue'
   },
   {
-    value: 'partner-referral' as const,
-    label: 'Partner Referral',
-    description: 'Referred by a partner organization',
-    icon: Users,
+    value: 'organic-inbound' as const,
+    label: 'Organic & Inbound Marketing',
+    description: 'Website, SEO, content marketing, or social media',
+    icon: TrendingUp,
     color: 'green'
   },
   {
-    value: 'online-form' as const,
-    label: 'Online Form',
-    description: 'Submitted through website form',
-    icon: Globe,
+    value: 'outbound-direct' as const,
+    label: 'Outbound & Direct Outreach',
+    description: 'Cold calls, emails, or direct sales efforts',
+    icon: PhoneOutgoing,
     color: 'purple'
   },
   {
-    value: 'sales-outreach' as const,
-    label: 'Sales Outreach',
-    description: 'Generated from sales activities',
-    icon: Phone,
+    value: 'referrals-partnerships' as const,
+    label: 'Referrals & Partnerships',
+    description: 'Partner referrals or client recommendations',
+    icon: Users,
     color: 'orange'
   },
   {
-    value: 'other' as const,
-    label: 'Other',
-    description: 'Other source not listed above',
-    icon: HelpCircle,
-    color: 'gray'
+    value: 'authority-building' as const,
+    label: 'Authority Building',
+    description: 'Speaking engagements, publications, or thought leadership',
+    icon: Award,
+    color: 'yellow'
+  },
+  {
+    value: 'events-workshops' as const,
+    label: 'Events & Workshops',
+    description: 'Trade shows, conferences, or educational events',
+    icon: Calendar,
+    color: 'indigo'
   }
 ];
 
@@ -52,7 +59,7 @@ export default function QuoteOriginStep({ value, onChange }: QuoteOriginStepProp
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-900">Quote Request Origin</h2>
+        <h2 className="text-2xl font-semibold text-gray-900">Source of Quote</h2>
         <p className="text-gray-600 mt-2">Where did this quote request originate from?</p>
       </div>
       

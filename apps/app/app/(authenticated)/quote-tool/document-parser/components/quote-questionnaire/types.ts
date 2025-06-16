@@ -11,7 +11,7 @@ export interface QuoteQuestionnaireData {
   planManagementFee: number | null;
   isJointCase: boolean | null;
   brokerSplits: BrokerSplit[];
-  quoteRequestOrigin: 'internal' | 'partner-referral' | 'online-form' | 'sales-outreach' | 'other' | null;
+  quoteRequestOrigin: 'paid-advertising' | 'organic-inbound' | 'outbound-direct' | 'referrals-partnerships' | 'authority-building' | 'events-workshops' | null;
   completedAt?: string;
 }
 
