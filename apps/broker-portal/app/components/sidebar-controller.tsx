@@ -9,7 +9,7 @@ export function SidebarController() {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
   const shouldShowSidebar = !isHomePage && 
-    !pathname.includes('/client-list') && 
+    !pathname.includes('/clients') && 
     !pathname.includes('/upload-documents');
   
   // Hide sidebar on home page and certain pages, show it on subpages

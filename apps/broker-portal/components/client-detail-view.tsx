@@ -146,7 +146,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
         return (
           <div>
             <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
-            <Select value={editedClient[field]?.toString() || ''} onValueChange={(value) => handleFieldChange(field, value)}>
+            <Select value={editedClient?.[field]?.toString() || ''} onValueChange={(value) => handleFieldChange(field, value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select..." />
               </SelectTrigger>
@@ -164,7 +164,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
           <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
           <Input 
             type={type}
-            value={editedClient[field]?.toString() || ''} 
+            value={editedClient?.[field]?.toString() || ''} 
             onChange={(e) => handleFieldChange(field, e.target.value)}
           />
         </div>
@@ -173,7 +173,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
     return (
       <div>
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <p className="font-medium">{editedClient[field] || 'Not specified'}</p>
+        <p className="font-medium">{editedClient?.[field] || 'Not specified'}</p>
       </div>
     );
   };
@@ -188,18 +188,34 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
     );
   }
 
+  if (!client) {
+    return (
+      <div className="container mx-auto pt-6">
+        <div className="flex justify-center items-center h-64">
+          <p className="text-muted-foreground">Client not found</p>
+        </div>
+      </div>
+    );
+  }
+
   const formatCurrency = (amount: number | undefined) => {
-    if (!amount) return 'N/A';
+    if (!amount) {
+      return 'N/A';
+    }
     return `$${amount.toLocaleString()}`;
   };
 
   const formatPercentage = (value: number | undefined) => {
-    if (value === undefined || value === null) return 'N/A';
+    if (value === undefined || value === null) {
+      return 'N/A';
+    }
     return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
   };
 
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) {
+      return 'N/A';
+    }
     return new Date(dateString).toLocaleDateString();
   };
 
@@ -309,7 +325,7 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 <p className="text-sm font-medium text-muted-foreground">Date Added</p>
                 <p className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(editedClient.createdAt)}
+                  {formatDate(editedClient?.createdAt)}
                 </p>
               </div>
               <div>
@@ -317,13 +333,13 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 {isEditing ? (
                   <Input 
                     type="number"
-                    value={editedClient.headcount} 
+                    value={editedClient?.headcount || 0} 
                     onChange={(e) => handleFieldChange('headcount', parseInt(e.target.value) || 0)}
                   />
                 ) : (
                   <p className="flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    {editedClient.headcount}
+                    {editedClient?.headcount || 0}
                   </p>
                 )}
               </div>
@@ -369,23 +385,23 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 {isEditing ? (
                   <Input 
                     type="number"
-                    value={editedClient.brokerCommissionSplit || ''} 
-                    onChange={(e) => handleFieldChange('brokerCommissionSplit', parseFloat(e.target.value) || null)}
+                    value={editedClient?.brokerCommissionSplit || ''} 
+                    onChange={(e) => handleFieldChange('brokerCommissionSplit', Number.parseFloat(e.target.value) || null)}
                     placeholder="Enter percentage"
                   />
                 ) : (
-                  <p>{editedClient.brokerCommissionSplit ? `${editedClient.brokerCommissionSplit}%` : 'Not specified'}</p>
+                  <p>{editedClient?.brokerCommissionSplit ? `${editedClient.brokerCommissionSplit}%` : 'Not specified'}</p>
                 )}
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Split With Another Broker</p>
                 {isEditing ? (
                   <Switch 
-                    checked={editedClient.splitWithAnotherBroker || false} 
+                    checked={editedClient?.splitWithAnotherBroker || false} 
                     onCheckedChange={(checked) => handleFieldChange('splitWithAnotherBroker', checked)}
                   />
                 ) : (
-                  <p>{editedClient.splitWithAnotherBroker ? 'Yes' : 'No'}</p>
+                  <p>{editedClient?.splitWithAnotherBroker ? 'Yes' : 'No'}</p>
                 )}
               </div>
             </div>
@@ -407,12 +423,12 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 {isEditing ? (
                   <Input 
                     type="number"
-                    value={editedClient.planManagementFee || ''} 
-                    onChange={(e) => handleFieldChange('planManagementFee', parseFloat(e.target.value) || null)}
+                    value={editedClient?.planManagementFee || ''} 
+                    onChange={(e) => handleFieldChange('planManagementFee', Number.parseFloat(e.target.value) || null)}
                     placeholder="Enter amount"
                   />
                 ) : (
-                  <p>{formatCurrency(editedClient.planManagementFee)}</p>
+                  <p>{formatCurrency(editedClient?.planManagementFee)}</p>
                 )}
               </div>
               {renderEditableField('currentCarrier', 'Current Carrier')}
@@ -421,11 +437,11 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 {isEditing ? (
                   <Input 
                     type="date"
-                    value={editedClient.withCarrierSince ? new Date(editedClient.withCarrierSince).toISOString().split('T')[0] : ''} 
+                    value={editedClient?.withCarrierSince ? new Date(editedClient.withCarrierSince).toISOString().split('T')[0] : ''} 
                     onChange={(e) => handleFieldChange('withCarrierSince', e.target.value)}
                   />
                 ) : (
-                  <p>{formatDate(editedClient.withCarrierSince)}</p>
+                  <p>{formatDate(editedClient?.withCarrierSince)}</p>
                 )}
               </div>
               {renderEditableField('planType', 'Plan Type', 'select', ['PPO', 'HMO', 'HDHP', 'EPO', 'POS', 'Other'])}

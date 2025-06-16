@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 const navItems = [
   { href: 'https://google.ca', label: 'Quoting' },
-  { href: '/client-list', label: 'Client List' },
+  { href: '/clients', label: 'Client List' },
   //{ href: '/industry-insight', label: 'Industry Insight' },
 ];
 
