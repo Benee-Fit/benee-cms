@@ -88,7 +88,16 @@ async function handleBulkCreate(body: any, brokerId: string) {
     items.map((item) =>
       database.clientInsightData.create({
         data: {
-          ...item,
+          clientId: item.clientId,
+          category: item.category,
+          type: item.type,
+          title: item.title,
+          description: item.description,
+          value: item.value ?? {},
+          metadata: item.metadata,
+          period: item.period,
+          targetValue: item.targetValue,
+          sortOrder: item.sortOrder ?? 1,
           brokerId,
         },
         include: {
