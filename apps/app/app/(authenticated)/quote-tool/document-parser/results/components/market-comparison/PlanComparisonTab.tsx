@@ -24,13 +24,81 @@ import {
 } from '@repo/design-system/components/ui/accordion';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Badge } from '@repo/design-system/components/ui/badge';
-import { ChevronRight, ChevronDown, ChevronUp, Search, X, Edit2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, ChevronLeft, Search, X, Edit2, Trash2, GripVertical, RotateCcw, RotateCw } from 'lucide-react';
 import { Input } from '@repo/design-system/components/ui/input';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Using shared ParsedDocument type from types.ts
 
 interface PlanComparisonTabProps {
   results: ParsedDocument[];
+}
+
+// State interface for history management
+interface TableState {
+  fieldOrder: string[];
+  hiddenFields: Set<string>;
+  customFieldNames: Record<string, string>;
+}
+
+// Custom hook for history state management (similar to useHistoryState)
+function useHistoryState<T>(initialState: T) {
+  const [history, setHistory] = useState<T[]>([initialState]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const state = history[currentIndex];
+
+  const setState = (newState: T | ((prevState: T) => T)) => {
+    const resolvedState = typeof newState === 'function' ? (newState as (prevState: T) => T)(state) : newState;
+    
+    // Remove any future history if we're not at the end
+    const newHistory = history.slice(0, currentIndex + 1);
+    newHistory.push(resolvedState);
+    
+    setHistory(newHistory);
+    setCurrentIndex(newHistory.length - 1);
+  };
+
+  const canUndo = currentIndex > 0;
+  const canRedo = currentIndex < history.length - 1;
+
+  const undo = () => {
+    if (canUndo) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  return {
+    state,
+    setState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  };
 }
 
 // Type for benefit details which can be string, number, boolean, or nested object with those types
@@ -111,7 +179,9 @@ const DetailRenderer = ({
   editKey?: string;
 }) => {
   if (!details || typeof details !== 'object') {
-    const stringValue = String(details) || '-';
+    const stringValue = details === null || details === undefined || details === '' 
+      ? '-' 
+      : String(details);
     
     if (isEditable && onUpdate) {
       return <EditableTableCell value={stringValue} onUpdate={onUpdate} className="text-sm" />;
@@ -135,7 +205,7 @@ const DetailRenderer = ({
                 editKey={`${editKey}-${key}`}
               />
             ) : (
-              String(value) || '-'
+              value === null || value === undefined || value === '' ? '-' : String(value)
             )}
           </span>
         </li>
@@ -181,20 +251,34 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
         if (!coverage.coverageType) continue;
         
         const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        
+        // Extract ALL fields from coverage object, including nested benefitDetails
+        const { benefitDetails, ...coverageFields } = coverage;
+        
+        // Flatten benefitDetails if it exists
+        let flattenedBenefitDetails: Record<string, any> = {};
+        if (benefitDetails && typeof benefitDetails === 'object') {
+          // Handle nested objects in benefitDetails
+          Object.entries(benefitDetails).forEach(([key, value]) => {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              // For nested objects, prefix with parent key
+              Object.entries(value).forEach(([subKey, subValue]) => {
+                flattenedBenefitDetails[`${key}_${subKey}`] = subValue;
+              });
+            } else {
+              // Handle backward compatibility: rename 'formula' to 'benefitAmount'
+              const normalizedKey = key === 'formula' ? 'benefitAmount' : key;
+              flattenedBenefitDetails[normalizedKey] = value;
+            }
+          });
+        }
+        
         benefitData[key] = {
           carrierName: coverage.carrierName || carrierName,
           planOptionName: coverage.planOptionName || 'Default',
           coverageType: coverage.coverageType,
-          monthlyPremium: coverage.monthlyPremium,
-          unitRate: coverage.unitRate,
-          unitRateBasis: coverage.unitRateBasis,
-          volume: coverage.volume,
-          lives: coverage.lives,
-          livesSingle: coverage.livesSingle,
-          livesFamily: coverage.livesFamily,
-          premiumPerSingle: coverage.premiumPerSingle,
-          premiumPerFamily: coverage.premiumPerFamily,
-          ...coverage.benefitDetails
+          ...coverageFields,  // Include ALL coverage fields
+          ...flattenedBenefitDetails  // Include ALL flattened benefit details
         };
       }
     }
@@ -206,20 +290,34 @@ const extractFlexibleBenefitData = (documents: ParsedDocument[]): Record<string,
         if (!coverage.coverageType) continue;
         
         const key = `${carrierName}-${coverage.planOptionName || 'Default'}-${coverage.coverageType}`;
+        
+        // Extract ALL fields from coverage object, including nested benefitDetails
+        const { benefitDetails, ...coverageFields } = coverage;
+        
+        // Flatten benefitDetails if it exists
+        let flattenedBenefitDetails: Record<string, any> = {};
+        if (benefitDetails && typeof benefitDetails === 'object') {
+          // Handle nested objects in benefitDetails
+          Object.entries(benefitDetails).forEach(([key, value]) => {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              // For nested objects, prefix with parent key
+              Object.entries(value).forEach(([subKey, subValue]) => {
+                flattenedBenefitDetails[`${key}_${subKey}`] = subValue;
+              });
+            } else {
+              // Handle backward compatibility: rename 'formula' to 'benefitAmount'
+              const normalizedKey = key === 'formula' ? 'benefitAmount' : key;
+              flattenedBenefitDetails[normalizedKey] = value;
+            }
+          });
+        }
+        
         benefitData[key] = {
           carrierName: coverage.carrierName || carrierName,
           planOptionName: coverage.planOptionName || 'Default',
           coverageType: coverage.coverageType,
-          monthlyPremium: coverage.monthlyPremium,
-          unitRate: coverage.unitRate,
-          unitRateBasis: coverage.unitRateBasis,
-          volume: coverage.volume,
-          lives: coverage.lives,
-          livesSingle: coverage.livesSingle,
-          livesFamily: coverage.livesFamily,
-          premiumPerSingle: coverage.premiumPerSingle,
-          premiumPerFamily: coverage.premiumPerFamily,
-          ...coverage.benefitDetails
+          ...coverageFields,  // Include ALL coverage fields
+          ...flattenedBenefitDetails  // Include ALL flattened benefit details
         };
       }
     }
@@ -267,6 +365,7 @@ const getAllBenefitFields = (benefitData: Record<string, Record<string, any>>): 
 const formatFieldName = (fieldName: string): string => {
   const fieldMappings: Record<string, string> = {
     'monthlyPremium': 'Monthly Premium',
+    'premium': 'Premium',
     'unitRate': 'Unit Rate',
     'unitRateBasis': 'Rate Basis',
     'volume': 'Volume',
@@ -276,26 +375,220 @@ const formatFieldName = (fieldName: string): string => {
     'premiumPerSingle': 'Premium Per Single',
     'premiumPerFamily': 'Premium Per Family',
     'benefitAmount': 'Benefit Amount',
+    'nonEvidenceMaximum': 'Non-Evidence Maximum',
     'nonEvidenceMax': 'Non-Evidence Max',
     'reductionFormula': 'Reduction Formula',
+    'benefitReductionSchedule': 'Benefit Reduction Schedule',
     'terminationAge': 'Termination Age',
+    'spouseBenefitAmount': 'Spouse Benefit Amount',
+    'childBenefitAmount': 'Child Benefit Amount',
     'spouseAmount': 'Spouse Amount',
     'childAmount': 'Child Amount',
     'deductible': 'Deductible',
     'coinsurance': 'Coinsurance',
     'lifetimeMaximum': 'Lifetime Maximum',
     'drugPlan': 'Drug Plan',
+    'drugCard': 'Drug Card',
+    'drugCoinsurance': 'Drug Coinsurance',
+    'drugMaximum': 'Drug Maximum',
     'paramedicalCoverage': 'Paramedical Coverage',
+    'paramedicalMaximum': 'Paramedical Maximum',
+    'paramedicalCoinsurance': 'Paramedical Coinsurance',
     'hospital': 'Hospital Coverage',
+    'hospitalCoverage': 'Hospital Coverage',
     'annualMaximum': 'Annual Maximum',
+    'overallMaximum': 'Overall Maximum',
     'feeGuide': 'Fee Guide',
     'recallFrequency': 'Recall Frequency',
     'basicCoinsurance': 'Basic Coinsurance',
+    'basicMaximum': 'Basic Maximum',
     'majorCoinsurance': 'Major Coinsurance',
-    'orthoCoinsurance': 'Ortho Coinsurance'
+    'orthoCoinsurance': 'Ortho Coinsurance',
+    'visionMaximum': 'Vision Maximum',
+    'visionCoinsurance': 'Vision Coinsurance',
+    'travelCoverage': 'Travel Coverage',
+    'survivorBenefit': 'Survivor Benefit',
+    'poolingThreshold': 'Pooling Threshold',
+    'benefitAmount': 'Benefit Amount',
+    'rateGuarantees': 'Rate Guarantees'
   };
   
+  // Handle nested fields with underscores (e.g., drug_coinsurance)
+  if (fieldName.includes('_')) {
+    const parts = fieldName.split('_');
+    return parts.map(part => 
+      fieldMappings[part] || part.charAt(0).toUpperCase() + part.slice(1)
+    ).join(' - ');
+  }
+  
   return fieldMappings[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+};
+
+// Sortable table row component
+const SortableRow: React.FC<{
+  id: string;
+  field: string;
+  carriers: any[];
+  selectedPlanOptions: Record<string, string>;
+  getBenefitDataForCarrierPlan: (carrierName: string, planOption: string, coverageType: string) => any;
+  coverageType: string;
+  getEditedValue: (key: string, defaultValue: any) => any;
+  updateEditedValue: (key: string, value: any) => void;
+  onFieldNameEdit: (field: string) => void;
+  editingFieldName: string | null;
+  tempFieldName: string;
+  setTempFieldName: (name: string) => void;
+  onFieldNameSave: () => void;
+  onFieldNameCancel: () => void;
+  getFieldDisplayName: (field: string) => string;
+  onDelete: (field: string) => void;
+}> = ({
+  id,
+  field,
+  carriers,
+  selectedPlanOptions,
+  getBenefitDataForCarrierPlan,
+  coverageType,
+  getEditedValue,
+  updateEditedValue,
+  onFieldNameEdit,
+  editingFieldName,
+  tempFieldName,
+  setTempFieldName,
+  onFieldNameSave,
+  onFieldNameCancel,
+  getFieldDisplayName,
+  onDelete,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={`group ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <TableCell className="sticky left-0 bg-background z-10 border-r font-medium">
+        <div className="flex items-center space-x-2">
+          {/* Drag handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+          
+          {/* Field name - editable */}
+          {editingFieldName === field ? (
+            <div className="flex items-center space-x-2 flex-1">
+              <Input
+                value={tempFieldName}
+                onChange={(e) => setTempFieldName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onFieldNameSave();
+                  if (e.key === 'Escape') onFieldNameCancel();
+                }}
+                className="h-8 text-sm"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onFieldNameSave}
+                className="h-8 w-8 p-0"
+              >
+                ✓
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onFieldNameCancel}
+                className="h-8 w-8 p-0"
+              >
+                ✗
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="text-sm break-words whitespace-normal leading-relaxed flex-1 cursor-pointer hover:bg-gray-100 rounded px-2 py-1"
+              onClick={() => onFieldNameEdit(field)}
+            >
+              {getFieldDisplayName(field)}
+            </div>
+          )}
+          
+          {/* Delete button */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDelete(field)}
+            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+      
+      {carriers.map((carrier, index) => {
+        const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
+        const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
+        const fieldValue = data[field];
+        
+        const editKey = `${coverageType}-${field}-${carrier.name}-${planOption}`;
+        const editedFieldValue = getEditedValue(editKey, fieldValue);
+        
+        // Check if this is a premium/cost field for special formatting
+        const isPremiumField = ['monthlyPremium', 'premium', 'premiumPerSingle', 'premiumPerFamily'].includes(field);
+        const isPercentageField = field.toLowerCase().includes('coinsurance') || field === 'coinsurance';
+        
+        // Format the value for display
+        let displayValue = editedFieldValue;
+        if (isPremiumField && typeof editedFieldValue === 'number') {
+          displayValue = `$${editedFieldValue.toFixed(2)}`;
+        } else if (isPercentageField && typeof editedFieldValue === 'string' && !editedFieldValue.includes('%')) {
+          displayValue = `${editedFieldValue}%`;
+        } else if (editedFieldValue === true) {
+          displayValue = '✓ Yes';
+        } else if (editedFieldValue === false) {
+          displayValue = '✗ No';
+        }
+        
+        // Determine if this value is notably different (for highlighting)
+        const allValues = carriers.map(c => {
+          const opt = selectedPlanOptions[c.name] || c.planOptions[0] || 'Default';
+          return getBenefitDataForCarrierPlan(c.name, opt, coverageType)[field];
+        }).filter(v => v !== null && v !== undefined && v !== '');
+        
+        const hasVariance = allValues.length > 1 && !allValues.every(v => v === allValues[0]);
+        
+        return (
+          <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
+            <div className={`break-words whitespace-normal ${hasVariance ? 'font-medium' : ''} ${isPremiumField ? 'text-green-700' : ''}`}>
+              <DetailRenderer 
+                details={displayValue}
+                isEditable={true}
+                onUpdate={(value) => updateEditedValue(editKey, value)}
+                editKey={editKey}
+              />
+            </div>
+          </TableCell>
+        );
+      })}
+    </TableRow>
+  );
 };
 
 const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
@@ -306,6 +599,42 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   // State for edited cell values
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
   
+  // Get all unique benefit fields across all data
+  const allBenefitFields = getAllBenefitFields(extractFlexibleBenefitData(results));
+  
+  // History state management for table modifications
+  const {
+    state: tableState,
+    setState: setTableState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useHistoryState<TableState>({
+    fieldOrder: allBenefitFields,
+    hiddenFields: new Set<string>(),
+    customFieldNames: {},
+  });
+  
+  // State for editing field names
+  const [editingFieldName, setEditingFieldName] = useState<string | null>(null);
+  const [tempFieldName, setTempFieldName] = useState<string>('');
+  
+  // State for action feedback
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
   // Helper function to get edited value or default
   const getEditedValue = (key: string, defaultValue: any) => {
     return editedValues[key] !== undefined ? editedValues[key] : defaultValue;
@@ -315,6 +644,108 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   const updateEditedValue = (key: string, value: any) => {
     setEditedValues(prev => ({ ...prev, [key]: value }));
   };
+  
+  // Initialize field order if not set
+  useEffect(() => {
+    if (tableState.fieldOrder.length === 0 && allBenefitFields.length > 0) {
+      setTableState(prev => ({
+        ...prev,
+        fieldOrder: allBenefitFields
+      }));
+    }
+  }, [allBenefitFields]);
+  
+  // Handle drag end
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    
+    if (active.id !== over.id) {
+      setTableState(prev => {
+        const oldIndex = prev.fieldOrder.indexOf(active.id);
+        const newIndex = prev.fieldOrder.indexOf(over.id);
+        return {
+          ...prev,
+          fieldOrder: arrayMove(prev.fieldOrder, oldIndex, newIndex)
+        };
+      });
+    }
+  };
+  
+  // Handle field name editing
+  const handleFieldNameEdit = (field: string) => {
+    setEditingFieldName(field);
+    setTempFieldName(tableState.customFieldNames[field] || formatFieldName(field));
+  };
+  
+  const handleFieldNameSave = () => {
+    if (editingFieldName && tempFieldName.trim()) {
+      setTableState(prev => ({
+        ...prev,
+        customFieldNames: {
+          ...prev.customFieldNames,
+          [editingFieldName]: tempFieldName.trim()
+        }
+      }));
+    }
+    setEditingFieldName(null);
+    setTempFieldName('');
+  };
+  
+  const handleFieldNameCancel = () => {
+    setEditingFieldName(null);
+    setTempFieldName('');
+  };
+  
+  // Get display name for field
+  const getFieldDisplayName = (field: string) => {
+    return tableState.customFieldNames[field] || formatFieldName(field);
+  };
+  
+  // Delete field handler
+  const handleDeleteField = (field: string) => {
+    setTableState(prev => ({
+      ...prev,
+      hiddenFields: new Set([...prev.hiddenFields, field])
+    }));
+  };
+  
+  // Show all hidden fields
+  const handleShowAllFields = () => {
+    setTableState(prev => ({
+      ...prev,
+      hiddenFields: new Set()
+    }));
+  };
+  
+  // Enhanced undo with feedback
+  const handleUndo = () => {
+    undo();
+    setActionFeedback('Undid last change');
+    setTimeout(() => setActionFeedback(null), 2000);
+  };
+  
+  // Enhanced redo with feedback
+  const handleRedo = () => {
+    redo();
+    setActionFeedback('Redid last change');
+    setTimeout(() => setActionFeedback(null), 2000);
+  };
+  
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) handleUndo();
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedo) handleRedo();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo]);
   
   if (!results || results.length === 0) {
     return (
@@ -412,8 +843,8 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
     return allBenefitData[key] || {};
   };
   
-  // Get all unique benefit fields across all data
-  const allBenefitFields = getAllBenefitFields(allBenefitData);
+  // Get ordered fields (use custom order or default)
+  const orderedFields = tableState.fieldOrder.length > 0 ? tableState.fieldOrder : allBenefitFields;
 
   return (
     <Card className="shadow-sm overflow-hidden">
@@ -421,6 +852,50 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
         <div className="flex justify-between items-center">
           <CardTitle>Plan Comparison</CardTitle>
           <div className="flex items-center gap-2">
+            {/* Undo/Redo buttons with enhanced UX */}
+            {(canUndo || canRedo) && (
+              <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className={`group h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                    canUndo 
+                      ? 'hover:bg-blue-50 hover:text-blue-700 text-gray-700 hover:shadow-sm' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={canUndo ? "Undo last change (Ctrl+Z)" : "Nothing to undo"}
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 mr-1.5 transition-transform duration-200 ${canUndo ? 'group-hover:-rotate-12' : ''}`} />
+                  Undo
+                </Button>
+                <div className="w-px h-5 bg-gray-200" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className={`group h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                    canRedo 
+                      ? 'hover:bg-blue-50 hover:text-blue-700 text-gray-700 hover:shadow-sm' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={canRedo ? "Redo last undone change (Ctrl+Y)" : "Nothing to redo"}
+                >
+                  <RotateCw className={`h-3.5 w-3.5 mr-1.5 transition-transform duration-200 ${canRedo ? 'group-hover:rotate-12' : ''}`} />
+                  Redo
+                </Button>
+              </div>
+            )}
+            
+            {/* Action feedback */}
+            {actionFeedback && (
+              <div className="absolute top-12 right-0 z-50 bg-green-100 border border-green-200 text-green-800 px-3 py-2 rounded-md shadow-sm text-xs font-medium animate-in fade-in slide-in-from-top-2 duration-200">
+                {actionFeedback}
+              </div>
+            )}
+            
             <div className="relative">
               <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -451,117 +926,106 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
               {coverageType}
             </h3>
             
-            {/* Plan Option Selectors */}
-            {carriers.some(carrier => carrier.planOptions.length > 1) && (
-              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {carriers.map((carrier) => {
-                  if (carrier.planOptions.length <= 1) return null;
-                  
-                  return (
-                    <div key={carrier.name} className="flex flex-col space-y-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        {carrier.name} Plan Option
-                      </label>
-                      <select
-                        value={selectedPlanOptions[carrier.name] || carrier.planOptions[0]}
-                        onChange={(e) => setSelectedPlanOptions(prev => ({ ...prev, [carrier.name]: e.target.value }))}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        {carrier.planOptions.map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            
             {/* Benefit Comparison Table */}
             <div className="overflow-x-auto">
-              <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-sky-500">
-                      <div className="font-semibold">Benefit Detail</div>
-                    </TableHead>
-                    {carriers.map((carrier, index) => (
-                      <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-sky-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
-                        <div className="flex flex-col items-center justify-center gap-1.5 p-2">
-                          <div className="font-semibold text-sm text-center text-sky-600">{carrier.name}</div>
-                          {carrier.planOptions.length > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {selectedPlanOptions[carrier.name] || carrier.planOptions[0]}
-                            </Badge>
-                          )}
-                        </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-sky-500">
+                        <div className="font-semibold">Benefit Detail</div>
                       </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allBenefitFields
-                    .filter(field => {
-                      // Only show fields that have data for this coverage type
-                      return carriers.some(carrier => {
-                        const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
-                        const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
-                        return data[field] !== undefined && data[field] !== null && data[field] !== '';
-                      });
-                    })
-                    .filter(field => {
-                      // Search filter
-                      if (!searchQuery) return true;
-                      const query = searchQuery.toLowerCase();
-                      
-                      // Check field name
-                      if (formatFieldName(field).toLowerCase().includes(query)) return true;
-                      
-                      // Check field values
-                      return carriers.some(carrier => {
-                        const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
-                        const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
-                        const value = data[field];
-                        return value && String(value).toLowerCase().includes(query);
-                      });
-                    })
-                    .map((field) => (
-                      <TableRow key={field}>
-                        <TableCell className="sticky left-0 bg-background z-10 border-r font-medium">
-                          <div className="text-sm break-words whitespace-normal leading-relaxed">
-                            {formatFieldName(field)}
+                      {carriers.map((carrier, index) => (
+                        <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-sky-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
+                          <div className="flex flex-col items-center justify-center gap-1.5 p-2">
+                            <div className="font-semibold text-sm text-center text-sky-600">{carrier.name}</div>
                           </div>
-                        </TableCell>
-                        {carriers.map((carrier, index) => {
-                          const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
-                          const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
-                          const fieldValue = data[field];
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <SortableContext
+                    items={orderedFields}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <TableBody>
+                      {orderedFields
+                        .filter(field => !tableState.hiddenFields.has(field))
+                        .filter(field => {
+                          // Only show fields that have data for this coverage type
+                          return carriers.some(carrier => {
+                            const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
+                            const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
+                            return data[field] !== undefined && data[field] !== null && data[field] !== '';
+                          });
+                        })
+                        .filter(field => {
+                          // Search filter
+                          if (!searchQuery) return true;
+                          const query = searchQuery.toLowerCase();
                           
-                          const editKey = `${coverageType}-${field}-${carrier.name}-${planOption}`;
-                          const editedFieldValue = getEditedValue(editKey, fieldValue);
+                          // Check field name
+                          if (getFieldDisplayName(field).toLowerCase().includes(query)) return true;
                           
-                          return (
-                            <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
-                              <div className="break-words whitespace-normal">
-                                <DetailRenderer 
-                                  details={editedFieldValue === true ? 'Yes' :
-                                         editedFieldValue === false ? 'No' :
-                                         editedFieldValue}
-                                  isEditable={true}
-                                  onUpdate={(value) => updateEditedValue(editKey, value)}
-                                  editKey={editKey}
-                                />
-                              </div>
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
+                          // Check field values
+                          return carriers.some(carrier => {
+                            const planOption = selectedPlanOptions[carrier.name] || carrier.planOptions[0] || 'Default';
+                            const data = getBenefitDataForCarrierPlan(carrier.name, planOption, coverageType);
+                            const value = data[field];
+                            return value && String(value).toLowerCase().includes(query);
+                          });
+                        })
+                        .map((field) => (
+                          <SortableRow
+                            key={field}
+                            id={field}
+                            field={field}
+                            carriers={carriers}
+                            selectedPlanOptions={selectedPlanOptions}
+                            getBenefitDataForCarrierPlan={getBenefitDataForCarrierPlan}
+                            coverageType={coverageType}
+                            getEditedValue={getEditedValue}
+                            updateEditedValue={updateEditedValue}
+                            onFieldNameEdit={handleFieldNameEdit}
+                            editingFieldName={editingFieldName}
+                            tempFieldName={tempFieldName}
+                            setTempFieldName={setTempFieldName}
+                            onFieldNameSave={handleFieldNameSave}
+                            onFieldNameCancel={handleFieldNameCancel}
+                            getFieldDisplayName={getFieldDisplayName}
+                            onDelete={handleDeleteField}
+                          />
+                        ))}
+                    </TableBody>
+                  </SortableContext>
+                </Table>
+              </DndContext>
             </div>
           </div>
         ))}
+        
+        {/* Hidden fields indicator and restore */}
+        {tableState.hiddenFields.size > 0 && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                {tableState.hiddenFields.size} row{tableState.hiddenFields.size === 1 ? '' : 's'} hidden
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShowAllFields}
+                className="text-sm"
+              >
+                Show all hidden rows
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

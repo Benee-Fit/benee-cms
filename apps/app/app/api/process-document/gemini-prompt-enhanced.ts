@@ -70,7 +70,7 @@ A flat list of every benefit line item derived directly from the rows of the fin
 "Term Life", "Basic Life", "AD&D", "Dependent Life", "Critical Illness", "LTD", "STD", "Extended Healthcare", "Dental Care", "Vision", "EAP", "Health Spending Account", "HSA", "Wellness Spending Account", "WSA", "Cost Plus"
 
 # BENEFIT DETAILS OBJECTS (SECONDARY PRIORITY)
-- For each benefit type, populate with descriptive text if found. If the source document is a financial renewal without a plan summary, populate the 'schedule' or 'formula' field with "Details not specified in this financial summary" and leave others null.
+- For each benefit type, populate with descriptive text if found. If the source document is a financial renewal without a plan summary, populate the 'benefitAmount' field with "Details not specified in this financial summary" and leave others null.
 
 # FINAL VALIDATION (MANDATORY SELF-CORRECTION)
 Before providing the final JSON, you MUST validate your own work:

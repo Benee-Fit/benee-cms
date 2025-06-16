@@ -5,7 +5,6 @@ import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/compone
 import { Info, AlertCircle } from 'lucide-react';
 import MarketComparisonView from './market-comparison/MarketComparisonView';
 import CarrierOverviewCards from './CarrierOverviewCards';
-import SummaryStats from './SummaryStats';
 
 // Define the parsed document type
 interface ParsedDocument {
@@ -111,9 +110,6 @@ export default function ComparisonContainer() {
 
   return (
     <div className="space-y-8">
-      {/* Summary Statistics */}
-      <SummaryStats parsedDocuments={parsedDocuments} />
-      
       {/* Detailed Market Comparison */}
       <div>
         <MarketComparisonView 

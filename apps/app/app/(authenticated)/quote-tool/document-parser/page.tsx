@@ -271,27 +271,6 @@ export default function DocumentParserPage() {
     }
   };
   
-  // Get file count by category for enhanced selector
-  const getFileCountByCategory = () => {
-    const counts: Record<string, number> = { Current: 0, Renegotiated: 0, Alternative: 0 };
-    files.forEach(file => {
-      if (file.category) {
-        counts[file.category]++;
-      }
-    });
-    return counts;
-  };
-
-  // Handle batch file upload
-  const handleBatchUpload = (newFiles: File[], category: 'Current' | 'Renegotiated' | 'Alternative') => {
-    const filesWithCategory = newFiles.map(file => {
-      const fileWithCategory = file as FileWithPreview;
-      fileWithCategory.category = category;
-      return fileWithCategory;
-    });
-    
-    setFiles(prev => [...prev, ...filesWithCategory]);
-  };
 
   // Calculate estimated time remaining (4-8 minutes per file)
   const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 360) => {
@@ -301,37 +280,50 @@ export default function DocumentParserPage() {
 
   // Normalize processed result
   const normalizeResult = useCallback((processedResult: Record<string, unknown>, file: FileWithPreview) => {
+    // Check if we have processedData structure (from API response)
+    const hasProcessedData = processedResult.processedData && typeof processedResult.processedData === 'object';
+    const processedData = hasProcessedData ? processedResult.processedData as Record<string, unknown> : processedResult;
+    
+    // Extract metadata from the correct location
+    const metadata = processedData.metadata || processedResult.metadata || {
+      documentType: 'Unknown',
+      clientName: 'Unknown',
+      carrierName: 'Unknown Carrier',
+      effectiveDate: new Date().toISOString().split('T')[0],
+      quoteDate: new Date().toISOString().split('T')[0],
+      fileName: file.name,
+      fileCategory: file.category || 'Current'
+    };
+    
+    // Extract coverages - prefer allCoverages over coverages
+    let coverages = processedData.allCoverages || processedData.coverages || processedResult.coverages || [];
+    
+    // Ensure coverages is an array
+    if (!Array.isArray(coverages) || coverages.length === 0) {
+      coverages = [{
+        coverageType: 'Basic Life',
+        carrierName: (metadata && typeof metadata === 'object' && 'carrierName' in metadata) ? String(metadata.carrierName) : 'Unknown Carrier',
+        planOptionName: 'Default Plan',
+        premium: 0,
+        monthlyPremium: 0,
+        unitRate: 0,
+        unitRateBasis: 'per $1,000',
+        volume: 0,
+        lives: 0,
+        benefitDetails: {
+          note: 'Coverage details could not be extracted from document'
+        }
+      }];
+    }
+    
     return {
       ...processedResult,
       originalFileName: file.name,
       category: file.category,
-      // Ensure metadata exists
-      metadata: processedResult.metadata || {
-        documentType: 'Unknown',
-        clientName: 'Unknown',
-        carrierName: 'Unknown Carrier',
-        effectiveDate: new Date().toISOString().split('T')[0],
-        quoteDate: new Date().toISOString().split('T')[0],
-        fileName: file.name,
-        fileCategory: file.category || 'Current'
-      },
-      // Ensure coverages exists and is an array
-      coverages: Array.isArray(processedResult.coverages) && processedResult.coverages.length > 0 
-        ? processedResult.coverages 
-        : [{
-            coverageType: 'Basic Life',
-            carrierName: (processedResult.metadata && typeof processedResult.metadata === 'object' && 'carrierName' in processedResult.metadata) ? String(processedResult.metadata.carrierName) : 'Unknown Carrier',
-            planOptionName: 'Default Plan',
-            premium: 0,
-            monthlyPremium: 0,
-            unitRate: 0,
-            unitRateBasis: 'per $1,000',
-            volume: 0,
-            lives: 0,
-            benefitDetails: {
-              note: 'Coverage details could not be extracted from document'
-            }
-          }]
+      metadata: metadata,
+      coverages: coverages,
+      // Include plan options if available
+      planOptions: processedData.planOptions || processedResult.planOptions || []
     };
   }, []);
 
@@ -458,64 +450,42 @@ export default function DocumentParserPage() {
 
   return (
     <>
-      <Header pages={["Quote Tool"]} page="Document Parser">
-        <h2 className="text-xl font-semibold">Document Parser</h2>
+      <Header pages={["Quote Tool"]} page="Start a quote">
+        <h2 className="text-xl font-semibold">Start a quote</h2>
       </Header>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold">Upload Insurance Documents</h2>
+        <h2 className="text-2xl font-bold">Upload Documents</h2>
         <p className="text-muted-foreground">
           Upload insurance quote PDFs for AI-powered parsing and comparison
         </p>
       </div>
       
-      {/* Enhanced Document Type Selector */}
-      <div className="mb-6">
-        <EnhancedDocumentTypeSelector
-          activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
-          fileCount={getFileCountByCategory()}
-        />
-      </div>
-      
-      {/* Batch Upload Toggle */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      {/* Start Fresh Button */}
+      {hasExistingSession && (
+        <div className="mb-4 flex justify-end">
           <Button
-            variant={showBatchUpload ? 'default' : 'outline'}
+            variant="outline"
             size="sm"
-            onClick={() => setShowBatchUpload(!showBatchUpload)}
-            className="flex items-center space-x-2"
+            onClick={() => {
+              resetSessionData();
+              setFiles([]);
+            }}
+            className="flex items-center space-x-2 text-orange-600 hover:text-orange-800"
           >
-            <Plus className="h-4 w-4" />
-            <span>{showBatchUpload ? 'Single Upload' : 'Batch Upload'}</span>
+            <AlertCircle className="h-4 w-4" />
+            <span>Start Fresh</span>
           </Button>
-          {showBatchUpload && (
-            <Badge variant="secondary" className="text-xs">
-              Upload multiple files across categories
-            </Badge>
-          )}
-          {hasExistingSession && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                resetSessionData();
-                setFiles([]);
-              }}
-              className="flex items-center space-x-2 text-orange-600 hover:text-orange-800"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <span>Start Fresh</span>
-            </Button>
-          )}
         </div>
-        
-        {files.length > 0 && (
+      )}
+      
+      {/* File Count Badge */}
+      {files.length > 0 && (
+        <div className="mb-4 flex justify-end">
           <Badge variant="outline" className="text-sm">
             {files.length} file{files.length !== 1 ? 's' : ''} ready
           </Badge>
-        )}
-      </div>
+        </div>
+      )}
       
       {/* Error Display */}
       {error && (
@@ -528,112 +498,45 @@ export default function DocumentParserPage() {
       
       {/* File Upload Area */}
       <div className="mb-6">
-        {showBatchUpload ? (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Batch Upload</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(['Current', 'Renegotiated', 'Alternative'] as const).map((category) => {
-                const count = getFileCountByCategory()[category];
-                return (
-                  <div key={category} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm">{category}</h4>
-                      {count > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {count} file{count !== 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                    </div>
-                    <div
-                      className="border-2 border-dashed rounded-lg p-6 text-center transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      onDragEnter={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDragOver={handleDrag}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setDragActive(false);
-                        
-                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                          const newFiles = Array.from(e.dataTransfer.files).filter(file => 
-                            file.type === 'application/pdf'
-                          );
-                          handleBatchUpload(newFiles, category);
-                        }
-                      }}
-                    >
-                      <UploadCloud className="h-6 w-6 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 mb-2">
-                        Drop {category.toLowerCase()} files here
-                      </p>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        type="button" 
-                        onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.multiple = true;
-                          input.accept = '.pdf';
-                          input.onchange = (e) => {
-                            const target = e.target as HTMLInputElement;
-                            if (target.files) {
-                              handleBatchUpload(Array.from(target.files), category);
-                            }
-                          };
-                          input.click();
-                        }}
-                      >
-                        <Upload className="mr-1 h-3 w-3" />
-                        Browse
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+        <div 
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${dragActive ? 'border-primary bg-muted/50' : 'border-muted-foreground/25 hover:border-muted-foreground/50'}`}
+        >
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="rounded-full bg-primary/10 p-4">
+              <UploadCloud className="h-8 w-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-medium">
+                Drag & drop files or click to browse
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Upload all your insurance quote PDFs for parsing and comparison
+              </p>
+            </div>
+            <div>
+              <Button 
+                variant="outline" 
+                type="button" 
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Select Files
+              </Button>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                accept=".pdf"
+                onChange={handleFileChange}
+                className="hidden"
+              />
             </div>
           </div>
-        ) : (
-          <div 
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${dragActive ? 'border-primary bg-muted/50' : 'border-muted-foreground/25 hover:border-muted-foreground/50'}`}
-          >
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="rounded-full bg-primary/10 p-4">
-                <UploadCloud className="h-8 w-8 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">
-                  Drag & drop files or click to browse
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Upload PDF files for parsing ({activeCategory} category)
-                </p>
-              </div>
-              <div>
-                <Button 
-                  variant="outline" 
-                  type="button" 
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Select Files
-                </Button>
-                <input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
       
       {/* File List */}
@@ -655,55 +558,35 @@ export default function DocumentParserPage() {
             </div>
           </div>
           
-          {/* Group files by category */}
-          {(['Current', 'Renegotiated', 'Alternative'] as const).map(category => {
-            const categoryFiles = files.filter(file => file.category === category);
-            if (categoryFiles.length === 0) return null;
-            
-            return (
-              <div key={category} className="mb-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Badge variant="outline" className="text-sm">
-                    {category}
-                  </Badge>
-                  <span className="text-sm text-gray-500">
-                    {categoryFiles.length} file{categoryFiles.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="space-y-2 pl-4">
-                  {categoryFiles.map((file, index) => {
-                    const originalIndex = files.indexOf(file);
-                    return (
-                      <Card key={originalIndex} className="overflow-hidden">
-                        <CardContent className="p-3 flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className="bg-muted rounded-md p-2 mr-3">
-                              <FileText className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <p className="font-medium truncate max-w-[300px]">
-                                {file.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {(file.size / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveFile(originalIndex)}
-                          >
-                            Remove
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+          {/* Simple file list */}
+          <div className="space-y-2">
+            {files.map((file, index) => (
+              <Card key={index} className="overflow-hidden">
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="bg-muted rounded-md p-2 mr-3">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium truncate max-w-[300px]">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveFile(index)}
+                  >
+                    Remove
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
       
