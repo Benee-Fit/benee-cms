@@ -409,7 +409,6 @@ const formatFieldName = (fieldName: string): string => {
     'travelCoverage': 'Travel Coverage',
     'survivorBenefit': 'Survivor Benefit',
     'poolingThreshold': 'Pooling Threshold',
-    'benefitAmount': 'Benefit Amount',
     'rateGuarantees': 'Rate Guarantees'
   };
   
