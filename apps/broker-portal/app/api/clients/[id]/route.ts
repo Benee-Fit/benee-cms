@@ -65,8 +65,12 @@ export async function GET(
       policyNumber: client.policyNumber,
       renewalDate: client.renewalDate.toISOString(),
       headcount: client.headcount,
-      premium: Number(client.premium),
-      revenue: Number(client.revenue),
+      premium: client.divisions.length > 0 
+        ? client.divisions.reduce((sum: number, div: any) => sum + Number(div.premium), 0)
+        : Number(client.premium),
+      revenue: client.divisions.length > 0 
+        ? client.divisions.reduce((sum: number, div: any) => sum + Number(div.revenue), 0)
+        : Number(client.revenue),
       industry: client.industry,
       createdAt: client.createdAt.toISOString(),
       
@@ -270,9 +274,39 @@ export async function DELETE(
   try {
     const { id } = await params;
     
-    await database.brokerClient.delete({
+    // First check if this client has divisions
+    const clientWithDivisions = await database.brokerClient.findUnique({
       where: { id },
+      include: { divisions: true }
     });
+    
+    if (!clientWithDivisions) {
+      return NextResponse.json(
+        { error: 'Client not found' },
+        { status: 404 }
+      );
+    }
+    
+    // If this is a holding company with divisions, delete all divisions first
+    if (clientWithDivisions.divisions && clientWithDivisions.divisions.length > 0) {
+      // Delete all divisions in a transaction
+      await database.$transaction(async (tx) => {
+        // Delete all divisions
+        await tx.brokerClient.deleteMany({
+          where: { parentId: id }
+        });
+        
+        // Then delete the parent holding company
+        await tx.brokerClient.delete({
+          where: { id }
+        });
+      });
+    } else {
+      // No divisions, just delete the client
+      await database.brokerClient.delete({
+        where: { id },
+      });
+    }
     
     return NextResponse.json({ success: true });
   } catch (error) {

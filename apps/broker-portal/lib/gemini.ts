@@ -39,13 +39,15 @@ export interface DocumentAnalysisResult {
   planType?: string;
   planManagementFee?: number;
   brokerCommissionSplit?: number;
-  [key: string]: string | number | undefined;
+  isHoldingCompany?: boolean;
+  divisions?: string[];
+  [key: string]: string | number | boolean | string[] | undefined;
 }
 
 export async function analyzeInsuranceDocument(
   pdfBuffer: Buffer,
   fileName: string,
-  clientData: Array<{ companyName: string; policyNumber: string }>
+  clientData: Array<{ companyName: string; policyNumber: string; parent?: string }>
 ): Promise<DocumentAnalysisResult> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -53,7 +55,7 @@ export async function analyzeInsuranceDocument(
 You are an expert insurance document processor. Analyze the uploaded PDF document and extract key information.
 
 AVAILABLE CLIENTS:
-${clientData.map((c) => `- ${c.companyName} (Policy: ${c.policyNumber})`).join('\n')}
+${clientData.map((c) => `- ${c.companyName} (Policy: ${c.policyNumber})${c.parent ? ` [Division of: ${c.parent}]` : ''}`).join('\n')}
 
 TASKS:
 1. Extract the following information from the PDF:
@@ -83,6 +85,12 @@ TASKS:
 
 5. Generate a brief summary (2-3 sentences) describing the key contents and purpose of this document
 
+6. Determine if this document is for a holding company or a division:
+   - Look for phrases like "holding company", "parent company", "divisions", "subsidiaries"
+   - Check if multiple company names/divisions are mentioned in the document
+   - If multiple divisions are listed, extract their names
+   - Set isHoldingCompany to true if this appears to be a parent company document
+
 RESPONSE FORMAT:
 You must respond with ONLY a valid JSON object in this exact format:
 {
@@ -105,7 +113,9 @@ You must respond with ONLY a valid JSON object in this exact format:
   "withCarrierSince": "YYYY-MM-DD or null",
   "planType": "Plan type or null",
   "planManagementFee": number or null,
-  "brokerCommissionSplit": number or null
+  "brokerCommissionSplit": number or null,
+  "isHoldingCompany": boolean (true if this is a holding company document),
+  "divisions": ["array of division names"] or null
 }
 
 CRITICAL REQUIREMENTS:

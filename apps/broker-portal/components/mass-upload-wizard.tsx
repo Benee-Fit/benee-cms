@@ -39,6 +39,7 @@ interface CSVClient {
   planManagementFee: number;
   hasBrokerSplit: boolean;
   brokerSplit?: number;
+  parent?: string;
 }
 
 interface ProcessingResult {
@@ -123,10 +124,11 @@ export function MassUploadWizard({ open, onClose, onSuccess }: MassUploadWizardP
       }
 
       const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-      const expectedHeaders = ['companyName', 'policyNumber', 'planManagementFee', 'hasBrokerSplit', 'brokerSplit'];
+      const requiredHeaders = ['companyName', 'policyNumber', 'planManagementFee', 'hasBrokerSplit'];
+      const optionalHeaders = ['brokerSplit', 'parent'];
       
-      // Validate headers
-      const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+      // Validate required headers
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
       if (missingHeaders.length > 0) {
         setError(`Missing required columns: ${missingHeaders.join(', ')}`);
         return;
@@ -148,6 +150,7 @@ export function MassUploadWizard({ open, onClose, onSuccess }: MassUploadWizardP
           planManagementFee: parseFloat(row.planManagementFee) || 0,
           hasBrokerSplit: row.hasBrokerSplit?.toLowerCase() === 'yes' || row.hasBrokerSplit?.toLowerCase() === 'true',
           brokerSplit: row.brokerSplit ? parseFloat(row.brokerSplit) : undefined,
+          parent: row.parent || undefined,
         });
       }
 
@@ -321,7 +324,8 @@ export function MassUploadWizard({ open, onClose, onSuccess }: MassUploadWizardP
             <div>
               <h3 className="text-lg font-semibold mb-2">Step 1: Upload Client Data</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Upload a CSV file with client information. Required columns: companyName, policyNumber, planManagementFee, hasBrokerSplit, brokerSplit
+                Upload a CSV file with client information. Required columns: companyName, policyNumber, planManagementFee, hasBrokerSplit. 
+                Optional columns: brokerSplit, parent (for divisions)
               </p>
             </div>
 
@@ -375,6 +379,7 @@ export function MassUploadWizard({ open, onClose, onSuccess }: MassUploadWizardP
                                 <strong>{client.companyName}</strong> - {client.policyNumber} - 
                                 ${client.planManagementFee} - Split: {client.hasBrokerSplit ? 'Yes' : 'No'}
                                 {client.brokerSplit && ` (${client.brokerSplit}%)`}
+                                {client.parent && ` - Parent: ${client.parent}`}
                               </div>
                             ))}
                             {csvData.length > 5 && (

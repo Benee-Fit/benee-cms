@@ -32,7 +32,23 @@ export async function GET() {
       ],
     });
     
-    return NextResponse.json(clients);
+    // Transform clients to aggregate revenue and premium for holding companies
+    const transformedClients = clients.map(client => {
+      if (client.divisions && client.divisions.length > 0) {
+        // For holding companies, aggregate revenue and premium from divisions
+        const totalRevenue = client.divisions.reduce((sum, div) => sum + Number(div.revenue || 0), 0);
+        const totalPremium = client.divisions.reduce((sum, div) => sum + Number(div.premium || 0), 0);
+        
+        return {
+          ...client,
+          revenue: totalRevenue,
+          premium: totalPremium,
+        };
+      }
+      return client;
+    });
+    
+    return NextResponse.json(transformedClients);
   } catch (error) {
     console.error('Error fetching clients:', error);
     return NextResponse.json(
