@@ -84,7 +84,7 @@ export const validateStep = (step: number, data: QuoteQuestionnaireData): boolea
     case 6: // HSA
       if (data.includesHSA === null) return false;
       if (data.includesHSA === true) {
-        return data.hsaCarrierName && data.hsaCarrierName.trim() !== '';
+        return !!data.hsaCarrierName && data.hsaCarrierName.trim() !== '';
       }
       return true; // If includesHSA is false, no carrier name needed
     
