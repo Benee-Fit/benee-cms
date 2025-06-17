@@ -158,11 +158,11 @@ export async function POST(request: NextRequest) {
         
         if (divisions.length > 0) {
           const totalPremium = Math.min(
-            divisions.reduce((sum, div) => sum + (div.premium || 0), 0),
+            divisions.reduce((sum, div) => sum + Number(div.premium || 0), 0),
             99999999.99
           );
           const totalRevenue = Math.min(
-            divisions.reduce((sum, div) => sum + (div.revenue || 0), 0),
+            divisions.reduce((sum, div) => sum + Number(div.revenue || 0), 0),
             99999999.99
           );
           
@@ -475,11 +475,11 @@ export async function POST(request: NextRequest) {
           
           if (divisions.length > 0) {
             const totalPremium = Math.min(
-              divisions.reduce((sum, div) => sum + (div.premium || 0), 0),
+              divisions.reduce((sum, div) => sum + Number(div.premium || 0), 0),
               99999999.99
             );
             const totalRevenue = Math.min(
-              divisions.reduce((sum, div) => sum + (div.revenue || 0), 0),
+              divisions.reduce((sum, div) => sum + Number(div.revenue || 0), 0),
               99999999.99
             );
             
