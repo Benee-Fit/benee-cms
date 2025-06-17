@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import SummaryStats from '../../document-parser/results/components/SummaryStats';
 import MarketComparisonView from '../../document-parser/results/components/market-comparison/MarketComparisonView';
-import CarrierOverviewCards from '../../document-parser/results/components/CarrierOverviewCards';
 import type { ParsedDocument } from '../../document-parser/types';
 
 // Enhanced transform function to properly map premium data
@@ -530,12 +529,6 @@ export default function ReportViewPage() {
                   parsedDocuments={transformedDocuments as any}
                   carriersMap={carriersMap}
                 />
-                
-                {/* Carrier Overview Cards */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
-                  <CarrierOverviewCards parsedDocuments={transformedDocuments as any} />
-                </div>
               </div>
             </div>
           );

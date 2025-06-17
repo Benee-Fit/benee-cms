@@ -3,7 +3,6 @@
 import React from 'react';
 import SummaryStats from '../app/(authenticated)/quote-tool/document-parser/results/components/SummaryStats';
 import MarketComparisonView from '../app/(authenticated)/quote-tool/document-parser/results/components/market-comparison/MarketComparisonView';
-import CarrierOverviewCards from '../app/(authenticated)/quote-tool/document-parser/results/components/CarrierOverviewCards';
 import type { ParsedDocument } from '../app/(authenticated)/quote-tool/document-parser/types';
 
 // Enhanced transform function to properly map premium data
@@ -207,12 +206,6 @@ export default function SharedReportView({ reportData }: SharedReportViewProps) 
             parsedDocuments={transformedDocuments as any}
             carriersMap={carriersMap}
           />
-          
-          {/* Carrier Overview Cards */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
-            <CarrierOverviewCards parsedDocuments={transformedDocuments as any} />
-          </div>
         </div>
       </div>
     </div>
