@@ -2,6 +2,7 @@ import { Card, CardContent } from '@repo/design-system/components/ui/card';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
 import {} from 'lucide-react';
+import React from 'react';
 import {
   validateCompanyName,
   validatePlanManagementFee,
@@ -20,8 +21,13 @@ export default function CompanyDetailsStep({
   onCompanyNameChange,
   onPlanManagementFeeChange,
 }: CompanyDetailsStepProps) {
-  const companyNameError = validateCompanyName(companyName);
-  const feeError = validatePlanManagementFee(planManagementFee);
+  const [touched, setTouched] = React.useState({
+    companyName: false,
+    planManagementFee: false,
+  });
+
+  const companyNameError = touched.companyName ? validateCompanyName(companyName) : null;
+  const feeError = touched.planManagementFee ? validatePlanManagementFee(planManagementFee) : null;
 
   const handleFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -36,89 +42,60 @@ export default function CompanyDetailsStep({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-900">
-          Company Details
-        </h2>
-        <p className="text-gray-600 mt-2">
-          Enter the company information and fee structure
-        </p>
-      </div>
-
-      <div className="space-y-2">
+    <div className="space-y-2">
         {/* Company Name */}
-        <Card>
-          <CardContent className="p-2">
-            <div className="space-y-2 px-6">
-              <div>
-                <Label htmlFor="company-name" className="text-base font-medium">
-                  Company Name *
-                </Label>
-                <p className="text-sm text-gray-600">
-                  The name of the client company
-                </p>
-              </div>
-
-              <div className="space-y-2 ">
-                <Input
-                  id="company-name"
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => onCompanyNameChange(e.target.value)}
-                  placeholder="Enter company name"
-                  className={companyNameError ? 'border-red-500' : ''}
-                />
-                {companyNameError && (
-                  <p className="text-sm text-red-600">{companyNameError}</p>
-                )}
-              </div>
+        <Card style={{ borderRadius: '8px' }}>
+          <CardContent className="p-3">
+            <div className="space-y-2">
+              <Label htmlFor="company-name" className="text-sm font-medium">
+                Company Name * 
+                <span className="text-xs text-gray-500 font-normal ml-1">The name of the client company</span>
+              </Label>
+              <Input
+                id="company-name"
+                type="text"
+                value={companyName}
+                onChange={(e) => onCompanyNameChange(e.target.value)}
+                onBlur={() => setTouched(prev => ({ ...prev, companyName: true }))}
+                placeholder="Enter company name"
+                className={companyNameError ? 'border-red-500' : ''}
+              />
+              {companyNameError && (
+                <p className="text-xs text-red-600">{companyNameError}</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Plan Management Fee */}
         <Card>
-          <CardContent className="p-2">
-            <div className="space-y-2 px-6">
-              <div>
-                <Label
-                  htmlFor="management-fee"
-                  className="text-base font-medium"
-                >
-                  Plan Management Fee *
-                </Label>
-                <p className="text-sm text-gray-600">
-                  Percentage fee for plan management
-                </p>
+          <CardContent className="p-3">
+            <div className="space-y-2">
+              <Label htmlFor="management-fee" className="text-sm font-medium">
+                Plan Management Fee * 
+                <span className="text-xs text-gray-500 font-normal ml-1">Percentage fee for plan management (0-15%)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="management-fee"
+                  type="number"
+                  min="0"
+                  max="15"
+                  step="0.1"
+                  value={planManagementFee === null ? '' : planManagementFee}
+                  onChange={handleFeeChange}
+                  onBlur={() => setTouched(prev => ({ ...prev, planManagementFee: true }))}
+                  placeholder="0.0"
+                  className={feeError ? 'border-red-500 pr-8' : 'pr-8'}
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                  %
+                </span>
               </div>
-
-              <div className="space-y-2">
-                <div className="relative">
-                  <Input
-                    id="management-fee"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={planManagementFee === null ? '' : planManagementFee}
-                    onChange={handleFeeChange}
-                    placeholder="0.0"
-                    className={feeError ? 'border-red-500 pr-8' : 'pr-8'}
-                  />
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    %
-                  </span>
-                </div>
-                {feeError && <p className="text-sm text-red-600">{feeError}</p>}
-                <p className="text-xs text-gray-500">
-                  Enter a value between 0% and 100%
-                </p>
-              </div>
+              {feeError && <p className="text-xs text-red-600">{feeError}</p>}
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

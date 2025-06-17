@@ -7,7 +7,7 @@ import {
   RadioGroupItem,
 } from '@repo/design-system/components/ui/radio-group';
 import { Plus, Trash2, UserCheck, UserX } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { BrokerSplit } from '../types';
 import { validateBrokerSplits } from '../utils/validation';
 
@@ -24,7 +24,17 @@ export default function JointCaseStep({
   onIsJointCaseChange,
   onBrokerSplitsChange,
 }: JointCaseStepProps) {
-  const [nextId, setNextId] = useState(1);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const brokerDetailsRef = useRef<HTMLDivElement>(null);
+  const nextIdRef = useRef(1);
+  
+  // Initialize nextIdRef based on existing brokers
+  useEffect(() => {
+    if (brokerSplits.length > 0) {
+      const maxId = Math.max(...brokerSplits.map(b => parseInt(b.id) || 0));
+      nextIdRef.current = maxId + 1;
+    }
+  }, []);
 
   const brokerSplitsError = isJointCase
     ? validateBrokerSplits(brokerSplits)
@@ -36,12 +46,12 @@ export default function JointCaseStep({
 
   const addBroker = () => {
     const newBroker: BrokerSplit = {
-      id: nextId.toString(),
+      id: `broker-${Date.now()}-${nextIdRef.current}`,
       name: '',
       splitPercentage: 0,
     };
     onBrokerSplitsChange([...brokerSplits, newBroker]);
-    setNextId(nextId + 1);
+    nextIdRef.current += 1;
   };
 
   const removeBroker = (id: string) => {
@@ -53,6 +63,9 @@ export default function JointCaseStep({
     field: 'name' | 'splitPercentage',
     value: string | number
   ) => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+    }
     onBrokerSplitsChange(
       brokerSplits.map((broker) =>
         broker.id === id ? { ...broker, [field]: value } : broker
@@ -72,6 +85,18 @@ export default function JointCaseStep({
       onBrokerSplitsChange([]);
     }
   };
+
+  // Scroll to broker details when isJointCase becomes true
+  useEffect(() => {
+    if (isJointCase === true && brokerDetailsRef.current) {
+      setTimeout(() => {
+        brokerDetailsRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start'
+        });
+      }, 100);
+    }
+  }, [isJointCase]);
 
   return (
     <div className="space-y-6">
@@ -151,7 +176,7 @@ export default function JointCaseStep({
       </RadioGroup>
 
       {isJointCase && (
-        <Card>
+        <Card ref={brokerDetailsRef}>
           <CardContent className="p-6">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -257,7 +282,7 @@ export default function JointCaseStep({
                         {totalPercentage.toFixed(2)}%
                       </span>
                     </div>
-                    {Math.abs(totalPercentage - 100) >= 0.01 && (
+                    {hasInteracted && Math.abs(totalPercentage - 100) >= 0.01 && (
                       <p className="text-sm text-red-600 mt-1">
                         Total must equal 100%
                       </p>
@@ -266,7 +291,7 @@ export default function JointCaseStep({
                 </div>
               )}
 
-              {brokerSplitsError && (
+              {hasInteracted && brokerSplitsError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-sm text-red-600">{brokerSplitsError}</p>
                 </div>
