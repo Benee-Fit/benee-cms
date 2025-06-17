@@ -282,11 +282,17 @@ export function ClientDetailView({ client, onBack, isLoading }: ClientDetailView
                 Edit Client
               </Button>
               <Button 
-                onClick={onBack}
+                onClick={() => {
+                  if (client.parent) {
+                    window.location.href = `/clients/${client.parent.id}`;
+                  } else {
+                    onBack();
+                  }
+                }}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Client Listing
+                {client.parent ? 'Back to Overview' : 'Back to Client Listing'}
               </Button>
             </>
           ) : (
