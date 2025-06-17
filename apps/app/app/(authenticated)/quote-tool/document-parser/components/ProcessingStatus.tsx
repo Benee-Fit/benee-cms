@@ -84,18 +84,6 @@ export default function ProcessingStatus({
     return timeEstimates[stage.id] || '~1-2 minutes';
   };
 
-  const getElapsedTime = (stage: ProcessingStage) => {
-    if (!stage.startTime) return null;
-    
-    const start = new Date(stage.startTime);
-    const end = stage.endTime ? new Date(stage.endTime) : new Date();
-    const elapsed = Math.floor((end.getTime() - start.getTime()) / 1000);
-    
-    if (elapsed < 60) return `${elapsed}s`;
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = elapsed % 60;
-    return `${minutes}m ${seconds}s`;
-  };
 
   const getRetryOptions = (stage: ProcessingStage) => {
     const retryStrategies: Record<string, Array<{label: string; value: string}>> = {
@@ -212,11 +200,6 @@ export default function ProcessingStatus({
                   {stage.status === 'in_progress' && (
                     <div className="text-blue-600">
                       {getEstimatedTime(stage)}
-                    </div>
-                  )}
-                  {getElapsedTime(stage) && (
-                    <div className="text-gray-500">
-                      ({getElapsedTime(stage)} elapsed)
                     </div>
                   )}
                 </div>
