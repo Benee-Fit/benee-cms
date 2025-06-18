@@ -146,6 +146,10 @@ export default function DocumentParserResultsPage() {
             if (actualDoc.metadata.primaryCarrierName && !actualDoc.metadata.carrierName) {
               actualDoc.metadata.carrierName = actualDoc.metadata.primaryCarrierName;
             }
+            // Ensure fileCategory is set from category field
+            if (!actualDoc.metadata.fileCategory && actualDoc.category) {
+              actualDoc.metadata.fileCategory = actualDoc.category;
+            }
           }
           
           // Check for coverages and create default if missing
@@ -240,6 +244,13 @@ export default function DocumentParserResultsPage() {
                 };
               }
             });
+          }
+          
+          // Ensure category is preserved at root level
+          if (!actualDoc.category && actualDoc.metadata?.fileCategory) {
+            actualDoc.category = actualDoc.metadata.fileCategory;
+          } else if (!actualDoc.category) {
+            actualDoc.category = 'Current';
           }
           
           return actualDoc;
