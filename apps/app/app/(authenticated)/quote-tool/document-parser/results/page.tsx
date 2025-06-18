@@ -270,7 +270,8 @@ export default function DocumentParserResultsPage() {
 
   // Navigate back to parser page
   const handleReturnToParser = () => {
-    router.push('/quote-tool/document-parser');
+    localStorage.setItem('uploadMode', 'add-more');
+    router.push('/quote-tool/document-parser?mode=add-more');
   };
 
   // Clear results and return to parser
@@ -385,25 +386,6 @@ export default function DocumentParserResultsPage() {
                     />
                   )}
                   
-                  <Button variant="outline" size="sm" onClick={toggleRawData}>
-                    {showRawData ? (
-                      <>
-                        <Database className="h-4 w-4 mr-2" />
-                        <span>Show Comparison View</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clipboard className="h-4 w-4 mr-2" />
-                        <span>Show Raw JSON</span>
-                      </>
-                    )}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleReturnToParser}>
-                    Upload More
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={handleClearAndReturn}>
-                    Clear & Return
-                  </Button>
                 </div>
               </div>
               
@@ -432,6 +414,13 @@ export default function DocumentParserResultsPage() {
                   <ComparisonContainer />
                 </div>
               )}
+              
+              {/* Bottom Action Bar */}
+              <div className="mt-6 flex justify-end">
+                <Button variant="destructive" size="sm" onClick={handleClearAndReturn}>
+                  Clear & Return
+                </Button>
+              </div>
             </div>
           )}
         </div>

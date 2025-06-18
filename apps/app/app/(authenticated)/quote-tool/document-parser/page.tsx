@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, type DragEvent, type ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '../../components/header';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
@@ -32,6 +32,11 @@ interface ProcessingStage {
 
 export default function DocumentParserPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAddingMoreFromURL = searchParams?.get('mode') === 'add-more';
+  const isAddingMoreFromStorage = typeof window !== 'undefined' && localStorage.getItem('uploadMode') === 'add-more';
+  const isAddingMore = isAddingMoreFromURL || isAddingMoreFromStorage;
+  
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,24 +69,37 @@ export default function DocumentParserPage() {
     // Set flag for existing session data
     setHasExistingSession(!!parsedDocuments || !!questionnaireResults || !!questionnaireData);
     
-    // If no parsed documents exist, clear the questionnaire data
-    if (!parsedDocuments) {
+    if (isAddingMore) {
+      // When adding more documents, load existing questionnaire data
       if (questionnaireResults) {
-        localStorage.removeItem('quoteQuestionnaireResults');
-        localStorage.removeItem('quoteQuestionnaireData'); // Also clear in-progress questionnaire data
+        try {
+          const parsedQuestionnaire = JSON.parse(questionnaireResults);
+          setQuestionnaireData(parsedQuestionnaire);
+        } catch (error) {
+          console.error('Error parsing existing questionnaire data:', error);
+        }
       }
-      setQuestionnaireData(null);
-      setProcessedResults([]);
-      setIsProcessingComplete(false);
-      setProcessingError(null);
+    } else {
+      // If no parsed documents exist, clear the questionnaire data
+      if (!parsedDocuments) {
+        if (questionnaireResults) {
+          localStorage.removeItem('quoteQuestionnaireResults');
+          localStorage.removeItem('quoteQuestionnaireData'); // Also clear in-progress questionnaire data
+        }
+        setQuestionnaireData(null);
+        setProcessedResults([]);
+        setIsProcessingComplete(false);
+        setProcessingError(null);
+      }
     }
-  }, []);
+  }, [isAddingMore]);
 
   // Reset questionnaire and processed data when starting fresh
   const resetSessionData = useCallback(() => {
     localStorage.removeItem('parsedBenefitsDocuments');
     localStorage.removeItem('quoteQuestionnaireResults');
     localStorage.removeItem('quoteQuestionnaireData');
+    localStorage.removeItem('uploadMode');
     setQuestionnaireData(null);
     setProcessedResults([]);
     setIsProcessingComplete(false);
@@ -354,8 +372,16 @@ export default function DocumentParserPage() {
       return;
     }
     
-    // Reset any previous session data when starting new processing
-    resetSessionData();
+    // Reset any previous session data when starting new processing (but preserve questionnaire when adding more)
+    if (!isAddingMore) {
+      resetSessionData();
+    } else {
+      // When adding more, only reset processing state but keep questionnaire data
+      setProcessedResults([]);
+      setIsProcessingComplete(false);
+      setProcessingError(null);
+      setShowQuestionnaire(false);
+    }
     
     setIsLoading(true);
     setError(null);
@@ -370,8 +396,10 @@ export default function DocumentParserPage() {
     setFailedFiles([]);
     setEstimatedTimeRemaining(calculateTimeRemaining(0, files.length));
     
-    // Open questionnaire modal immediately when processing starts
-    setShowQuestionnaire(true);
+    // Open questionnaire modal immediately when processing starts (unless adding more documents)
+    if (!isAddingMore) {
+      setShowQuestionnaire(true);
+    }
     
     try {
       const results: Record<string, unknown>[] = [];
@@ -461,8 +489,20 @@ export default function DocumentParserPage() {
     };
     
     // Store combined results in localStorage for the plan selection page
-    localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(results));
+    if (isAddingMore) {
+      // When adding more documents, merge with existing ones
+      const existingDocuments = localStorage.getItem('parsedBenefitsDocuments');
+      const existingResults = existingDocuments ? JSON.parse(existingDocuments) : [];
+      const mergedResults = [...existingResults, ...results];
+      localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(mergedResults));
+    } else {
+      // For new quotes, replace existing documents
+      localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(results));
+    }
     localStorage.setItem('quoteQuestionnaireResults', JSON.stringify(questionnaire));
+    
+    // Clear upload mode flag
+    localStorage.removeItem('uploadMode');
     
     // Navigate to plan selection page instead of results
     router.push('/quote-tool/plan-selection');
@@ -470,14 +510,25 @@ export default function DocumentParserPage() {
 
   return (
     <>
-      <Header pages={["Quote Tool"]} page="Start a quote">
-        <h2 className="text-xl font-semibold">Start a quote</h2>
+      <Header pages={["Quote Tool"]} page={isAddingMore ? "Add more documents" : "Start a quote"}>
+        <h2 className="text-xl font-semibold">{isAddingMore ? "Add more documents" : "Start a quote"}</h2>
       </Header>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold">Upload Documents</h2>
+        <h2 className="text-2xl font-bold">{isAddingMore ? "Add More Documents" : "Upload Documents"}</h2>
         <p className="text-muted-foreground">
-          Upload insurance quote PDFs for AI-powered parsing and comparison
+          {isAddingMore 
+            ? "Upload additional insurance quote PDFs to add to your existing comparison"
+            : "Upload insurance quote PDFs for AI-powered parsing and comparison"
+          }
         </p>
+        {isAddingMore && (
+          <div className="mt-3">
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              <Plus className="h-3 w-3 mr-1" />
+              Adding to existing quote
+            </Badge>
+          </div>
+        )}
       </div>
       
       {/* Start Fresh Button */}

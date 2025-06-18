@@ -22,11 +22,55 @@ import {
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
-import { Edit2, Save, FileDown, Plus, RotateCcw, Pencil } from 'lucide-react';
-import React, { useMemo, useState, useCallback } from 'react';
+import { Edit2, Save, FileDown, Plus, RotateCcw, Pencil, RotateCw, Type, Minus } from 'lucide-react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Import ParsedDocumentResult and Coverage types
 import type { ParsedDocumentResult, Coverage, HighLevelOverview } from '../../../types';
+
+// Custom hook for history state management (similar to useHistoryState)
+function useHistoryState<T>(initialState: T) {
+  const [history, setHistory] = useState<T[]>([initialState]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const state = history[currentIndex];
+
+  const setState = (newState: T | ((prevState: T) => T)) => {
+    const resolvedState = typeof newState === 'function' ? (newState as (prevState: T) => T)(state) : newState;
+    
+    // Remove any future history if we're not at the end
+    const newHistory = history.slice(0, currentIndex + 1);
+    newHistory.push(resolvedState);
+    
+    setHistory(newHistory);
+    setCurrentIndex(newHistory.length - 1);
+  };
+
+  const canUndo = currentIndex > 0;
+  const canRedo = currentIndex < history.length - 1;
+
+  const undo = () => {
+    if (canUndo) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const redo = () => {
+    if (canRedo) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  return {
+    state,
+    setState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  };
+}
 
 /**
  * Define coverage types that are experience rated (vs pooled)
@@ -287,15 +331,55 @@ export function PremiumComparisonTable({
   results,
   highLevelOverview,
 }: PremiumComparisonTableProps): React.ReactElement {
+  const router = useRouter();
 
   // State for per-carrier plan option selection
   const [selectedPlanOptions, setSelectedPlanOptions] = useState<Record<string, string>>({});
   
-  // State for edited cell values
-  const [editedValues, setEditedValues] = useState<Record<string, any>>({});
+  // History state management for edited values
+  const {
+    state: editedValues,
+    setState: setEditedValues,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useHistoryState<Record<string, any>>({});
   
   // State for edit mode
   const [isEditMode, setIsEditMode] = useState(false);
+  
+  // State for action feedback
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  
+  // State for font size
+  const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
+  
+  // Font size helper functions
+  const getFontSizeClass = () => {
+    switch (fontSize) {
+      case 'small': return 'text-xs';
+      case 'medium': return 'text-sm';
+      case 'large': return 'text-base';
+      default: return 'text-sm';
+    }
+  };
+  
+  const increaseFontSize = () => {
+    setFontSize(prev => {
+      if (prev === 'small') return 'medium';
+      if (prev === 'medium') return 'large';
+      return 'large';
+    });
+  };
+  
+  const decreaseFontSize = () => {
+    setFontSize(prev => {
+      if (prev === 'large') return 'medium';
+      if (prev === 'medium') return 'small';
+      return 'small';
+    });
+  };
 
   // Extract plan options per carrier
   const carrierPlanOptions = useMemo(() => {
@@ -522,7 +606,37 @@ export function PremiumComparisonTable({
   // Helper function to update edited value
   const updateEditedValue = useCallback((key: string, value: any) => {
     setEditedValues(prev => ({ ...prev, [key]: value }));
-  }, []);
+  }, [setEditedValues]);
+
+  // Enhanced undo with feedback
+  const handleUndo = () => {
+    undo();
+    setActionFeedback('Undid last change');
+    setTimeout(() => setActionFeedback(null), 2000);
+  };
+
+  // Enhanced redo with feedback
+  const handleRedo = () => {
+    redo();
+    setActionFeedback('Redid last change');
+    setTimeout(() => setActionFeedback(null), 2000);
+  };
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) handleUndo();
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        if (canRedo) handleRedo();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo]);
 
   // Helper function to parse a value to a numeric value for calculations
   const parseNumericValue = useCallback((value: string | number | null | undefined): number => {
@@ -1008,33 +1122,107 @@ export function PremiumComparisonTable({
   return (
     <Card className="w-full">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between relative">
           <CardTitle>Premium Comparison</CardTitle>
           <div className="flex items-center gap-2">
-            <Button
-              variant={isEditMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsEditMode(!isEditMode)}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              {isEditMode ? 'Exit Edit Mode' : 'Edit Mode'}
-            </Button>
-            <Button variant="outline" size="sm">
-              <Save className="h-4 w-4 mr-2" />
-              Save Report
-            </Button>
-            <Button variant="outline" size="sm">
-              <FileDown className="h-4 w-4 mr-2" />
-              Show Raw JSON
-            </Button>
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Upload More
-            </Button>
-            <Button variant="outline" size="sm">
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Clear & Return
-            </Button>
+            {/* Undo/Redo buttons with enhanced UX */}
+            {(canUndo || canRedo) && (
+              <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className={`group h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                    canUndo 
+                      ? 'hover:bg-blue-50 hover:text-blue-700 text-gray-700 hover:shadow-sm' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={canUndo ? "Undo last change (Ctrl+Z)" : "Nothing to undo"}
+                >
+                  <RotateCcw className={`h-3.5 w-3.5 mr-1.5 transition-transform duration-200 ${canUndo ? 'group-hover:-rotate-12' : ''}`} />
+                  Undo
+                </Button>
+                <div className="w-px h-5 bg-gray-200" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className={`group h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                    canRedo 
+                      ? 'hover:bg-blue-50 hover:text-blue-700 text-gray-700 hover:shadow-sm' 
+                      : 'text-gray-300 cursor-not-allowed'
+                  }`}
+                  title={canRedo ? "Redo last undone change (Ctrl+Y)" : "Nothing to redo"}
+                >
+                  <RotateCw className={`h-3.5 w-3.5 mr-1.5 transition-transform duration-200 ${canRedo ? 'group-hover:rotate-12' : ''}`} />
+                  Redo
+                </Button>
+              </div>
+            )}
+            
+            {/* Action feedback */}
+            {actionFeedback && (
+              <div className="absolute top-12 right-0 z-50 bg-green-100 border border-green-200 text-green-800 px-3 py-2 rounded-md shadow-sm text-xs font-medium animate-in fade-in slide-in-from-top-2 duration-200">
+                {actionFeedback}
+              </div>
+            )}
+            
+            {/* Font Size Controls */}
+            <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={decreaseFontSize}
+                disabled={fontSize === 'small'}
+                className={`h-8 px-2 text-xs font-medium transition-all duration-200 ${
+                  fontSize !== 'small'
+                    ? 'hover:bg-gray-50 hover:text-gray-700 text-gray-600' 
+                    : 'text-gray-300 cursor-not-allowed'
+                }`}
+                title="Decrease font size"
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <div className="flex items-center px-2">
+                <Type className="h-3 w-3 mr-1 text-gray-500" />
+                <span className="text-xs font-medium text-gray-600 min-w-[40px] text-center">
+                  {fontSize.charAt(0).toUpperCase() + fontSize.slice(1)}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={increaseFontSize}
+                disabled={fontSize === 'large'}
+                className={`h-8 px-2 text-xs font-medium transition-all duration-200 ${
+                  fontSize !== 'large'
+                    ? 'hover:bg-gray-50 hover:text-gray-700 text-gray-600' 
+                    : 'text-gray-300 cursor-not-allowed'
+                }`}
+                title="Increase font size"
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
+              <Button
+                variant={isEditMode ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  isEditMode 
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title={isEditMode ? "Exit edit mode" : "Enter edit mode"}
+              >
+                <Pencil className="h-3 w-3 mr-1.5" />
+                {isEditMode ? 'Exit Edit' : 'Edit Mode'}
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -1046,11 +1234,11 @@ export function PremiumComparisonTable({
           </div>
         )}
         <div className="overflow-x-auto border rounded-lg shadow-sm w-full">
-          <Table className="table-fixed text-sm w-full">
+          <Table className={`table-fixed ${getFontSizeClass()} w-full`}>
             <TableHeader>
               <TableRow>
                 <TableHead className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`} colSpan={2}>
-                  <div className="font-semibold text-base text-sky-600">Carrier</div>
+                  <div className={`font-semibold text-sky-600 ${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'}`}>Carrier</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
                   const selectedPlan = selectedPlanOptions[carrier.name];
@@ -1062,32 +1250,8 @@ export function PremiumComparisonTable({
                       className={`text-center px-3 py-3 border-l border-b-2 border-b-sky-500 transition-colors duration-200 hover:bg-sky-50/50 cursor-default ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
                       colSpan={2}
                     >
-                      <div className="flex flex-col items-center gap-2">
-                        <span className="font-semibold text-base text-sky-600 text-center leading-tight">{carrier.name || 'Unknown Carrier'}</span>
-                        {availableOptions.length > 0 && (
-                          <div className="w-full max-w-[180px]">
-                            <Select
-                              value={selectedPlan || ''}
-                              onValueChange={(value: string) => updateCarrierPlanOption(carrier.name, value)}
-                            >
-                              <SelectTrigger className="w-full h-8 text-xs bg-white border-gray-300 hover:border-gray-400 focus:border-sky-500">
-                                <SelectValue 
-                                  placeholder="Select plan" 
-                                  className="text-xs truncate"
-                                />
-                              </SelectTrigger>
-                              <SelectContent className="max-w-[250px]">
-                                {availableOptions.map((option) => (
-                                  <SelectItem key={option} value={option} className="text-xs">
-                                    <span className="truncate max-w-[220px] block" title={option}>
-                                      {option}
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
+                      <div className="flex flex-col items-center">
+                        <span className={`font-semibold text-sky-600 text-center leading-tight ${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'}`}>{carrier.name || 'Unknown Carrier'}</span>
                       </div>
                     </TableHead>
                   );
@@ -1095,15 +1259,15 @@ export function PremiumComparisonTable({
               </TableRow>
               <TableRow>
                 <TableHead className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 bg-background border-r z-20 border-b-2 border-b-sky-500 px-3 py-3`}>
-                  <div className="font-semibold text-sm">Benefit</div>
+                  <div className={`font-semibold ${getFontSizeClass()}`}>Benefit</div>
                 </TableHead>
                 <TableHead className="border-b-2 border-b-sky-500 text-center px-3 py-3 bg-slate-100">
-                  <div className="font-semibold text-sm">Volume</div>
+                  <div className={`font-semibold ${getFontSizeClass()}`}>Volume</div>
                 </TableHead>
                 {carriers.map((_, index) => (
                   <React.Fragment key={`subheader-${index}`}>
-                    <TableHead className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Unit Rate</TableHead>
-                    <TableHead className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>Monthly Premium</TableHead>
+                    <TableHead className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''} ${getFontSizeClass()}`}>Unit Rate</TableHead>
+                    <TableHead className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''} ${getFontSizeClass()}`}>Monthly Premium</TableHead>
                   </React.Fragment>
                 ))}
               </TableRow>
