@@ -138,14 +138,14 @@ export default function DocumentParserResultsPage() {
               ...doc,
               metadata: doc.processedData.metadata,
               coverages: doc.processedData.coverages,
-              planNotes: doc.processedData.planNotes || [],
-              // IMPORTANT: Preserve plan selection data
-              planQuoteTypes: (doc as any).planQuoteTypes,
-              quoteMeta: (doc as any).quoteMeta,
-              selectedPlans: (doc as any).selectedPlans,
-              planHSAOptions: (doc as any).planHSAOptions,
-              planHSADetails: (doc as any).planHSADetails
+              planNotes: doc.processedData.planNotes || []
             };
+            // IMPORTANT: Preserve plan selection data as additional properties
+            (actualDoc as any).planQuoteTypes = (doc as any).planQuoteTypes;
+            (actualDoc as any).quoteMeta = (doc as any).quoteMeta;
+            (actualDoc as any).selectedPlans = (doc as any).selectedPlans;
+            (actualDoc as any).planHSAOptions = (doc as any).planHSAOptions;
+            (actualDoc as any).planHSADetails = (doc as any).planHSADetails;
           }
           
           // Check for metadata and create default if missing
