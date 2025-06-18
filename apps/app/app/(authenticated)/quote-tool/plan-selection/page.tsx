@@ -13,10 +13,9 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@repo/design-system/components/ui/select';
-import { Switch } from '@repo/design-system/components/ui/switch';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
-import { Textarea } from '@repo/design-system/components/ui/textarea';
+import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { 
   FileText, 
@@ -46,21 +45,10 @@ interface DocumentWithPlans {
   processedData: any;
   selectedPlans: string[];
   planQuoteTypes: Record<string, string>; // planName -> quoteType mapping
-  includeHSA: boolean;
-  hsaDetails?: {
-    employerContribution: number;
-    employeeContribution: number;
-    maxAnnualContribution: number;
-    eligibilityRequirements: string;
-  };
+  planHSAOptions: Record<string, boolean>; // planName -> includesHSA mapping
+  planHSADetails: Record<string, { overageAmount: number; wellnessCoverage: number }>; // planName -> HSA details
 }
 
-interface HSADetails {
-  employerContribution: number;
-  employeeContribution: number;
-  maxAnnualContribution: number;
-  eligibilityRequirements: string;
-}
 
 // Quote Type Selector Component
 interface QuoteTypeSelectorProps {
@@ -78,7 +66,7 @@ function QuoteTypeSelector({
   currentQuoteType, 
   availableTypes, 
   onQuoteTypeChange, 
-  onAddCustomType 
+  onAddCustomType
 }: QuoteTypeSelectorProps) {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customTypeInput, setCustomTypeInput] = useState('');
@@ -189,9 +177,13 @@ export default function PlanSelectionPage() {
           
           // Initialize planQuoteTypes with default 'Current' for each plan
           const planQuoteTypes: Record<string, string> = {};
+          const planHSAOptions: Record<string, boolean> = {};
+          const planHSADetails: Record<string, { overageAmount: number; wellnessCoverage: number }> = {};
           detectedPlans.forEach(plan => {
             if (plan && plan.planOptionName) {
               planQuoteTypes[plan.planOptionName] = 'Current';
+              planHSAOptions[plan.planOptionName] = false;
+              planHSADetails[plan.planOptionName] = { overageAmount: 0, wellnessCoverage: 0 };
             }
           });
 
@@ -203,13 +195,8 @@ export default function PlanSelectionPage() {
             processedData: result,
             selectedPlans: [],
             planQuoteTypes,
-            includeHSA: false,
-            hsaDetails: {
-              employerContribution: 1000,
-              employeeContribution: 2000,
-              maxAnnualContribution: 4300,
-              eligibilityRequirements: 'Must be enrolled in high-deductible health plan'
-            }
+            planHSAOptions,
+            planHSADetails
           };
         });
 
@@ -330,20 +317,35 @@ export default function PlanSelectionPage() {
     ));
   };
 
-  // Update HSA inclusion
-  const updateHSAInclusion = (documentId: string, includeHSA: boolean) => {
+  // Update HSA option for a specific plan
+  const updatePlanHSAOption = (documentId: string, planName: string, includesHSA: boolean) => {
     setDocuments(prev => prev.map(doc => 
       doc.documentId === documentId 
-        ? { ...doc, includeHSA }
+        ? { 
+            ...doc, 
+            planHSAOptions: {
+              ...(doc.planHSAOptions || {}),
+              [planName]: includesHSA
+            }
+          }
         : doc
     ));
   };
 
-  // Update HSA details
-  const updateHSADetails = (documentId: string, hsaDetails: HSADetails) => {
+  // Update HSA details for a specific plan
+  const updatePlanHSADetails = (documentId: string, planName: string, field: 'overageAmount' | 'wellnessCoverage', value: number) => {
     setDocuments(prev => prev.map(doc => 
       doc.documentId === documentId 
-        ? { ...doc, hsaDetails }
+        ? { 
+            ...doc, 
+            planHSADetails: {
+              ...(doc.planHSADetails || {}),
+              [planName]: {
+                ...(doc.planHSADetails?.[planName] || { overageAmount: 0, wellnessCoverage: 0 }),
+                [field]: value
+              }
+            }
+          }
         : doc
     ));
   };
@@ -379,9 +381,9 @@ export default function PlanSelectionPage() {
             fileName: doc.fileName,
             carrierName: doc.carrierName,
             planQuoteTypes: doc.planQuoteTypes || {},
+            planHSAOptions: doc.planHSAOptions || {},
+            planHSADetails: doc.planHSADetails || {},
             selectedPlans: doc.selectedPlans,
-            includeHSA: doc.includeHSA,
-            hsaDetails: doc.hsaDetails,
             processedData: doc.processedData
           }))
         })
@@ -396,8 +398,8 @@ export default function PlanSelectionPage() {
         ...doc.processedData,
         selectedPlans: doc.selectedPlans,
         planQuoteTypes: doc.planQuoteTypes || {},
-        includeHSA: doc.includeHSA,
-        hsaDetails: doc.hsaDetails
+        planHSAOptions: doc.planHSAOptions || {},
+        planHSADetails: doc.planHSADetails || {}
       }));
 
       localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(filteredDocuments));
@@ -494,145 +496,143 @@ export default function PlanSelectionPage() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {document.detectedPlans.map((plan) => (
-                          <div
-                            key={plan.planOptionName}
-                            className={`border rounded-lg p-4 transition-colors ${
-                              document.selectedPlans.includes(plan.planOptionName)
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                          >
-                            <div className="flex flex-col h-full space-y-3">
-                              {/* Plan Header */}
-                              <div 
-                                className="cursor-pointer"
-                                onClick={() => {
-                                  const isSelected = document.selectedPlans.includes(plan.planOptionName);
-                                  if (isSelected) {
-                                    // Deselect if clicking the already selected plan
-                                    updateSelectedPlans(document.documentId, []);
-                                  } else {
-                                    // Select only this plan (single selection)
-                                    updateSelectedPlans(document.documentId, [plan.planOptionName]);
-                                  }
-                                }}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1">
-                                    <h4 className="font-medium">{plan.planOptionName}</h4>
-                                    <div className="mt-2">
-                                      <QuoteTypeSelector
-                                        documentId={document.documentId}
-                                        planName={plan.planOptionName}
-                                        currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current'}
-                                        availableTypes={getAvailableQuoteTypes()}
-                                        onQuoteTypeChange={updateQuoteType}
-                                        onAddCustomType={addCustomQuoteType}
-                                      />
+                          <div key={plan.planOptionName} className="space-y-2">
+                            {/* Plan Card */}
+                            <div
+                              className={`border rounded-lg p-4 transition-colors ${
+                                document.selectedPlans.includes(plan.planOptionName)
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/50'
+                              }`}
+                            >
+                              <div className="flex flex-col h-full space-y-3">
+                                {/* Plan Header */}
+                                <div 
+                                  className="cursor-pointer"
+                                  onClick={() => {
+                                    const isSelected = document.selectedPlans.includes(plan.planOptionName);
+                                    if (isSelected) {
+                                      // Deselect this plan (remove from array)
+                                      updateSelectedPlans(document.documentId, document.selectedPlans.filter(p => p !== plan.planOptionName));
+                                    } else {
+                                      // Add this plan to selection (multiple selection)
+                                      updateSelectedPlans(document.documentId, [...document.selectedPlans, plan.planOptionName]);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <h4 className="font-medium">{plan.planOptionName}</h4>
+                                      <div className="mt-2">
+                                        <QuoteTypeSelector
+                                          documentId={document.documentId}
+                                          planName={plan.planOptionName}
+                                          currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current'}
+                                          availableTypes={getAvailableQuoteTypes()}
+                                          onQuoteTypeChange={updateQuoteType}
+                                          onAddCustomType={addCustomQuoteType}
+                                        />
+                                      </div>
+                                      {document.selectedPlans.includes(plan.planOptionName) && (
+                                        <Badge variant="default" className="text-xs mt-1 opacity-70">Selected</Badge>
+                                      )}
                                     </div>
-                                    {document.selectedPlans.includes(plan.planOptionName) && (
-                                      <Badge variant="default" className="text-xs mt-1">Selected</Badge>
-                                    )}
+                                    <div className="text-lg font-semibold text-primary whitespace-nowrap">
+                                      ${plan.totalMonthlyPremium.toLocaleString()}/mo
+                                    </div>
                                   </div>
-                                  <div className="text-lg font-semibold text-primary whitespace-nowrap">
-                                    ${plan.totalMonthlyPremium.toLocaleString()}/mo
+                                  
+                                  {plan.rateGuarantee && (
+                                    <div className="flex items-center space-x-1 text-sm text-muted-foreground mt-2">
+                                      <Shield className="h-3 w-3" />
+                                      <span>{plan.rateGuarantee}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {plan.coverageTypes.map((coverage) => (
+                                      <Badge key={coverage} variant="outline" className="text-xs opacity-70">
+                                        {coverage}
+                                      </Badge>
+                                    ))}
                                   </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* HSA Option - Outside but visually connected */}
+                            <div className="ml-4 pl-4 border-l-2 border-muted">
+                              <div className="space-y-3">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`hsa-${document.documentId}-${plan.planOptionName}`}
+                                    checked={document.planHSAOptions?.[plan.planOptionName] || false}
+                                    onCheckedChange={(checked) => updatePlanHSAOption(document.documentId, plan.planOptionName, !!checked)}
+                                  />
+                                  <Label 
+                                    htmlFor={`hsa-${document.documentId}-${plan.planOptionName}`}
+                                    className="text-sm text-muted-foreground cursor-pointer"
+                                  >
+                                    Includes HSA
+                                  </Label>
                                 </div>
                                 
-                                {plan.rateGuarantee && (
-                                  <div className="flex items-center space-x-1 text-sm text-muted-foreground mt-2">
-                                    <Shield className="h-3 w-3" />
-                                    <span>{plan.rateGuarantee}</span>
+                                {/* HSA Details - Show when HSA is selected */}
+                                {document.planHSAOptions?.[plan.planOptionName] && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-muted/30 rounded-md">
+                                    <div className="space-y-1">
+                                      <Label 
+                                        htmlFor={`overage-${document.documentId}-${plan.planOptionName}`}
+                                        className="text-xs font-medium"
+                                      >
+                                        Overage amount for HSA ($)
+                                      </Label>
+                                      <Input
+                                        id={`overage-${document.documentId}-${plan.planOptionName}`}
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={document.planHSADetails?.[plan.planOptionName]?.overageAmount || 0}
+                                        onChange={(e) => updatePlanHSADetails(
+                                          document.documentId, 
+                                          plan.planOptionName, 
+                                          'overageAmount', 
+                                          Number(e.target.value)
+                                        )}
+                                        className="h-8 text-sm"
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                    
+                                    <div className="space-y-1">
+                                      <Label 
+                                        htmlFor={`wellness-${document.documentId}-${plan.planOptionName}`}
+                                        className="text-xs font-medium"
+                                      >
+                                        Coverage amount for Wellness plan ($)
+                                      </Label>
+                                      <Input
+                                        id={`wellness-${document.documentId}-${plan.planOptionName}`}
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={document.planHSADetails?.[plan.planOptionName]?.wellnessCoverage || 0}
+                                        onChange={(e) => updatePlanHSADetails(
+                                          document.documentId, 
+                                          plan.planOptionName, 
+                                          'wellnessCoverage', 
+                                          Number(e.target.value)
+                                        )}
+                                        className="h-8 text-sm"
+                                        placeholder="0.00"
+                                      />
+                                    </div>
                                   </div>
                                 )}
-
-                                <div className="flex flex-wrap gap-1 mt-2">
-                                  {plan.coverageTypes.map((coverage) => (
-                                    <Badge key={coverage} variant="outline" className="text-xs">
-                                      {coverage}
-                                    </Badge>
-                                  ))}
-                                </div>
                               </div>
                             </div>
                           </div>
                         ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* HSA Configuration */}
-                  <div className="space-y-4 pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor={`hsa-${document.documentId}`}>Include Health Spending Account (HSA)</Label>
-                      <Switch
-                        id={`hsa-${document.documentId}`}
-                        checked={document.includeHSA}
-                        onCheckedChange={(checked) => updateHSAInclusion(document.documentId, checked)}
-                      />
-                    </div>
-
-                    {document.includeHSA && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                        <div className="space-y-2">
-                          <Label htmlFor={`employer-contrib-${document.documentId}`}>
-                            Employer Contribution ($)
-                          </Label>
-                          <Input
-                            id={`employer-contrib-${document.documentId}`}
-                            type="number"
-                            value={document.hsaDetails?.employerContribution || 0}
-                            onChange={(e) => updateHSADetails(document.documentId, {
-                              ...document.hsaDetails!,
-                              employerContribution: Number(e.target.value)
-                            })}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`employee-contrib-${document.documentId}`}>
-                            Employee Contribution ($)
-                          </Label>
-                          <Input
-                            id={`employee-contrib-${document.documentId}`}
-                            type="number"
-                            value={document.hsaDetails?.employeeContribution || 0}
-                            onChange={(e) => updateHSADetails(document.documentId, {
-                              ...document.hsaDetails!,
-                              employeeContribution: Number(e.target.value)
-                            })}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`max-contrib-${document.documentId}`}>
-                            Max Annual Contribution ($)
-                          </Label>
-                          <Input
-                            id={`max-contrib-${document.documentId}`}
-                            type="number"
-                            value={document.hsaDetails?.maxAnnualContribution || 0}
-                            onChange={(e) => updateHSADetails(document.documentId, {
-                              ...document.hsaDetails!,
-                              maxAnnualContribution: Number(e.target.value)
-                            })}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor={`eligibility-${document.documentId}`}>
-                            Eligibility Requirements
-                          </Label>
-                          <Textarea
-                            id={`eligibility-${document.documentId}`}
-                            value={document.hsaDetails?.eligibilityRequirements || ''}
-                            onChange={(e) => updateHSADetails(document.documentId, {
-                              ...document.hsaDetails!,
-                              eligibilityRequirements: e.target.value
-                            })}
-                            rows={2}
-                          />
-                        </div>
                       </div>
                     )}
                   </div>

@@ -20,8 +20,9 @@ import {
   TableRow,
 } from '@repo/design-system/components/ui/table';
 import { Badge } from '@repo/design-system/components/ui/badge';
+import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
-import { Edit2 } from 'lucide-react';
+import { Edit2, Save, FileDown, Plus, RotateCcw, Pencil } from 'lucide-react';
 import React, { useMemo, useState, useCallback } from 'react';
 
 // Import ParsedDocumentResult and Coverage types
@@ -178,6 +179,7 @@ interface EditableTableCellProps {
   isNumeric?: boolean;
   className?: string;
   isCurrency?: boolean;
+  isEditMode?: boolean;
 }
 
 const EditableTableCell: React.FC<EditableTableCellProps> = ({ 
@@ -185,7 +187,8 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
   onUpdate, 
   isNumeric = false,
   className = '',
-  isCurrency = false
+  isCurrency = false,
+  isEditMode = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   
@@ -258,11 +261,13 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
 
   return (
     <div 
-      className="group relative cursor-pointer hover:bg-blue-50 rounded px-2 py-1"
-      onClick={() => setIsEditing(true)}
+      className={`group relative ${isEditMode ? 'cursor-pointer hover:bg-blue-50' : ''} rounded px-2 py-1`}
+      onClick={() => isEditMode && setIsEditing(true)}
     >
       <span className={className}>{value}</span>
-      <Edit2 className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      {isEditMode && (
+        <Edit2 className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      )}
     </div>
   );
 };
@@ -288,6 +293,9 @@ export function PremiumComparisonTable({
   
   // State for edited cell values
   const [editedValues, setEditedValues] = useState<Record<string, any>>({});
+  
+  // State for edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Extract plan options per carrier
   const carrierPlanOptions = useMemo(() => {
@@ -1000,7 +1008,35 @@ export function PremiumComparisonTable({
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Premium Comparison</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Premium Comparison</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isEditMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsEditMode(!isEditMode)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              {isEditMode ? 'Exit Edit Mode' : 'Edit Mode'}
+            </Button>
+            <Button variant="outline" size="sm">
+              <Save className="h-4 w-4 mr-2" />
+              Save Report
+            </Button>
+            <Button variant="outline" size="sm">
+              <FileDown className="h-4 w-4 mr-2" />
+              Show Raw JSON
+            </Button>
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Upload More
+            </Button>
+            <Button variant="outline" size="sm">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Clear & Return
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <HighLevelOverviewSection />
@@ -1149,6 +1185,7 @@ export function PremiumComparisonTable({
                             onUpdate={(value) => updateEditedValue(`${row.key}-volume`, value)}
                             isNumeric={true}
                             className="text-sm"
+                            isEditMode={isEditMode}
                           />
                         ) : (
                           <div className="text-sm break-words leading-relaxed">
@@ -1172,6 +1209,7 @@ export function PremiumComparisonTable({
                             onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-unitRate`, value)}
                             isNumeric={true}
                             className="text-sm"
+                            isEditMode={isEditMode}
                           />
                         ) : (
                           <div className="text-sm break-words leading-relaxed">
@@ -1192,6 +1230,7 @@ export function PremiumComparisonTable({
                             isNumeric={true}
                             isCurrency={true}
                             className={`${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'} ${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
+                            isEditMode={isEditMode}
                           />
                         ) : (
                           <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>

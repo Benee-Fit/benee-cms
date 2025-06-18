@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@repo/design-system/components/ui/alert';
-import { Info, AlertCircle } from 'lucide-react';
+import { Button } from '@repo/design-system/components/ui/button';
+import { Textarea } from '@repo/design-system/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
+import { Info, AlertCircle, Save } from 'lucide-react';
 import MarketComparisonView from './market-comparison/MarketComparisonView';
-import CarrierOverviewCards from './CarrierOverviewCards';
 
 // Define the parsed document type
 interface ParsedDocument {
@@ -48,6 +50,9 @@ export default function ComparisonContainer() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [availableCarriers, setAvailableCarriers] = useState<string[]>([]);
+  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(() => {
     try {
@@ -72,6 +77,12 @@ export default function ComparisonContainer() {
         }
         
         setAvailableCarriers(Array.from(carriers));
+      }
+      
+      // Load saved notes from localStorage
+      const savedNotes = localStorage.getItem('quoteToolAdditionalNotes');
+      if (savedNotes) {
+        setAdditionalNotes(savedNotes);
       }
     } catch (e) {
       // Error is captured in state variable instead of console
@@ -107,6 +118,24 @@ export default function ComparisonContainer() {
     );
   }
 
+  const handleSaveNotes = () => {
+    setIsSavingNotes(true);
+    setNotesSaved(false);
+    
+    // Save to localStorage
+    localStorage.setItem('quoteToolAdditionalNotes', additionalNotes);
+    
+    // Simulate save delay for better UX
+    setTimeout(() => {
+      setIsSavingNotes(false);
+      setNotesSaved(true);
+      
+      // Hide saved message after 3 seconds
+      setTimeout(() => {
+        setNotesSaved(false);
+      }, 3000);
+    }, 500);
+  };
 
   return (
     <div className="space-y-8">
@@ -123,11 +152,34 @@ export default function ComparisonContainer() {
         />
       </div>
       
-      {/* Carrier Overview Cards */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Carrier Summary</h3>
-        <CarrierOverviewCards parsedDocuments={parsedDocuments} />
-      </div>
+      {/* Additional Notes Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Additional Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
+            placeholder="Enter any additional notes or comments about this quote comparison..."
+            className="min-h-[200px] resize-y"
+          />
+          <div className="flex items-center justify-between">
+            <div>
+              {notesSaved && (
+                <p className="text-sm text-green-600">Notes saved successfully!</p>
+              )}
+            </div>
+            <Button 
+              onClick={handleSaveNotes}
+              disabled={isSavingNotes}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSavingNotes ? 'Saving...' : 'Save Notes'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

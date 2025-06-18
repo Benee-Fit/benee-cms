@@ -20,8 +20,8 @@ export const validatePlanManagementFee = (fee: number | null): string | null => 
   if (fee < 0) {
     return 'Plan management fee cannot be negative';
   }
-  if (fee > 100) {
-    return 'Plan management fee cannot exceed 100%';
+  if (fee > 15) {
+    return 'Plan management fee cannot exceed 15%';
   }
   return null;
 };
@@ -78,8 +78,15 @@ export const validateStep = (step: number, data: QuoteQuestionnaireData): boolea
       }
       return true;
     
-    case 5: // Quote Origin
-      return data.quoteRequestOrigin !== null;
+    case 5: // Quote Origin (including subcategory)
+      return data.quoteRequestOrigin !== null && data.quoteRequestOriginSubcategory !== null && data.quoteRequestOriginSubcategory !== '';
+    
+    case 6: // HSA
+      if (data.includesHSA === null) return false;
+      if (data.includesHSA === true) {
+        return !!data.hsaCarrierName && data.hsaCarrierName.trim() !== '';
+      }
+      return true; // If includesHSA is false, no carrier name needed
     
     default:
       return false;
@@ -89,7 +96,7 @@ export const validateStep = (step: number, data: QuoteQuestionnaireData): boolea
 export const getCompletedSteps = (data: QuoteQuestionnaireData): number[] => {
   const completed: number[] = [];
   
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 6; i++) {
     if (validateStep(i, data)) {
       completed.push(i);
     }
@@ -99,5 +106,5 @@ export const getCompletedSteps = (data: QuoteQuestionnaireData): number[] => {
 };
 
 export const isQuestionnaireComplete = (data: QuoteQuestionnaireData): boolean => {
-  return getCompletedSteps(data).length === 5;
+  return getCompletedSteps(data).length === 6;
 };

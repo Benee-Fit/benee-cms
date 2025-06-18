@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@repo/design-system/components/ui/dialog';
+import { VisuallyHidden } from '@repo/design-system/components/ui/visually-hidden';
 import { Progress } from '@repo/design-system/components/ui/progress';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ import CompanyDetailsStep from './steps/CompanyDetailsStep';
 import JointCaseStep from './steps/JointCaseStep';
 import OpportunityTypeStep from './steps/OpportunityTypeStep';
 import QuoteOriginStep from './steps/QuoteOriginStep';
+import HSAStep from './steps/HSAStep';
 
 import type {
   QuoteQuestionnaireData,
@@ -33,6 +35,9 @@ const initialData: QuoteQuestionnaireData = {
   isJointCase: null,
   brokerSplits: [],
   quoteRequestOrigin: null,
+  quoteRequestOriginSubcategory: null,
+  includesHSA: null,
+  hsaCarrierName: '',
 };
 
 const steps = [
@@ -40,7 +45,8 @@ const steps = [
   { id: 2, title: 'Opportunity', description: '' },
   { id: 3, title: 'Company Details', description: '' },
   { id: 4, title: 'Joint Case', description: '' },
-  { id: 5, title: 'Quote Origin', description: '' },
+  { id: 5, title: 'Source', description: '' },
+  { id: 6, title: 'Includes HSA?', description: '' },
 ];
 
 export default function QuoteQuestionnaireModal({
@@ -265,7 +271,18 @@ export default function QuoteQuestionnaireModal({
         return (
           <QuoteOriginStep
             value={data.quoteRequestOrigin}
-            onChange={(value) => updateData({ quoteRequestOrigin: value })}
+            onChange={(value) => updateData({ quoteRequestOrigin: value, quoteRequestOriginSubcategory: null })}
+            subValue={data.quoteRequestOriginSubcategory}
+            onSubValueChange={(value) => updateData({ quoteRequestOriginSubcategory: value })}
+          />
+        );
+      case 6:
+        return (
+          <HSAStep
+            includesHSA={data.includesHSA}
+            hsaCarrierName={data.hsaCarrierName}
+            onIncludesHSAChange={(value) => updateData({ includesHSA: value, hsaCarrierName: value ? data.hsaCarrierName : '' })}
+            onHSACarrierNameChange={(value) => updateData({ hsaCarrierName: value })}
           />
         );
       default:
@@ -275,68 +292,78 @@ export default function QuoteQuestionnaireModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0 pb-4">
-          <DialogTitle className="text-xl font-semibold">
-            Quote Information
+      <DialogContent className="max-w-4xl w-[85vw] max-h-[85vh] flex flex-col">
+        {/* Visually hidden title for accessibility */}
+        <VisuallyHidden>
+          <DialogTitle>
+            Quote Questionnaire - Question {currentStep} of {steps.length}: {currentStep <= steps.length ? steps[currentStep - 1]?.title : ''}
           </DialogTitle>
-          <DialogDescription>
-            Please provide details while we process your documents
-          </DialogDescription>
-        </DialogHeader>
+        </VisuallyHidden>
 
-        {/* Progress Bar */}
-        <div className="flex-shrink-0 space-y-4 pb-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              Step {currentStep} of {steps.length}
-            </span>
-            <span className="text-gray-600">
-              {completedSteps} of {steps.length} completed
-            </span>
+        {/* Simplified header with just question counter */}
+        <div className="flex-shrink-0 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="text-lg font-semibold text-gray-900">
+              Question {currentStep} of {steps.length}
+            </div>
+            <Badge variant="outline" className="text-sm">
+              {completedSteps}/{steps.length} completed
+            </Badge>
           </div>
-          <Progress value={progress} className="w-full" />
         </div>
 
-        {/* Step Indicators */}
-        <div className="flex-shrink-0 flex items-center justify-between pb-6 border-b">
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className={`flex flex-col items-center space-y-2 cursor-pointer ${
-                step.id <= currentStep ? '' : 'opacity-50'
-              }`}
-              onClick={() => handleStepClick(step.id)}
-            >
-              <div
-                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
-                  isStepCompleted(step.id)
-                    ? 'bg-green-500 border-green-500 text-white'
-                    : step.id === currentStep
-                      ? 'border-blue-500 text-blue-500'
-                      : 'border-gray-300 text-gray-400'
-                }`}
-              >
-                {isStepCompleted(step.id) ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : (
-                  <span className="text-xs font-medium">{step.id}</span>
+        {/* Simplified Progress Bar */}
+        <div className="flex-shrink-0 pb-4">
+          <Progress value={progress} className="w-full h-2" />
+        </div>
+
+        {/* Improved Step Indicators */}
+        <div className="flex-shrink-0 pb-6 border-b">
+          <div className="flex items-start justify-center">
+            {steps.map((step, index) => (
+              <div key={step.id} className="flex items-start">
+                {/* Step Circle and Label */}
+                <div
+                  className={`flex flex-col items-center cursor-pointer transition-all duration-200 px-2 ${
+                    step.id <= currentStep ? 'hover:scale-105' : 'opacity-50'
+                  }`}
+                  onClick={() => handleStepClick(step.id)}
+                >
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors mb-2 ${
+                      isStepCompleted(step.id)
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : step.id === currentStep
+                          ? 'border-blue-500 text-blue-500 bg-blue-50'
+                          : 'border-gray-300 text-gray-400'
+                    }`}
+                  >
+                    {isStepCompleted(step.id) ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <span className="text-xs font-semibold">{step.id}</span>
+                    )}
+                  </div>
+                  <div
+                    className={`text-xs font-medium text-center max-w-[80px] leading-tight ${
+                      step.id === currentStep ? 'text-blue-600' : 'text-gray-600'
+                    }`}
+                  >
+                    {step.title}
+                  </div>
+                </div>
+                
+                {/* Connecting Line */}
+                {index < steps.length - 1 && (
+                  <div 
+                    className={`h-0.5 min-w-[40px] max-w-[60px] mx-2 mt-4 ${
+                      isStepCompleted(step.id) ? 'bg-green-300' : 'bg-gray-200'
+                    }`} 
+                  />
                 )}
               </div>
-              <div className="text-center">
-                <div
-                  className={`text-xs font-medium ${
-                    step.id === currentStep ? 'text-blue-600' : 'text-gray-600'
-                  }`}
-                >
-                  {step.title}
-                </div>
-                <div className="text-xs text-gray-500 max-w-20 leading-tight">
-                  {step.description}
-                </div>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Step Content */}

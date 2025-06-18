@@ -409,7 +409,6 @@ const formatFieldName = (fieldName: string): string => {
     'travelCoverage': 'Travel Coverage',
     'survivorBenefit': 'Survivor Benefit',
     'poolingThreshold': 'Pooling Threshold',
-    'benefitAmount': 'Benefit Amount',
     'rateGuarantees': 'Rate Guarantees'
   };
   
@@ -480,7 +479,7 @@ const SortableRow: React.FC<{
       style={style}
       className={`group ${isDragging ? 'opacity-50' : ''}`}
     >
-      <TableCell className="sticky left-0 bg-background z-10 border-r font-medium">
+      <TableCell className="sticky left-0 bg-background z-10 border-r font-medium min-w-[200px] w-[200px] p-4">
         <div className="flex items-center space-x-2">
           {/* Drag handle */}
           <div
@@ -575,7 +574,7 @@ const SortableRow: React.FC<{
         const hasVariance = allValues.length > 1 && !allValues.every(v => v === allValues[0]);
         
         return (
-          <TableCell key={index} className={`align-top p-4 min-w-[250px] max-w-[350px] overflow-hidden transition-colors duration-200 ${index % 2 === 1 ? 'bg-slate-100 hover:bg-sky-50/50' : 'hover:bg-sky-50/50'}`}>
+          <TableCell key={index} className="align-top p-4 min-w-[280px] w-[280px] border-r last:border-r-0 hover:bg-sky-50/50 transition-colors">
             <div className={`break-words whitespace-normal ${hasVariance ? 'font-medium' : ''} ${isPremiumField ? 'text-green-700' : ''}`}>
               <DetailRenderer 
                 details={displayValue}
@@ -846,10 +845,10 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
   // Get ordered fields (use custom order or default)
   const orderedFields = tableState.fieldOrder.length > 0 ? tableState.fieldOrder : allBenefitFields;
 
-  return (
+  return ( 
     <Card className="shadow-sm overflow-hidden">
-      <CardHeader className="bg-muted/30 pb-4">
-        <div className="flex justify-between items-center">
+      <CardHeader className="bg-muted/30 pb-4 pt-6">
+        <div className="flex justify-between items-center gap-4">
           <CardTitle>Plan Comparison</CardTitle>
           <div className="flex items-center gap-2">
             {/* Undo/Redo buttons with enhanced UX */}
@@ -933,16 +932,16 @@ const PlanComparisonTab: FC<PlanComparisonTabProps> = ({ results = [] }) => {
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <Table className="table-auto w-full [&_tr:nth-child(even)]:bg-muted/30">
+                <Table className="w-full border-collapse">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="sticky left-0 bg-background z-10 border-r border-b-2 border-b-sky-500">
-                        <div className="font-semibold">Benefit Detail</div>
+                      <TableHead className="sticky left-0 bg-background z-20 border-r min-w-[200px] w-[200px] p-4">
+                        <div className="font-semibold text-left">Benefit Detail</div>
                       </TableHead>
                       {carriers.map((carrier, index) => (
-                        <TableHead key={carrier.id} className={`min-w-[250px] max-w-[350px] border-b-2 border-b-sky-500 ${index % 2 === 1 ? 'bg-slate-100' : ''}`}>
-                          <div className="flex flex-col items-center justify-center gap-1.5 p-2">
-                            <div className="font-semibold text-sm text-center text-sky-600">{carrier.name}</div>
+                        <TableHead key={carrier.id} className="min-w-[280px] w-[280px] p-4 text-center border-r last:border-r-0">
+                          <div className="font-semibold text-sky-700">
+                            {carrier.name}
                           </div>
                         </TableHead>
                       ))}
