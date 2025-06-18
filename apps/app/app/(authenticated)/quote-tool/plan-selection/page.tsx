@@ -176,13 +176,15 @@ export default function PlanSelectionPage() {
           const carrierName = extractCarrierName(result);
           const detectedPlans = extractPlansFromResult(result);
           
-          // Initialize planQuoteTypes with default 'Current' for each plan
+          // Initialize planQuoteTypes - only first plan of first document gets 'Current'
           const planQuoteTypes: Record<string, string> = {};
           const planHSAOptions: Record<string, boolean> = {};
           const planHSADetails: Record<string, { overageAmount: number; wellnessCoverage: number }> = {};
-          detectedPlans.forEach(plan => {
+          let isFirstPlan = index === 0;
+          detectedPlans.forEach((plan, planIndex) => {
             if (plan && plan.planOptionName) {
-              planQuoteTypes[plan.planOptionName] = 'Current';
+              // Only set the first plan of the first document as 'Current'
+              planQuoteTypes[plan.planOptionName] = (isFirstPlan && planIndex === 0) ? 'Current' : 'Alternative';
               planHSAOptions[plan.planOptionName] = false;
               planHSADetails[plan.planOptionName] = { overageAmount: 0, wellnessCoverage: 0 };
             }
@@ -283,17 +285,41 @@ export default function PlanSelectionPage() {
 
   // Update quote type for a specific plan
   const updateQuoteType = (documentId: string, planName: string, quoteType: string) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.documentId === documentId 
-        ? { 
-            ...doc, 
-            planQuoteTypes: {
-              ...(doc.planQuoteTypes || {}),
-              [planName]: quoteType
+    setDocuments(prev => {
+      // If setting a plan to "Current", first remove "Current" from all other plans
+      if (quoteType === 'Current') {
+        return prev.map(doc => {
+          const updatedQuoteTypes = { ...doc.planQuoteTypes };
+          
+          // Remove "Current" from all plans
+          Object.keys(updatedQuoteTypes).forEach(plan => {
+            if (updatedQuoteTypes[plan] === 'Current') {
+              updatedQuoteTypes[plan] = 'Alternative'; // Default to Alternative when removing Current
             }
+          });
+          
+          // Set the selected plan to "Current" if it's in this document
+          if (doc.documentId === documentId) {
+            updatedQuoteTypes[planName] = 'Current';
           }
-        : doc
-    ));
+          
+          return { ...doc, planQuoteTypes: updatedQuoteTypes };
+        });
+      } else {
+        // For non-Current quote types, just update normally
+        return prev.map(doc => 
+          doc.documentId === documentId 
+            ? { 
+                ...doc, 
+                planQuoteTypes: {
+                  ...(doc.planQuoteTypes || {}),
+                  [planName]: quoteType
+                }
+              }
+            : doc
+        );
+      }
+    });
   };
 
   // Add custom quote type
@@ -303,10 +329,29 @@ export default function PlanSelectionPage() {
     }
   };
 
-  // Get all available quote types
-  const getAvailableQuoteTypes = () => {
-    const defaultTypes = ['Current', 'Go To Market', 'Negotiated', 'Alternative'];
-    return [...defaultTypes, ...customQuoteTypes];
+  // Check if any plan across all documents is set to "Current"
+  const hasCurrentPlan = () => {
+    return documents.some(doc => 
+      Object.values(doc.planQuoteTypes || {}).includes('Current')
+    );
+  };
+
+  // Get available quote types for a specific plan
+  const getAvailableQuoteTypesForPlan = (documentId: string, planName: string) => {
+    const defaultTypes = ['Go To Market', 'Negotiated', 'Alternative'];
+    const allTypes = [...defaultTypes, ...customQuoteTypes];
+    
+    // Check if this plan is already set to Current
+    const isPlanCurrent = documents.find(doc => doc.documentId === documentId)
+      ?.planQuoteTypes?.[planName] === 'Current';
+    
+    // If this plan is Current, or if no plan is Current, include "Current" as an option
+    if (isPlanCurrent || !hasCurrentPlan()) {
+      return ['Current', ...allTypes];
+    }
+    
+    // Otherwise, exclude "Current" from options
+    return allTypes;
   };
 
   // Update selected plans for a document
@@ -358,13 +403,6 @@ export default function PlanSelectionPage() {
 
   // Save selections and proceed
   const handleProceedToComparison = async () => {
-    // Validate that at least one document has selected plans
-    const documentsWithSelections = documents.filter(doc => doc.selectedPlans.length > 0);
-    
-    if (documentsWithSelections.length === 0) {
-      setError('Please select at least one plan from any document to proceed.');
-      return;
-    }
 
     setIsSaving(true);
     setError(null);
@@ -439,16 +477,13 @@ export default function PlanSelectionPage() {
       <div className="space-y-6">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-2xl font-bold">Select Plans for Comparison</h2>
-            <div className="text-sm text-muted-foreground">
-              Select at least one plan to continue
-            </div>
+            <h2 className="text-2xl font-bold">Review Plans</h2>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <p className="text-sm text-blue-800">
-                Click on plan cards to select them. You can select multiple plans and configure HSA options for each.
+                Review detected plans and configure quote types and HSA options. Only one plan can be marked as "Current" at a time.
               </p>
             </div>
           </div>
@@ -503,128 +538,138 @@ export default function PlanSelectionPage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label className="text-lg font-medium">Available Plans</Label>
-                      <div className="text-sm text-muted-foreground">
-                        {document.selectedPlans.length} of {document.detectedPlans.length} selected
-                      </div>
                     </div>
                     {document.detectedPlans.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No plans detected in this document.</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {document.detectedPlans.map((plan) => {
-                          const isSelected = document.selectedPlans.includes(plan.planOptionName);
+                          const isCurrent = document.planQuoteTypes?.[plan.planOptionName] === 'Current';
                           return (
                             <div 
                               key={plan.planOptionName} 
-                              className={`
-                                relative border-2 rounded-lg p-4 cursor-pointer transition-all duration-200
-                                ${isSelected 
-                                  ? 'border-primary bg-primary/5 shadow-md' 
-                                  : 'border-gray-200 hover:border-primary/50 hover:shadow-sm'
-                                }
-                              `}
-                              onClick={() => {
-                                if (isSelected) {
-                                  updateSelectedPlans(document.documentId, document.selectedPlans.filter(p => p !== plan.planOptionName));
-                                } else {
-                                  updateSelectedPlans(document.documentId, [...document.selectedPlans, plan.planOptionName]);
-                                }
-                              }}
+                              className={`relative border-2 rounded-lg p-4 ${
+                                isCurrent 
+                                  ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                                  : 'border-gray-200'
+                              }`}
                             >
-                              {/* Plan Header with Selection */}
-                              <div className="flex items-start justify-between mb-3">
+                              <div className="flex gap-4">
+                                {/* Left side - Plan Info */}
                                 <div className="flex-1">
-                                  <h3 className="text-lg font-semibold text-gray-900">{plan.planOptionName}</h3>
-                                  <div className="text-xl font-bold text-primary mt-1">
-                                    ${plan.totalMonthlyPremium.toLocaleString()}/mo
-                                  </div>
-                                </div>
-                                <div className="ml-3">
-                                  {isSelected ? (
-                                    <div className="flex items-center space-x-1">
-                                      <CheckCircle className="h-5 w-5 text-primary" />
-                                      <span className="text-xs font-medium text-primary">Selected</span>
+                                  {/* Plan Header */}
+                                  <div className="mb-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h3 className="text-lg font-semibold text-gray-900">{plan.planOptionName}</h3>
+                                      {isCurrent && (
+                                        <Badge className="bg-primary text-white text-xs">
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                          Current
+                                        </Badge>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                                    <div className="text-xl font-bold text-primary mt-1">
+                                      ${plan.totalMonthlyPremium.toLocaleString()}/mo
+                                    </div>
+                                  </div>
+
+                                  {/* Rate Guarantee */}
+                                  {plan.rateGuarantee && (
+                                    <div className="mb-3">
+                                      <Badge variant="secondary" className="text-xs">
+                                        <Shield className="h-3 w-3 mr-1" />
+                                        {plan.rateGuarantee}
+                                      </Badge>
+                                    </div>
+                                  )}
+
+                                  {/* Coverage Types */}
+                                  {plan.coverageTypes && plan.coverageTypes.length > 0 && (
+                                    <div>
+                                      <div className="flex flex-wrap gap-1">
+                                        {plan.coverageTypes.map((coverage, idx) => (
+                                          <Badge key={idx} variant="outline" className="text-xs">
+                                            {coverage}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
-                              </div>
 
-                              {/* Quote Type */}
-                              <div className="mb-3" onClick={(e) => e.stopPropagation()}>
-                                <Label className="text-xs font-medium text-gray-600 mb-1 block">Quote Type</Label>
-                                <QuoteTypeSelector
-                                  documentId={document.documentId}
-                                  planName={plan.planOptionName}
-                                  currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current'}
-                                  availableTypes={getAvailableQuoteTypes()}
-                                  onQuoteTypeChange={updateQuoteType}
-                                  onAddCustomType={addCustomQuoteType}
-                                />
-                              </div>
-
-                              {/* HSA Option */}
-                              <div 
-                                className="border-t pt-3"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={`hsa-${document.documentId}-${plan.planOptionName}`}
-                                      checked={document.planHSAOptions?.[plan.planOptionName] || false}
-                                      onCheckedChange={(checked) => updatePlanHSAOption(document.documentId, plan.planOptionName, !!checked)}
+                                {/* Right side - Quote Type and HSA */}
+                                <div className="w-48 space-y-4">
+                                  {/* Quote Type */}
+                                  <div>
+                                    <Label className="text-xs font-medium text-gray-600 mb-1 block">Quote Type</Label>
+                                    <QuoteTypeSelector
+                                      documentId={document.documentId}
+                                      planName={plan.planOptionName}
+                                      currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current'}
+                                      availableTypes={getAvailableQuoteTypesForPlan(document.documentId, plan.planOptionName)}
+                                      onQuoteTypeChange={updateQuoteType}
+                                      onAddCustomType={addCustomQuoteType}
                                     />
-                                    <Label 
-                                      htmlFor={`hsa-${document.documentId}-${plan.planOptionName}`}
-                                      className="text-sm font-medium cursor-pointer"
-                                    >
-                                      Include HSA
-                                    </Label>
                                   </div>
-                                </div>
-                                
-                                {/* HSA Details - Compact */}
-                                {document.planHSAOptions?.[plan.planOptionName] && (
-                                  <div className="grid grid-cols-2 gap-2 mt-2">
-                                    <div>
-                                      <Label className="text-xs text-gray-600">Overage ($)</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={document.planHSADetails?.[plan.planOptionName]?.overageAmount || 0}
-                                        onChange={(e) => updatePlanHSADetails(
-                                          document.documentId, 
-                                          plan.planOptionName, 
-                                          'overageAmount', 
-                                          Number(e.target.value)
-                                        )}
-                                        className="h-7 text-xs mt-1"
-                                        placeholder="0.00"
+
+                                  {/* HSA Option */}
+                                  <div className="border-t pt-4">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <Checkbox
+                                        id={`hsa-${document.documentId}-${plan.planOptionName}`}
+                                        checked={document.planHSAOptions?.[plan.planOptionName] || false}
+                                        onCheckedChange={(checked) => updatePlanHSAOption(document.documentId, plan.planOptionName, !!checked)}
                                       />
+                                      <Label 
+                                        htmlFor={`hsa-${document.documentId}-${plan.planOptionName}`}
+                                        className="text-sm font-medium cursor-pointer"
+                                      >
+                                        Include HSA
+                                      </Label>
                                     </div>
                                     
-                                    <div>
-                                      <Label className="text-xs text-gray-600">Wellness ($)</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={document.planHSADetails?.[plan.planOptionName]?.wellnessCoverage || 0}
-                                        onChange={(e) => updatePlanHSADetails(
-                                          document.documentId, 
-                                          plan.planOptionName, 
-                                          'wellnessCoverage', 
-                                          Number(e.target.value)
-                                        )}
-                                        className="h-7 text-xs mt-1"
-                                        placeholder="0.00"
-                                      />
-                                    </div>
+                                    {/* HSA Details */}
+                                    {document.planHSAOptions?.[plan.planOptionName] && (
+                                      <div className="space-y-2 mt-3">
+                                        <div>
+                                          <Label className="text-xs text-gray-600">Overage ($)</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={document.planHSADetails?.[plan.planOptionName]?.overageAmount || 0}
+                                            onChange={(e) => updatePlanHSADetails(
+                                              document.documentId, 
+                                              plan.planOptionName, 
+                                              'overageAmount', 
+                                              Number(e.target.value)
+                                            )}
+                                            className="h-7 text-xs mt-1"
+                                            placeholder="0.00"
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <Label className="text-xs text-gray-600">Wellness ($)</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={document.planHSADetails?.[plan.planOptionName]?.wellnessCoverage || 0}
+                                            onChange={(e) => updatePlanHSADetails(
+                                              document.documentId, 
+                                              plan.planOptionName, 
+                                              'wellnessCoverage', 
+                                              Number(e.target.value)
+                                            )}
+                                            className="h-7 text-xs mt-1"
+                                            placeholder="0.00"
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                </div>
                               </div>
                             </div>
                           );
@@ -650,7 +695,7 @@ export default function PlanSelectionPage() {
 
           <Button
             onClick={handleProceedToComparison}
-            disabled={documents.length === 0 || isSaving || documents.every(doc => doc.selectedPlans.length === 0)}
+            disabled={documents.length === 0 || isSaving}
             size="lg"
           >
             {isSaving ? 'Saving...' : 'Continue to Comparison'}
