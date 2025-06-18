@@ -8,7 +8,7 @@ import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
 import { Badge } from '@repo/design-system/components/ui/badge';
-import { Database, Eye, Settings, Compare } from 'lucide-react';
+import { Database, Eye, Settings, BarChart3 } from 'lucide-react';
 
 export default function ClientInsightsDemoPage() {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -45,7 +45,7 @@ export default function ClientInsightsDemoPage() {
             Original (Mock Data)
           </TabsTrigger>
           <TabsTrigger value="comparison" className="flex items-center gap-2">
-            <Compare className="h-4 w-4" />
+            <BarChart3 className="h-4 w-4" />
             Comparison
           </TabsTrigger>
         </TabsList>

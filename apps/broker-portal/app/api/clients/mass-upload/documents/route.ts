@@ -10,6 +10,7 @@ interface CSVClient {
   planManagementFee: number;
   hasBrokerSplit: boolean;
   brokerSplit?: number;
+  parent?: string;
 }
 
 interface DocumentProcessingResult {
@@ -56,28 +57,127 @@ export async function POST(request: NextRequest) {
 
   // Create clients in database first
   const createdClients = new Map<string, string>(); // policyNumber -> clientId
+  const companyNameToId = new Map<string, string>(); // companyName -> clientId
   
   try {
+    // First, create parent companies (those without parent field or referenced as parents)
+    const parentCompanies = new Set<string>();
+    const childCompanies: CSVClient[] = [];
+    
+    // Identify parent companies and child companies
     for (const client of clientData) {
+      if (client.parent) {
+        childCompanies.push(client);
+        parentCompanies.add(client.parent);
+      } else {
+        parentCompanies.add(client.companyName);
+      }
+    }
+    
+    // Create parent companies first
+    for (const client of clientData) {
+      if (!client.parent) {
+        const created = await database.brokerClient.create({
+          data: {
+            companyName: client.companyName,
+            policyNumber: client.policyNumber,
+            // Set default values - these will be updated from PDF analysis
+            renewalDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+            headcount: 0, // 0 for holding companies, will be calculated from divisions
+            premium: 0, // Will be updated from PDF analysis
+            revenue: 0, // Will be updated from PDF analysis
+            industry: 'Unknown', // Will be updated later
+            // Use CSV data if available
+            planManagementFee: client.planManagementFee ? client.planManagementFee : undefined,
+            splitWithAnotherBroker: client.hasBrokerSplit || false,
+            brokerCommissionSplit: client.brokerSplit ? client.brokerSplit : undefined,
+          },
+        });
+        createdClients.set(client.policyNumber, created.id);
+        companyNameToId.set(client.companyName.toLowerCase().trim(), created.id);
+      }
+    }
+    
+    // Create parent companies that are referenced but not in the CSV
+    for (const parentName of parentCompanies) {
+      const normalizedParentName = parentName.toLowerCase().trim();
+      if (!companyNameToId.has(normalizedParentName)) {
+        // Find the first child to get broker details
+        const firstChild = childCompanies.find(c => c.parent?.toLowerCase().trim() === normalizedParentName);
+        if (firstChild) {
+          const created = await database.brokerClient.create({
+            data: {
+              companyName: parentName,
+              policyNumber: `HOLDING-${Date.now()}`, // Generate unique policy number
+              renewalDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+              headcount: 0, // 0 for holding companies, will be calculated from divisions
+              premium: 0, // Will be aggregated from divisions
+              revenue: 0, // Will be aggregated from divisions
+              industry: 'Holding Company',
+              planManagementFee: firstChild.planManagementFee,
+              splitWithAnotherBroker: firstChild.hasBrokerSplit || false,
+              brokerCommissionSplit: firstChild.brokerSplit ? firstChild.brokerSplit : undefined,
+            },
+          });
+          companyNameToId.set(normalizedParentName, created.id);
+        }
+      }
+    }
+    
+    // Now create child companies with parent references
+    for (const client of childCompanies) {
+      const parentId = client.parent ? companyNameToId.get(client.parent.toLowerCase().trim()) : undefined;
+      
       const created = await database.brokerClient.create({
         data: {
           companyName: client.companyName,
           policyNumber: client.policyNumber,
-          // Set default values - these will be updated from PDF analysis
           renewalDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
           headcount: 1,
-          premium: client.planManagementFee * 10, // Estimate
-          revenue: client.planManagementFee * 100, // Estimate
+          premium: 0, // Will be updated from PDF analysis
+          revenue: 0, // Will be updated from PDF analysis
           industry: 'Unknown', // Will be updated later
-          // Use CSV data if available
           planManagementFee: client.planManagementFee ? client.planManagementFee : undefined,
           splitWithAnotherBroker: client.hasBrokerSplit || false,
           brokerCommissionSplit: client.brokerSplit ? client.brokerSplit : undefined,
+          parentId: parentId,
         },
       });
       createdClients.set(client.policyNumber, created.id);
+      companyNameToId.set(client.companyName.toLowerCase().trim(), created.id);
+    }
+    
+    // Update parent companies with aggregated data
+    for (const parentName of parentCompanies) {
+      const parentId = companyNameToId.get(parentName.toLowerCase().trim());
+      if (parentId) {
+        const divisions = await database.brokerClient.findMany({
+          where: { parentId },
+          select: { premium: true, revenue: true }
+        });
+        
+        if (divisions.length > 0) {
+          const totalPremium = Math.min(
+            divisions.reduce((sum, div) => sum + Number(div.premium || 0), 0),
+            99999999.99
+          );
+          const totalRevenue = Math.min(
+            divisions.reduce((sum, div) => sum + Number(div.revenue || 0), 0),
+            99999999.99
+          );
+          
+          await database.brokerClient.update({
+            where: { id: parentId },
+            data: { 
+              premium: totalPremium,
+              revenue: totalRevenue
+            }
+          });
+        }
+      }
     }
   } catch (error) {
+    console.error('Error creating clients:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to create clients in database' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -188,16 +288,41 @@ export async function POST(request: NextRequest) {
             // Try to match to a client
             let matchedClientId: string | undefined;
             
-            if (analysis.matchedPolicyNumber && createdClients.has(analysis.matchedPolicyNumber)) {
-              matchedClientId = createdClients.get(analysis.matchedPolicyNumber);
-            } else if (analysis.matchedCompanyName) {
-              // Try to find by company name
-              const matchedClient = clientData.find(c => 
-                c.companyName.toLowerCase().includes(analysis.matchedCompanyName!.toLowerCase()) ||
-                analysis.matchedCompanyName!.toLowerCase().includes(c.companyName.toLowerCase())
-              );
-              if (matchedClient) {
-                matchedClientId = createdClients.get(matchedClient.policyNumber);
+            // If this is a holding company document, try to match to the parent company
+            if (analysis.isHoldingCompany && analysis.matchedCompanyName) {
+              // Look for the parent company by name
+              matchedClientId = companyNameToId.get(analysis.matchedCompanyName.toLowerCase().trim());
+              
+              // If not found by exact match, try partial matching
+              if (!matchedClientId) {
+                for (const [normalizedName, id] of companyNameToId.entries()) {
+                  if (normalizedName.includes(analysis.matchedCompanyName.toLowerCase()) ||
+                      analysis.matchedCompanyName.toLowerCase().includes(normalizedName)) {
+                    // Check if this is actually a parent company (not a division)
+                    const client = await database.brokerClient.findUnique({
+                      where: { id },
+                      select: { parentId: true }
+                    });
+                    if (!client?.parentId) {
+                      matchedClientId = id;
+                      break;
+                    }
+                  }
+                }
+              }
+            } else {
+              // Regular matching logic for division documents
+              if (analysis.matchedPolicyNumber && createdClients.has(analysis.matchedPolicyNumber)) {
+                matchedClientId = createdClients.get(analysis.matchedPolicyNumber);
+              } else if (analysis.matchedCompanyName) {
+                // Try to find by company name
+                const matchedClient = clientData.find(c => 
+                  c.companyName.toLowerCase().includes(analysis.matchedCompanyName!.toLowerCase()) ||
+                  analysis.matchedCompanyName!.toLowerCase().includes(c.companyName.toLowerCase())
+                );
+                if (matchedClient) {
+                  matchedClientId = createdClients.get(matchedClient.policyNumber);
+                }
               }
             }
 
@@ -236,7 +361,7 @@ export async function POST(request: NextRequest) {
               }
               
               if (analysis.premium && analysis.premium > 0) {
-                updateData.premium = analysis.premium;
+                updateData.premium = Math.min(analysis.premium, 99999999.99);
               }
               
               if (analysis.headcount && analysis.headcount > 0) {
@@ -285,7 +410,7 @@ export async function POST(request: NextRequest) {
               }
               
               if (analysis.planManagementFee && analysis.planManagementFee > 0) {
-                updateData.planManagementFee = analysis.planManagementFee;
+                updateData.planManagementFee = Math.min(analysis.planManagementFee, 99999999.99);
               }
               
               if (analysis.brokerCommissionSplit && analysis.brokerCommissionSplit > 0) {
@@ -327,6 +452,47 @@ export async function POST(request: NextRequest) {
           });
         }
 
+        // Update parent companies with new aggregated totals after all documents are processed
+        const processedParentIds = new Set<string>();
+        
+        for (const [_, clientId] of createdClients) {
+          const client = await database.brokerClient.findUnique({
+            where: { id: clientId },
+            select: { parentId: true }
+          });
+          
+          if (client?.parentId) {
+            processedParentIds.add(client.parentId);
+          }
+        }
+        
+        // Update each parent company with aggregated revenue and premium
+        for (const parentId of processedParentIds) {
+          const divisions = await database.brokerClient.findMany({
+            where: { parentId },
+            select: { premium: true, revenue: true }
+          });
+          
+          if (divisions.length > 0) {
+            const totalPremium = Math.min(
+              divisions.reduce((sum, div) => sum + Number(div.premium || 0), 0),
+              99999999.99
+            );
+            const totalRevenue = Math.min(
+              divisions.reduce((sum, div) => sum + Number(div.revenue || 0), 0),
+              99999999.99
+            );
+            
+            await database.brokerClient.update({
+              where: { id: parentId },
+              data: { 
+                premium: totalPremium,
+                revenue: totalRevenue
+              }
+            });
+          }
+        }
+        
         // Send final results
         sendUpdate(encoder, controller, {
           type: 'complete',

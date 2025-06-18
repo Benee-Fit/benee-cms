@@ -7,6 +7,7 @@ interface CSVClient {
   planManagementFee: number;
   hasBrokerSplit: boolean;
   brokerSplit?: number;
+  parent?: string;
 }
 
 interface ProcessingResult {
@@ -32,15 +33,27 @@ export async function POST(request: NextRequest) {
       errors: []
     };
 
-    // Get existing policy numbers for duplicate checking
+    // Get existing policy numbers and company names for duplicate checking
+    const existingClients = await database.brokerClient.findMany({
+      select: { 
+        policyNumber: true,
+        companyName: true,
+        id: true
+      }
+    });
+    
     const existingPolicyNumbers = new Set(
-      (await database.brokerClient.findMany({
-        select: { policyNumber: true }
-      })).map(client => client.policyNumber)
+      existingClients.map(client => client.policyNumber)
+    );
+    
+    const existingCompanyNames = new Map(
+      existingClients.map(client => [client.companyName.toLowerCase().trim(), client])
     );
 
-    // Track policy numbers within this batch for internal duplicates
+    // Track policy numbers and company names within this batch for internal duplicates
     const batchPolicyNumbers = new Set<string>();
+    const batchCompanyNames = new Map<string, CSVClient>();
+    const parentChildMap = new Map<string, CSVClient[]>();
 
     for (let i = 0; i < clients.length; i++) {
       const client = clients[i];
@@ -78,14 +91,50 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Check for duplicates (existing or within batch)
+        // Check for duplicate policy numbers (existing or within batch)
         if (existingPolicyNumbers.has(client.policyNumber) || batchPolicyNumbers.has(client.policyNumber)) {
           result.duplicates.push(client);
           continue;
         }
 
+        // Check for duplicate company names
+        const normalizedName = client.companyName.toLowerCase().trim();
+        const existingCompany = existingCompanyNames.get(normalizedName);
+        const batchCompany = batchCompanyNames.get(normalizedName);
+        
+        if (existingCompany || batchCompany) {
+          result.errors.push({
+            row: i + 2,
+            error: `Company name "${client.companyName}" already exists`,
+            data: client
+          });
+          continue;
+        }
+
+        // Validate parent relationship
+        if (client.parent) {
+          const normalizedParentName = client.parent.toLowerCase().trim();
+          
+          // Check for circular reference
+          if (normalizedParentName === normalizedName) {
+            result.errors.push({
+              row: i + 2,
+              error: 'A company cannot be its own parent',
+              data: client
+            });
+            continue;
+          }
+          
+          // Track parent-child relationships for validation
+          if (!parentChildMap.has(client.parent)) {
+            parentChildMap.set(client.parent, []);
+          }
+          parentChildMap.get(client.parent)!.push(client);
+        }
+
         // Add to successful clients
         batchPolicyNumbers.add(client.policyNumber);
+        batchCompanyNames.set(normalizedName, client);
         result.success.push(client);
         
       } catch (error) {

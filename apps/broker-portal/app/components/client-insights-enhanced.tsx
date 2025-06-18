@@ -290,14 +290,14 @@ export function ClientInsightsEnhanced({
                 title="Total Revenue"
                 value={formatCurrency(clientOverview.totalRevenue)}
                 editable={isEditMode}
-                onEdit={(value) => console.log('Edit total revenue:', value)}
+                onEdit={() => console.log('Edit total revenue')}
               />
 
               <EditableMetricCard
                 title="Average Revenue"
                 value={formatCurrency(clientOverview.avgRevenue)}
                 editable={isEditMode}
-                onEdit={(value) => console.log('Edit average revenue:', value)}
+                onEdit={() => console.log('Edit average revenue')}
               />
             </div>
 
@@ -418,7 +418,7 @@ export function ClientInsightsEnhanced({
               value="$485"
               description="Per member per month"
               editable={isEditMode}
-              onEdit={(value) => console.log('Edit premium:', value)}
+              onEdit={() => console.log('Edit premium')}
             />
 
             <EditableMetricCard
@@ -426,7 +426,7 @@ export function ClientInsightsEnhanced({
               value="$58"
               description="Per member per month"
               editable={isEditMode}
-              onEdit={(value) => console.log('Edit member revenue:', value)}
+              onEdit={() => console.log('Edit member revenue')}
             />
 
             <EditableMetricCard
@@ -434,7 +434,7 @@ export function ClientInsightsEnhanced({
               value="12.0%"
               description="Of total premium"
               editable={isEditMode}
-              onEdit={(value) => console.log('Edit management fee:', value)}
+              onEdit={() => console.log('Edit management fee')}
             />
           </div>
 
@@ -488,7 +488,7 @@ export function ClientInsightsEnhanced({
                 titleClassName="text-red-600"
                 valueClassName="text-red-600"
                 editable={isEditMode}
-                onEdit={(value) => console.log('Edit at-risk revenue:', value)}
+                onEdit={() => console.log('Edit at-risk revenue')}
               />
 
               <EditableMetricCard
@@ -499,7 +499,7 @@ export function ClientInsightsEnhanced({
                 titleClassName="text-green-600"
                 valueClassName="text-green-600"
                 editable={isEditMode}
-                onEdit={(value) => console.log('Edit growth potential:', value)}
+                onEdit={() => console.log('Edit growth potential')}
               />
 
               <EditableMetricCard
@@ -510,7 +510,7 @@ export function ClientInsightsEnhanced({
                 titleClassName="text-orange-600"
                 valueClassName="text-orange-600"
                 editable={isEditMode}
-                onEdit={(value) => console.log('Edit action required:', value)}
+                onEdit={() => console.log('Edit action required')}
               />
 
               <EditableMetricCard
@@ -521,7 +521,7 @@ export function ClientInsightsEnhanced({
                 titleClassName="text-blue-600"
                 valueClassName="text-blue-600"
                 editable={isEditMode}
-                onEdit={(value) => console.log('Edit stable clients:', value)}
+                onEdit={() => console.log('Edit stable clients')}
               />
             </div>
           </div>

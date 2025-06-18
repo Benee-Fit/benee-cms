@@ -15,8 +15,24 @@ export async function seedClientInsightsData(brokerId: string) {
     console.log(`Found ${clients.length} clients to create insights for`);
 
     // Prepare seed data for different insight types
-    const seedInsights = [];
-    const timeSeriesData = [];
+    const seedInsights: Array<{
+      clientId: string;
+      brokerId: string;
+      category: 'METRIC' | 'REVENUE' | 'RISK' | 'OPPORTUNITY';
+      type: string;
+      title: string;
+      description?: string;
+      value: any;
+      metadata?: any;
+      period?: string;
+      targetValue?: any;
+      sortOrder?: number;
+    }> = [];
+    const timeSeriesData: Array<{
+      date: Date;
+      value: any;
+      metadata: any;
+    }> = [];
 
     for (const client of clients) {
       // METRIC category insights
@@ -186,7 +202,12 @@ export async function seedClientInsightsData(brokerId: string) {
 
     // Create time series data for revenue insights
     const revenueInsights = createdInsights.filter(insight => insight.type === 'annual_revenue');
-    const timeSeriesWithInsightIds = [];
+    const timeSeriesWithInsightIds: Array<{
+      date: Date;
+      value: any;
+      metadata: any;
+      insightId: string;
+    }> = [];
 
     for (let i = 0; i < revenueInsights.length; i++) {
       const insight = revenueInsights[i];

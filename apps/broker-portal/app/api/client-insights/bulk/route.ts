@@ -88,7 +88,16 @@ async function handleBulkCreate(body: any, brokerId: string) {
     items.map((item) =>
       database.clientInsightData.create({
         data: {
-          ...item,
+          clientId: item.clientId,
+          category: item.category,
+          type: item.type,
+          title: item.title,
+          description: item.description,
+          value: item.value ?? {},
+          metadata: item.metadata,
+          period: item.period,
+          targetValue: item.targetValue,
+          sortOrder: item.sortOrder ?? 1,
           brokerId,
         },
         include: {
@@ -218,8 +227,24 @@ async function handleSeedData(body: any, brokerId: string) {
     );
   }
 
-  const seedData = [];
-  const timeSeriesData = [];
+  const seedData: Array<{
+    clientId: string;
+    brokerId: string;
+    category: 'METRIC' | 'REVENUE' | 'RISK' | 'OPPORTUNITY';
+    type: string;
+    title: string;
+    description?: string;
+    value: any;
+    metadata?: any;
+    period?: string;
+    targetValue?: any;
+    sortOrder?: number;
+  }> = [];
+  const timeSeriesData: Array<{
+    date: Date;
+    value: any;
+    metadata: any;
+  }> = [];
 
   for (const client of clients) {
     // Create basic metrics
@@ -282,7 +307,7 @@ async function handleSeedData(body: any, brokerId: string) {
   );
 
   // Create time series data for revenue insights if requested
-  let createdTimeSeries = [];
+  let createdTimeSeries: any[] = [];
   if (includeHistoricalData && timeSeriesData.length > 0) {
     const revenueInsights = createdInsights.filter(insight => insight.type === 'annual_revenue');
     

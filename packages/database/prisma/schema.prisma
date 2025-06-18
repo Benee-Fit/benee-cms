@@ -89,6 +89,11 @@ model BrokerClient {
   brokerId     String? // Reference to the broker managing this client
   broker       User?    @relation("BrokerToClients", fields: [brokerId], references: [id])
 
+  // Parent-child relationship for holding companies and divisions
+  parentId  String? // Reference to parent holding company
+  parent    BrokerClient?  @relation("ClientHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  divisions BrokerClient[] @relation("ClientHierarchy")
+
   // New fields
   companySize            String? // Small (1-49), Medium (50-199), Large (200+)
   companyLocation        String?
@@ -106,8 +111,8 @@ model BrokerClient {
   withCarrierSince       DateTime?
   planType               String?
 
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
   documents ClientDocument[]
   reports   QuoteReport[]
   insights  ClientInsightData[] @relation("ClientInsights")
@@ -115,6 +120,7 @@ model BrokerClient {
   @@index([policyNumber])
   @@index([renewalDate])
   @@index([brokerId])
+  @@index([parentId])
 }
 
 model ClientDocument {
@@ -181,31 +187,31 @@ model ReportShareLink {
 
 // Client Insights Data - Flexible model for all insight types
 model ClientInsightData {
-  id            String          @id @default(cuid())
-  clientId      String
-  client        BrokerClient    @relation("ClientInsights", fields: [clientId], references: [id], onDelete: Cascade)
-  brokerId      String
-  broker        User            @relation("BrokerInsights", fields: [brokerId], references: [id])
-  
-  category      InsightCategory // METRIC, REVENUE, RISK, OPPORTUNITY
-  type          String          // Specific type within category (e.g., "premium_growth", "renewal_risk")
-  title         String          // Display name (e.g., "Premium Growth Rate")
-  description   String?         // Optional description
-  
-  value         Json            // Flexible JSON field for any data structure
-  metadata      Json?           // Additional context/settings
-  
-  period        String?         // Time period (e.g., "2024-Q1", "monthly", "annual")
-  targetValue   Json?           // Target or benchmark values
-  
-  isActive      Boolean         @default(true)
-  sortOrder     Int?            // For custom ordering
-  
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  
+  id       String       @id @default(cuid())
+  clientId String
+  client   BrokerClient @relation("ClientInsights", fields: [clientId], references: [id], onDelete: Cascade)
+  brokerId String
+  broker   User         @relation("BrokerInsights", fields: [brokerId], references: [id])
+
+  category    InsightCategory // METRIC, REVENUE, RISK, OPPORTUNITY
+  type        String // Specific type within category (e.g., "premium_growth", "renewal_risk")
+  title       String // Display name (e.g., "Premium Growth Rate")
+  description String? // Optional description
+
+  value    Json // Flexible JSON field for any data structure
+  metadata Json? // Additional context/settings
+
+  period      String? // Time period (e.g., "2024-Q1", "monthly", "annual")
+  targetValue Json? // Target or benchmark values
+
+  isActive  Boolean @default(true)
+  sortOrder Int? // For custom ordering
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations to time series data
-  timeSeries    ClientTimeSeries[]
+  timeSeries ClientTimeSeries[]
 
   @@index([clientId])
   @@index([brokerId])
@@ -216,16 +222,16 @@ model ClientInsightData {
 
 // Time series data for historical tracking and charts
 model ClientTimeSeries {
-  id            String            @id @default(cuid())
-  insightId     String
-  insight       ClientInsightData @relation(fields: [insightId], references: [id], onDelete: Cascade)
-  
-  date          DateTime          // Data point timestamp
-  value         Json              // Time-specific value
-  metadata      Json?             // Additional context for this data point
-  
-  createdAt     DateTime          @default(now())
-  
+  id        String            @id @default(cuid())
+  insightId String
+  insight   ClientInsightData @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  date     DateTime // Data point timestamp
+  value    Json // Time-specific value
+  metadata Json? // Additional context for this data point
+
+  createdAt DateTime @default(now())
+
   @@index([insightId])
   @@index([date])
   @@index([insightId, date])
