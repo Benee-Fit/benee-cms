@@ -15,7 +15,7 @@ import {
 } from '@repo/design-system/components/ui/select';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
-import { Checkbox } from '@repo/design-system/components/ui/checkbox';
+import { Switch } from '@repo/design-system/components/ui/switch';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { 
   FileText, 
@@ -47,7 +47,12 @@ interface DocumentWithPlans {
   selectedPlans: string[];
   planQuoteTypes: Record<string, string>; // planName -> quoteType mapping
   planHSAOptions: Record<string, boolean>; // planName -> includesHSA mapping
-  planHSADetails: Record<string, { overageAmount: number; wellnessCoverage: number }>; // planName -> HSA details
+  planHSADetails: Record<string, { 
+    coverageSingle: number; 
+    coverageFamily: number; 
+    wellnessSingle: number; 
+    wellnessFamily: number;
+  }>; // planName -> HSA details
 }
 
 
@@ -102,7 +107,7 @@ function QuoteTypeSelector({
           }
         }}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -179,14 +184,24 @@ export default function PlanSelectionPage() {
           // Initialize planQuoteTypes - only first plan of first document gets 'Current'
           const planQuoteTypes: Record<string, string> = {};
           const planHSAOptions: Record<string, boolean> = {};
-          const planHSADetails: Record<string, { overageAmount: number; wellnessCoverage: number }> = {};
+          const planHSADetails: Record<string, { 
+            coverageSingle: number; 
+            coverageFamily: number; 
+            wellnessSingle: number; 
+            wellnessFamily: number;
+          }> = {};
           let isFirstPlan = index === 0;
           detectedPlans.forEach((plan, planIndex) => {
             if (plan && plan.planOptionName) {
               // Only set the first plan of the first document as 'Current'
               planQuoteTypes[plan.planOptionName] = (isFirstPlan && planIndex === 0) ? 'Current' : 'Alternative';
               planHSAOptions[plan.planOptionName] = false;
-              planHSADetails[plan.planOptionName] = { overageAmount: 0, wellnessCoverage: 0 };
+              planHSADetails[plan.planOptionName] = { 
+                coverageSingle: 0, 
+                coverageFamily: 0, 
+                wellnessSingle: 0, 
+                wellnessFamily: 0 
+              };
             }
           });
 
@@ -379,7 +394,7 @@ export default function PlanSelectionPage() {
   };
 
   // Update HSA details for a specific plan
-  const updatePlanHSADetails = (documentId: string, planName: string, field: 'overageAmount' | 'wellnessCoverage', value: number) => {
+  const updatePlanHSADetails = (documentId: string, planName: string, field: 'coverageSingle' | 'coverageFamily' | 'wellnessSingle' | 'wellnessFamily', value: number) => {
     setDocuments(prev => prev.map(doc => 
       doc.documentId === documentId 
         ? { 
@@ -387,7 +402,12 @@ export default function PlanSelectionPage() {
             planHSADetails: {
               ...(doc.planHSADetails || {}),
               [planName]: {
-                ...(doc.planHSADetails?.[planName] || { overageAmount: 0, wellnessCoverage: 0 }),
+                ...(doc.planHSADetails?.[planName] || { 
+                  coverageSingle: 0, 
+                  coverageFamily: 0, 
+                  wellnessSingle: 0, 
+                  wellnessFamily: 0 
+                }),
                 [field]: value
               }
             }
@@ -598,7 +618,7 @@ export default function PlanSelectionPage() {
                                 </div>
 
                                 {/* Right side - Quote Type and HSA */}
-                                <div className="w-48 space-y-4">
+                                <div className="w-64 space-y-4">
                                   {/* Quote Type */}
                                   <div>
                                     <Label className="text-xs font-medium text-gray-600 mb-1 block">Quote Type</Label>
@@ -614,57 +634,104 @@ export default function PlanSelectionPage() {
 
                                   {/* HSA Option */}
                                   <div className="border-t pt-4">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                      <Checkbox
-                                        id={`hsa-${document.documentId}-${plan.planOptionName}`}
-                                        checked={document.planHSAOptions?.[plan.planOptionName] || false}
-                                        onCheckedChange={(checked) => updatePlanHSAOption(document.documentId, plan.planOptionName, !!checked)}
-                                      />
+                                    <div className="flex items-center justify-between mb-2">
                                       <Label 
                                         htmlFor={`hsa-${document.documentId}-${plan.planOptionName}`}
                                         className="text-sm font-medium cursor-pointer"
                                       >
                                         Include HSA
                                       </Label>
+                                      <Switch
+                                        id={`hsa-${document.documentId}-${plan.planOptionName}`}
+                                        checked={document.planHSAOptions?.[plan.planOptionName] || false}
+                                        onCheckedChange={(checked) => updatePlanHSAOption(document.documentId, plan.planOptionName, !!checked)}
+                                        className={document.planHSAOptions?.[plan.planOptionName] ? 'data-[state=checked]:bg-blue-600' : ''}
+                                      />
                                     </div>
                                     
                                     {/* HSA Details */}
                                     {document.planHSAOptions?.[plan.planOptionName] && (
-                                      <div className="space-y-2 mt-3">
+                                      <div className="space-y-3 mt-3">
+                                        {/* Coverage */}
                                         <div>
-                                          <Label className="text-xs text-gray-600">Overage ($)</Label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={document.planHSADetails?.[plan.planOptionName]?.overageAmount || 0}
-                                            onChange={(e) => updatePlanHSADetails(
-                                              document.documentId, 
-                                              plan.planOptionName, 
-                                              'overageAmount', 
-                                              Number(e.target.value)
-                                            )}
-                                            className="h-7 text-xs mt-1"
-                                            placeholder="0.00"
-                                          />
+                                          <Label className="text-xs font-medium text-gray-700 mb-1 block">Coverage ($)</Label>
+                                          <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                              <Label className="text-xs text-gray-500">Single</Label>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={document.planHSADetails?.[plan.planOptionName]?.coverageSingle || 0}
+                                                onChange={(e) => updatePlanHSADetails(
+                                                  document.documentId, 
+                                                  plan.planOptionName, 
+                                                  'coverageSingle', 
+                                                  Number(e.target.value)
+                                                )}
+                                                className="h-7 text-xs mt-0.5"
+                                                placeholder="0.00"
+                                              />
+                                            </div>
+                                            <div>
+                                              <Label className="text-xs text-gray-500">Family</Label>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={document.planHSADetails?.[plan.planOptionName]?.coverageFamily || 0}
+                                                onChange={(e) => updatePlanHSADetails(
+                                                  document.documentId, 
+                                                  plan.planOptionName, 
+                                                  'coverageFamily', 
+                                                  Number(e.target.value)
+                                                )}
+                                                className="h-7 text-xs mt-0.5"
+                                                placeholder="0.00"
+                                              />
+                                            </div>
+                                          </div>
                                         </div>
                                         
+                                        {/* Wellness */}
                                         <div>
-                                          <Label className="text-xs text-gray-600">Wellness ($)</Label>
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={document.planHSADetails?.[plan.planOptionName]?.wellnessCoverage || 0}
-                                            onChange={(e) => updatePlanHSADetails(
-                                              document.documentId, 
-                                              plan.planOptionName, 
-                                              'wellnessCoverage', 
-                                              Number(e.target.value)
-                                            )}
-                                            className="h-7 text-xs mt-1"
-                                            placeholder="0.00"
-                                          />
+                                          <Label className="text-xs font-medium text-gray-700 mb-1 block">Wellness ($)</Label>
+                                          <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                              <Label className="text-xs text-gray-500">Single</Label>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={document.planHSADetails?.[plan.planOptionName]?.wellnessSingle || 0}
+                                                onChange={(e) => updatePlanHSADetails(
+                                                  document.documentId, 
+                                                  plan.planOptionName, 
+                                                  'wellnessSingle', 
+                                                  Number(e.target.value)
+                                                )}
+                                                className="h-7 text-xs mt-0.5"
+                                                placeholder="0.00"
+                                              />
+                                            </div>
+                                            <div>
+                                              <Label className="text-xs text-gray-500">Family</Label>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={document.planHSADetails?.[plan.planOptionName]?.wellnessFamily || 0}
+                                                onChange={(e) => updatePlanHSADetails(
+                                                  document.documentId, 
+                                                  plan.planOptionName, 
+                                                  'wellnessFamily', 
+                                                  Number(e.target.value)
+                                                )}
+                                                className="h-7 text-xs mt-0.5"
+                                                placeholder="0.00"
+                                              />
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
                                     )}
