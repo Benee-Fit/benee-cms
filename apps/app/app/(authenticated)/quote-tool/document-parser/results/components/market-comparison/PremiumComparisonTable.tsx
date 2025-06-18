@@ -22,7 +22,7 @@ import {
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
-import { Edit2, Save, FileDown, Plus, RotateCcw, Pencil, RotateCw, Type, Minus } from 'lucide-react';
+import { Edit2, Save, FileDown, Plus, RotateCcw, Pencil, RotateCw, Type, Minus, Star, TrendingUp, RefreshCw, Target } from 'lucide-react';
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -224,6 +224,7 @@ interface EditableTableCellProps {
   className?: string;
   isCurrency?: boolean;
   isEditMode?: boolean;
+  fontSize?: 'small' | 'medium' | 'large';
 }
 
 const EditableTableCell: React.FC<EditableTableCellProps> = ({ 
@@ -232,7 +233,8 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
   isNumeric = false,
   className = '',
   isCurrency = false,
-  isEditMode = false
+  isEditMode = false,
+  fontSize = 'medium'
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   
@@ -296,7 +298,7 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
           }}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className={`w-full ${isCurrency ? 'pl-6' : 'pl-2'} pr-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
+          className={`w-full ${isCurrency ? 'pl-6' : 'pl-2'} pr-2 py-1 ${fontSize === 'large' ? 'text-base' : fontSize === 'medium' ? 'text-sm' : 'text-xs'} border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${className}`}
           autoFocus
         />
       </div>
@@ -308,7 +310,7 @@ const EditableTableCell: React.FC<EditableTableCellProps> = ({
       className={`group relative ${isEditMode ? 'cursor-pointer hover:bg-blue-50' : ''} rounded px-2 py-1`}
       onClick={() => isEditMode && setIsEditing(true)}
     >
-      <span className={className}>{value}</span>
+      <span className={`${fontSize === 'large' ? 'text-base' : fontSize === 'medium' ? 'text-sm' : 'text-xs'} ${className}`}>{value}</span>
       {isEditMode && (
         <Edit2 className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
       )}
@@ -355,6 +357,143 @@ export function PremiumComparisonTable({
   // State for font size
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
   
+  // State for comparison type
+  const [comparisonType, setComparisonType] = useState<'current-vs-negotiated' | 'current-vs-alternative' | 'current-vs-go-to-market' | 'all'>('all');
+
+  // Helper function to get plan quote type for a specific coverage
+  const getPlanQuoteType = useCallback((result: ParsedDocumentResult, coverage: Coverage): string => {
+    // Check multiple locations for plan quote types (from plan selection)
+    let planQuoteTypes = (result as any).planQuoteTypes;
+    
+    // Also check in quoteMeta if it exists
+    if (!planQuoteTypes && (result as any).quoteMeta?.planQuoteTypes) {
+      planQuoteTypes = (result as any).quoteMeta.planQuoteTypes;
+    }
+    
+    if (planQuoteTypes && coverage.planOptionName) {
+      const quoteType = planQuoteTypes[coverage.planOptionName];
+      if (quoteType) {
+        console.log('[DEBUG] Found plan quote type:', {
+          carrierName: coverage.carrierName,
+          planOptionName: coverage.planOptionName,
+          quoteType: quoteType,
+          source: 'planQuoteTypes'
+        });
+        return quoteType;
+      }
+    }
+    
+    // Fallback to document category
+    const documentCategory = (result as any).category || 
+                           (result as any).metadata?.fileCategory || 
+                           (result as any).processedData?.metadata?.fileCategory ||
+                           'Current';
+    
+    console.log('[DEBUG] Using document category fallback:', {
+      carrierName: coverage.carrierName,
+      planOptionName: coverage.planOptionName,
+      documentCategory: documentCategory,
+      availablePlanQuoteTypes: planQuoteTypes ? Object.keys(planQuoteTypes) : 'none',
+      source: 'documentCategory'
+    });
+    
+    return documentCategory;
+  }, []);
+
+  // Helper function to get document category (fallback when plan quote types aren't available)
+  const getDocumentCategory = useCallback((result: ParsedDocumentResult): string => {
+    return (result as any).category || 
+           (result as any).metadata?.fileCategory || 
+           (result as any).processedData?.metadata?.fileCategory ||
+           'Current';
+  }, []);
+
+  // Helper function to get visual styling for quote types
+  const getQuoteTypeStyle = useCallback((quoteType: string) => {
+    switch (quoteType) {
+      case 'Current':
+        return {
+          badge: 'bg-blue-100 text-blue-800 border-blue-200',
+          icon: <Star className="h-3 w-3" />,
+          headerBg: 'bg-blue-50',
+          columnBg: 'bg-blue-50/30'
+        };
+      case 'Go To Market':
+        return {
+          badge: 'bg-green-100 text-green-800 border-green-200',
+          icon: <Target className="h-3 w-3" />,
+          headerBg: 'bg-green-50',
+          columnBg: 'bg-green-50/30'
+        };
+      case 'Alternative':
+        return {
+          badge: 'bg-purple-100 text-purple-800 border-purple-200',
+          icon: <TrendingUp className="h-3 w-3" />,
+          headerBg: 'bg-purple-50',
+          columnBg: 'bg-purple-50/30'
+        };
+      case 'Negotiated':
+        return {
+          badge: 'bg-orange-100 text-orange-800 border-orange-200',
+          icon: <RefreshCw className="h-3 w-3" />,
+          headerBg: 'bg-orange-50',
+          columnBg: 'bg-orange-50/30'
+        };
+      default:
+        return {
+          badge: 'bg-gray-100 text-gray-800 border-gray-200',
+          icon: <Edit2 className="h-3 w-3" />,
+          headerBg: 'bg-gray-50',
+          columnBg: 'bg-gray-50/30'
+        };
+    }
+  }, []);
+
+  // Filter results based on comparison type
+  const filteredResults = useMemo(() => {
+    if (comparisonType === 'all') {
+      return results;
+    }
+    
+    return results.filter(result => {
+      // Check if this result has any plans with the required quote types
+      let planQuoteTypes = (result as any).planQuoteTypes || {};
+      
+      // Also check in quoteMeta if it exists
+      if (Object.keys(planQuoteTypes).length === 0 && (result as any).quoteMeta?.planQuoteTypes) {
+        planQuoteTypes = (result as any).quoteMeta.planQuoteTypes;
+      }
+      
+      const quoteTypesInResult = Object.values(planQuoteTypes) as string[];
+      
+      // If no plan quote types, fall back to document category
+      if (quoteTypesInResult.length === 0) {
+        const category = getDocumentCategory(result);
+        
+        if (comparisonType === 'current-vs-negotiated') {
+          return category === 'Current' || category === 'Renegotiated';
+        } else if (comparisonType === 'current-vs-alternative') {
+          return category === 'Current' || category === 'Alternative';
+        } else if (comparisonType === 'current-vs-go-to-market') {
+          return category === 'Current';
+        }
+        
+        return true;
+      }
+      
+      // Filter based on plan quote types
+      if (comparisonType === 'current-vs-negotiated') {
+        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Negotiated');
+      } else if (comparisonType === 'current-vs-alternative') {
+        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Alternative');
+      } else if (comparisonType === 'current-vs-go-to-market') {
+        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Go To Market');
+      }
+      
+      return true;
+    });
+  }, [results, comparisonType, getDocumentCategory]);
+  
   // Font size helper functions
   const getFontSizeClass = () => {
     switch (fontSize) {
@@ -381,19 +520,28 @@ export function PremiumComparisonTable({
     });
   };
 
-  // Extract plan options per carrier
+  // Extract plan options per carrier-plan-quote-type combination
   const carrierPlanOptions = useMemo(() => {
     const carrierOptions: Record<string, string[]> = {};
 
-    for (const result of results) {
+    for (const result of filteredResults) {
       if (result?.allCoverages) {
-        for (const coverage of result.allCoverages) {
-          if (coverage.planOptionName && coverage.carrierName) {
-            if (!carrierOptions[coverage.carrierName]) {
-              carrierOptions[coverage.carrierName] = [];
+        // Get selected plans for this document
+        const selectedPlans = (result as any).selectedPlans || [];
+        const plansToProcess = selectedPlans.length > 0 ? selectedPlans : 
+                             result.allCoverages.map(c => c.planOptionName).filter(Boolean);
+
+        for (const planName of plansToProcess) {
+          const planCoverage = result.allCoverages.find(c => c.planOptionName === planName);
+          if (planCoverage && planCoverage.carrierName) {
+            const quoteType = getPlanQuoteType(result, planCoverage);
+            const uniqueKey = `${planCoverage.carrierName}-${planName}-${quoteType}`;
+            
+            if (!carrierOptions[uniqueKey]) {
+              carrierOptions[uniqueKey] = [];
             }
-            if (!carrierOptions[coverage.carrierName].includes(coverage.planOptionName)) {
-              carrierOptions[coverage.carrierName].push(coverage.planOptionName);
+            if (!carrierOptions[uniqueKey].includes(planName)) {
+              carrierOptions[uniqueKey].push(planName);
             }
           }
         }
@@ -401,7 +549,7 @@ export function PremiumComparisonTable({
     }
     
     return carrierOptions;
-  }, [results]);
+  }, [filteredResults, getPlanQuoteType]);
 
   /**
    * Extract rate guarantee text from metadata
@@ -543,28 +691,85 @@ export function PremiumComparisonTable({
 
 
   /**
-   * Extract unique carriers from results - initially unsorted
+   * Extract unique carrier-plan combinations from results - initially unsorted
    */
   const unsortedCarriers = useMemo<Array<{
     name: string;
     rateGuarantee: string | null;
+    quoteType: string;
+    planName: string;
+    displayName: string;
   }>>(() => {
-    if (!results || results.length === 0) {
-      return [{ name: 'No Data Available', rateGuarantee: null }];
+    if (!filteredResults || filteredResults.length === 0) {
+      return [{ name: 'No Data Available', rateGuarantee: null, quoteType: 'Current', planName: 'Default', displayName: 'No Data Available' }];
     }
     
-    const carriersMap = new Map<string, { name: string; rateGuarantee: string | null }>();
+    const carriersMap = new Map<string, { name: string; rateGuarantee: string | null; quoteType: string; planName: string; displayName: string }>();
     
-    for (const result of results) {
-      processResultForCarriers(result, carriersMap);
+    for (const result of filteredResults) {
+      const carrierName = result.metadata?.carrierName || 
+                         (result as any).processedData?.metadata?.carrierName ||
+                         result.allCoverages?.[0]?.carrierName;
+      
+      if (!carrierName || !result.allCoverages) continue;
+      
+      // Get selected plans for this document
+      const selectedPlans = (result as any).selectedPlans || [];
+      
+      // Get plan quote types from multiple possible locations
+      let planQuoteTypes = (result as any).planQuoteTypes || {};
+      if (Object.keys(planQuoteTypes).length === 0 && (result as any).quoteMeta?.planQuoteTypes) {
+        planQuoteTypes = (result as any).quoteMeta.planQuoteTypes;
+      }
+      
+      // If no plans are selected, use all plans
+      const plansToProcess = selectedPlans.length > 0 ? selectedPlans : 
+                           result.allCoverages.map(c => c.planOptionName).filter(Boolean);
+      
+      for (const planName of plansToProcess) {
+        if (!planName) continue;
+        
+        // Find a coverage for this plan to get the quote type
+        const planCoverage = result.allCoverages.find(c => c.planOptionName === planName);
+        if (!planCoverage) continue;
+        
+        // Get quote type directly from plan quote types if available, otherwise use getPlanQuoteType
+        let quoteType = planQuoteTypes[planName];
+        if (!quoteType) {
+          quoteType = getPlanQuoteType(result, planCoverage);
+        }
+        const uniqueKey = `${carrierName}-${planName}-${quoteType}`;
+        const displayName = quoteType === 'Current' ? carrierName : `${carrierName} (${quoteType})`;
+        
+        // Get rate guarantee
+        let rateGuaranteeText: string | null = null;
+        if ((result as any).processedData?.metadata?.rateGuarantees) {
+          rateGuaranteeText = extractRateGuarantee((result as any).processedData.metadata.rateGuarantees);
+        } else if (result.metadata?.rateGuarantees) {
+          rateGuaranteeText = extractRateGuarantee(result.metadata.rateGuarantees);
+        }
+        
+        if (!carriersMap.has(uniqueKey)) {
+          carriersMap.set(uniqueKey, {
+            name: carrierName,
+            rateGuarantee: rateGuaranteeText,
+            quoteType: quoteType,
+            planName: planName,
+            displayName: displayName
+          });
+        }
+      }
     }
     
     if (carriersMap.size === 0) {
-      return [{ name: 'No Carrier Data', rateGuarantee: null }];
+      return [{ name: 'No Carrier Data', rateGuarantee: null, quoteType: 'Current', planName: 'Default', displayName: 'No Carrier Data' }];
     }
     
-    return Array.from(carriersMap.values());
-  }, [results, processResultForCarriers]);
+    const carriersArray = Array.from(carriersMap.values());
+    console.log('[DEBUG] Extracted carrier-plan combinations:', carriersArray);
+    
+    return carriersArray;
+  }, [filteredResults, getPlanQuoteType, extractRateGuarantee]);
 
   // Set default selected plan options when carriers change
   React.useEffect(() => {
@@ -572,14 +777,15 @@ export function PremiumComparisonTable({
     let hasChanges = false;
     
     unsortedCarriers.forEach(carrier => {
-      const availableOptions = carrierPlanOptions[carrier.name] || [];
+      const uniqueKey = `${carrier.name}-${carrier.planName}-${carrier.quoteType}`;
+      const availableOptions = carrierPlanOptions[uniqueKey] || [];
       if (availableOptions.length > 0) {
         // If not already set, use the first available option
-        if (!selectedPlanOptions[carrier.name]) {
-          newSelectedOptions[carrier.name] = availableOptions[0];
+        if (!selectedPlanOptions[uniqueKey]) {
+          newSelectedOptions[uniqueKey] = availableOptions[0];
           hasChanges = true;
         } else {
-          newSelectedOptions[carrier.name] = selectedPlanOptions[carrier.name];
+          newSelectedOptions[uniqueKey] = selectedPlanOptions[uniqueKey];
         }
       }
     });
@@ -590,11 +796,11 @@ export function PremiumComparisonTable({
     }
   }, [unsortedCarriers, carrierPlanOptions]);
 
-  // Function to update plan option for a specific carrier
-  const updateCarrierPlanOption = useCallback((carrierName: string, planOption: string) => {
+  // Function to update plan option for a specific carrier-category combination
+  const updateCarrierPlanOption = useCallback((carrierKey: string, planOption: string) => {
     setSelectedPlanOptions(prev => ({
       ...prev,
-      [carrierName]: planOption
+      [carrierKey]: planOption
     }));
   }, []);
 
@@ -681,17 +887,17 @@ export function PremiumComparisonTable({
 
 
   /**
-   * Filter coverages by plan option for a specific carrier
+   * Filter coverages by plan option for a specific carrier-category combination
    */
   const filterCoveragesByCarrierPlan = useCallback((
     coverages: Coverage[] | undefined, 
-    carrierName: string
+    carrierKey: string
   ): Coverage[] => {
     if (!coverages) {
       return [];
     }
     
-    const selectedPlan = selectedPlanOptions[carrierName];
+    const selectedPlan = selectedPlanOptions[carrierKey];
     if (!selectedPlan) {
       return coverages;
     }
@@ -702,10 +908,10 @@ export function PremiumComparisonTable({
   }, [selectedPlanOptions]);
 
   /**
-   * Calculate total premiums for carriers (to be used for sorting)
+   * Calculate total premiums for carrier-category combinations (to be used for sorting)
    */
   const calculateCarrierTotals = useMemo(() => {
-    if (!results || results.length === 0 || unsortedCarriers.length === 0) {
+    if (!filteredResults || filteredResults.length === 0 || unsortedCarriers.length === 0) {
       return new Map<string, number>();
     }
 
@@ -715,31 +921,37 @@ export function PremiumComparisonTable({
     // Create a quick-access map of all coverages for performance.
     const processedCoverages = new Map<string, Coverage>();
     
-    for (const result of results) {
+    for (const result of filteredResults) {
       const carrierName = result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
       if (!carrierName) continue;
       
-      const carrierIdx = unsortedCarriers.findIndex(c => c.name === carrierName);
-      if (carrierIdx === -1) continue;
+      // Find matching carrier entries for this result
+      const matchingCarriers = unsortedCarriers.filter(c => c.name === carrierName);
+      
+      for (const carrierEntry of matchingCarriers) {
+        const uniqueKey = `${carrierName}-${carrierEntry.planName}-${carrierEntry.quoteType}`;
+        const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, uniqueKey);
 
-      const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
-
-      for (const coverage of filteredCoverages) {
-        const normalizedType = getNormalizedCoverageType(coverage.coverageType);
-        const key = `${carrierName}-${normalizedType}`;
-        processedCoverages.set(key, coverage);
+        for (const coverage of filteredCoverages) {
+          // Only include coverages that match this carrier's plan
+          if (coverage.planOptionName === carrierEntry.planName) {
+            const normalizedType = getNormalizedCoverageType(coverage.coverageType);
+            const key = `${carrierName}-${carrierEntry.planName}-${carrierEntry.quoteType}-${normalizedType}`;
+            processedCoverages.set(key, coverage);
+          }
+        }
       }
     }
 
-    // Calculate grand totals for each carrier using the same logic as the table
+    // Calculate grand totals for each carrier-plan-quote type combination using the same logic as the table
     unsortedCarriers.forEach((carrier, idx) => {
-      // Sum all coverage premiums for this carrier
+      // Sum all coverage premiums for this carrier-plan-quote type combination
       for (const key of masterBenefitOrder) {
         if (!key.startsWith('HEADER-') && !key.startsWith('Subtotal-') && key !== 'Grand Total' && key !== 'Rate Guarantees') {
           if (key.includes('-Single') || key.includes('-Family')) {
             // Handle Single/Family sub-rows
             const [baseType, variant] = key.split('-');
-            const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
+            const coverage = processedCoverages.get(`${carrier.name}-${carrier.planName}-${carrier.quoteType}-${baseType}`);
             if (coverage) {
               let premium = 0;
               if (variant === 'Single') {
@@ -758,7 +970,7 @@ export function PremiumComparisonTable({
             }
           } else {
             // Handle standard benefit rows
-            const coverage = processedCoverages.get(`${carrier.name}-${key}`);
+            const coverage = processedCoverages.get(`${carrier.name}-${carrier.planName}-${carrier.quoteType}-${key}`);
             if (coverage) {
               const numericPremium = parseNumericValue(coverage.monthlyPremium);
               if (numericPremium > 0 && key !== 'Extended Healthcare' && key !== 'Dental Care') {
@@ -770,30 +982,41 @@ export function PremiumComparisonTable({
       }
     });
 
-    // Return map of carrier name to total premium
+    // Return map of carrier-plan-quote type combination to total premium
     const totalsMap = new Map<string, number>();
     unsortedCarriers.forEach((carrier, idx) => {
-      totalsMap.set(carrier.name, grandTotal[idx]);
+      const uniqueKey = `${carrier.name}-${carrier.planName}-${carrier.quoteType}`;
+      totalsMap.set(uniqueKey, grandTotal[idx]);
     });
 
     return totalsMap;
-  }, [results, unsortedCarriers, filterCoveragesByCarrierPlan, getNormalizedCoverageType, parseNumericValue]);
+  }, [filteredResults, unsortedCarriers, filterCoveragesByCarrierPlan, getNormalizedCoverageType, parseNumericValue, getDocumentCategory]);
 
   /**
-   * Sort carriers by TOTAL MONTHLY PREMIUM (cheapest first)
+   * Sort carrier-plan combinations with Current quote type first, then by premium
    */
   const carriers = useMemo<Array<{
     name: string;
     rateGuarantee: string | null;
+    quoteType: string;
+    planName: string;
+    displayName: string;
   }>>(() => {
     if (unsortedCarriers.length === 0) {
       return unsortedCarriers;
     }
     
-    // Sort carriers by TOTAL MONTHLY PREMIUM (cheapest first)
+    // Sort carriers with Current quote type first, then by premium
     return unsortedCarriers.sort((a, b) => {
-      const totalA = calculateCarrierTotals.get(a.name) || 0;
-      const totalB = calculateCarrierTotals.get(b.name) || 0;
+      // Prioritize Current quote type first
+      if (a.quoteType === 'Current' && b.quoteType !== 'Current') return -1;
+      if (b.quoteType === 'Current' && a.quoteType !== 'Current') return 1;
+      
+      // Then sort by premium within each quote type
+      const uniqueKeyA = `${a.name}-${a.planName}-${a.quoteType}`;
+      const uniqueKeyB = `${b.name}-${b.planName}-${b.quoteType}`;
+      const totalA = calculateCarrierTotals.get(uniqueKeyA) || 0;
+      const totalB = calculateCarrierTotals.get(uniqueKeyB) || 0;
       
       // If both have premiums, sort by premium amount
       if (totalA > 0 && totalB > 0) {
@@ -805,7 +1028,7 @@ export function PremiumComparisonTable({
       if (totalB > 0) return 1;
       
       // If neither has premium data, sort alphabetically
-      return a.name.localeCompare(b.name);
+      return a.displayName.localeCompare(b.displayName);
     });
   }, [unsortedCarriers, calculateCarrierTotals]);
 
@@ -824,19 +1047,32 @@ export function PremiumComparisonTable({
 
     // 1. First, create a quick-access map of all coverages for performance.
     const processedCoverages = new Map<string, Coverage>();
-    for (const result of results) {
+    for (const result of filteredResults) {
       const carrierName = result.metadata?.carrierName || result.allCoverages?.[0]?.carrierName;
       if (!carrierName) continue;
       
-      const carrierIdx = carriers.findIndex(c => c.name === carrierName);
-      if (carrierIdx === -1) continue;
+      // Find matching carrier entries for this result
+      const matchingCarriers = carriers.filter(c => c.name === carrierName);
+      
+      for (const carrierEntry of matchingCarriers) {
+        const uniqueKey = `${carrierName}-${carrierEntry.planName}-${carrierEntry.quoteType}`;
+        
+        // Filter coverages to only those matching this carrier's plan
+        const planCoverages = result.allCoverages?.filter(coverage => 
+          coverage.planOptionName === carrierEntry.planName || !coverage.planOptionName
+        ) || [];
 
-      const filteredCoverages = filterCoveragesByCarrierPlan(result.allCoverages, carrierName);
-
-      for (const coverage of filteredCoverages) {
-        const normalizedType = getNormalizedCoverageType(coverage.coverageType);
-        const key = `${carrierName}-${normalizedType}`;
-        processedCoverages.set(key, coverage);
+        for (const coverage of planCoverages) {
+          const normalizedType = getNormalizedCoverageType(coverage.coverageType);
+          const key = `${carrierName}-${carrierEntry.planName}-${carrierEntry.quoteType}-${normalizedType}`;
+          processedCoverages.set(key, coverage);
+          console.log('[DEBUG] Set coverage:', {
+            key: key,
+            coverageType: coverage.coverageType,
+            monthlyPremium: coverage.monthlyPremium,
+            unitRate: coverage.unitRate
+          });
+        }
       }
     }
 
@@ -875,7 +1111,7 @@ export function PremiumComparisonTable({
         
         // Find first coverage with lives data for volume column
         const firstCoverageWithLives = carriers
-          .map(c => processedCoverages.get(`${c.name}-${baseType}`))
+          .map(c => processedCoverages.get(`${c.name}-${c.planName}-${c.quoteType}-${baseType}`))
           .find(cov => cov && (variant === 'Single' ? (cov as any).livesSingle : (cov as any).livesFamily));
         const lives = variant === 'Single' ? (firstCoverageWithLives as any)?.livesSingle : (firstCoverageWithLives as any)?.livesFamily;
         
@@ -888,7 +1124,7 @@ export function PremiumComparisonTable({
         };
 
         carriers.forEach((carrier, idx) => {
-          const coverage = processedCoverages.get(`${carrier.name}-${baseType}`);
+          const coverage = processedCoverages.get(`${carrier.name}-${carrier.planName}-${carrier.quoteType}-${baseType}`);
           if (coverage) {
             // Handle Single/Family variants - data is stored directly on coverage object
             let premium, rate;
@@ -924,7 +1160,7 @@ export function PremiumComparisonTable({
         // Handle standard benefit rows
         // Find first coverage with data for the consolidated volume column
         const firstCoverage = carriers
-          .map(c => processedCoverages.get(`${c.name}-${key}`))
+          .map(c => processedCoverages.get(`${c.name}-${c.planName}-${c.quoteType}-${key}`))
           .find(cov => cov);
         
         // For Dependent Life, use lives field; for others, use volume field
@@ -946,7 +1182,14 @@ export function PremiumComparisonTable({
         };
 
         carriers.forEach((carrier, idx) => {
-          const coverage = processedCoverages.get(`${carrier.name}-${key}`);
+          const lookupKey = `${carrier.name}-${carrier.planName}-${carrier.quoteType}-${key}`;
+          const coverage = processedCoverages.get(lookupKey);
+          console.log('[DEBUG] Looking up coverage:', {
+            lookupKey: lookupKey,
+            found: !!coverage,
+            benefitType: key,
+            carrier: carrier.displayName
+          });
           if (coverage) {
             rowData.values[idx] = {
               unitRate: formatUnitRate(coverage.unitRate),
@@ -1047,7 +1290,7 @@ export function PremiumComparisonTable({
     });
 
     return finalRows;
-  }, [carriers, results, selectedPlanOptions, filterCoveragesByCarrierPlan, getNormalizedCoverageType, isExperienceRatedCoverage, parseNumericValue]);
+  }, [carriers, filteredResults, selectedPlanOptions, filterCoveragesByCarrierPlan, getNormalizedCoverageType, isExperienceRatedCoverage, parseNumericValue]);
 
   // High-level overview component
   const HighLevelOverviewSection = () => {
@@ -1125,6 +1368,61 @@ export function PremiumComparisonTable({
         <div className="flex items-center justify-between relative">
           <CardTitle>Premium Comparison</CardTitle>
           <div className="flex items-center gap-2">
+            {/* Comparison Type Toggle Buttons */}
+            <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
+              <Button
+                variant={comparisonType === 'all' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('all')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'all'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Show all plans"
+              >
+                All Plans
+              </Button>
+              <Button
+                variant={comparisonType === 'current-vs-negotiated' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('current-vs-negotiated')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'current-vs-negotiated'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Compare current vs negotiated plans"
+              >
+                Current vs Negotiated
+              </Button>
+              <Button
+                variant={comparisonType === 'current-vs-alternative' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('current-vs-alternative')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'current-vs-alternative'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Compare current vs alternative plans"
+              >
+                Current vs Alternative
+              </Button>
+              <Button
+                variant={comparisonType === 'current-vs-go-to-market' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('current-vs-go-to-market')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'current-vs-go-to-market'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Compare current vs go to market plans"
+              >
+                Current vs Go to Market
+              </Button>
+            </div>
             {/* Undo/Redo buttons with enhanced UX */}
             {(canUndo || canRedo) && (
               <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
@@ -1241,17 +1539,34 @@ export function PremiumComparisonTable({
                   <div className={`font-semibold text-sky-600 ${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'}`}>Carrier</div>
                 </TableHead>
                 {carriers.map((carrier, index) => {
-                  const selectedPlan = selectedPlanOptions[carrier.name];
-                  const availableOptions = carrierPlanOptions[carrier.name] || [];
+                  const uniqueKey = `${carrier.name}-${carrier.planName}-${carrier.quoteType}`;
+                  const selectedPlan = selectedPlanOptions[uniqueKey];
+                  const availableOptions = carrierPlanOptions[uniqueKey] || [];
+                  const style = getQuoteTypeStyle(carrier.quoteType);
                   
                   return (
                     <TableHead
                       key={`header-carrier-${index}`}
-                      className={`text-center px-3 py-3 border-l border-b-2 border-b-sky-500 transition-colors duration-200 hover:bg-sky-50/50 cursor-default ${index % 2 === 1 ? 'bg-slate-100' : ''}`}
+                      className={`text-center px-3 py-3 border-l border-b-2 border-b-sky-500 transition-colors duration-200 hover:bg-sky-50/50 cursor-default ${style.headerBg}`}
                       colSpan={2}
                     >
-                      <div className="flex flex-col items-center">
-                        <span className={`font-semibold text-sky-600 text-center leading-tight ${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'}`}>{carrier.name || 'Unknown Carrier'}</span>
+                      <div className="flex flex-col items-center space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <span className={`font-semibold text-sky-600 text-center leading-tight ${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'}`}>
+                            {carrier.name || 'Unknown Carrier'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Badge variant="outline" className={`text-xs font-medium border ${style.badge}`}>
+                            {style.icon}
+                            <span className="ml-1">{carrier.quoteType}</span>
+                          </Badge>
+                        </div>
+                        {carrier.planName && carrier.planName !== 'Default' && (
+                          <div className="text-xs text-gray-600 font-medium">
+                            {carrier.planName}
+                          </div>
+                        )}
                       </div>
                     </TableHead>
                   );
@@ -1264,12 +1579,15 @@ export function PremiumComparisonTable({
                 <TableHead className="border-b-2 border-b-sky-500 text-center px-3 py-3 bg-slate-100">
                   <div className={`font-semibold ${getFontSizeClass()}`}>Volume</div>
                 </TableHead>
-                {carriers.map((_, index) => (
-                  <React.Fragment key={`subheader-${index}`}>
-                    <TableHead className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${index % 2 === 1 ? 'bg-slate-100' : ''} ${getFontSizeClass()}`}>Unit Rate</TableHead>
-                    <TableHead className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${index % 2 === 1 ? 'bg-slate-100' : ''} ${getFontSizeClass()}`}>Monthly Premium</TableHead>
-                  </React.Fragment>
-                ))}
+                {carriers.map((carrier, index) => {
+                  const style = getQuoteTypeStyle(carrier.quoteType);
+                  return (
+                    <React.Fragment key={`subheader-${index}`}>
+                      <TableHead className={`text-center border-l border-b-2 border-b-sky-500 px-3 py-3 w-[100px] min-w-[100px] max-w-[100px] ${style.headerBg} ${getFontSizeClass()}`}>Unit Rate</TableHead>
+                      <TableHead className={`text-center border-b-2 border-b-sky-500 px-3 py-3 w-[150px] min-w-[150px] max-w-[150px] ${style.headerBg} ${getFontSizeClass()}`}>Monthly Premium</TableHead>
+                    </React.Fragment>
+                  );
+                })}
               </TableRow>
             </TableHeader>
           <TableBody>
@@ -1296,8 +1614,8 @@ export function PremiumComparisonTable({
               if (row.type === 'header') {
                 return (
                   <TableRow key={`row-${index}-${row.label}`}>
-                    <TableCell className="font-bold text-sm border-y bg-muted/30 py-3 sticky left-0 z-10" colSpan={2 + carriers.length * 2}>
-                      <div className="text-sm break-words leading-relaxed">{row.label}</div>
+                    <TableCell className={`font-bold border-y bg-muted/30 py-3 sticky left-0 z-10 ${getFontSizeClass()}`} colSpan={2 + carriers.length * 2}>
+                      <div className={`break-words leading-relaxed ${getFontSizeClass()}`}>{row.label}</div>
                     </TableCell>
                   </TableRow>
                 );
@@ -1310,19 +1628,21 @@ export function PremiumComparisonTable({
                     <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 bg-background border-r z-10 px-3 py-3 align-top ${row.isBold ? 'font-bold' : 'font-medium'}`} colSpan={2}>
                       <div className="text-sm break-words leading-relaxed">{row.label}</div>
                     </TableCell>
-                    {carriers.map((_, carrierIndex) => (
+                    {carriers.map((carrier, carrierIndex) => {
+                      const carrierStyle = getQuoteTypeStyle(carrier.quoteType);
+                      return (
                       <TableCell
                         key={`rate-guarantee-${carrierIndex}`}
                         colSpan={2}
-                        className={`text-center px-3 py-3 border-l align-top ${carrierIndex % 2 === 1 ? 'bg-slate-100' : ''}`}
+                        className={`text-center px-3 py-3 border-l align-top ${carrierStyle.columnBg}`}
                       >
-                        <div className={`break-words leading-relaxed ${row.isBold ? 'text-sm font-bold' : 'text-sm'}`}>
+                        <div className={`break-words leading-relaxed ${row.isBold ? `${getFontSizeClass()} font-bold` : getFontSizeClass()}`}>
                           <span className="text-slate-600">
                             {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
                           </span>
                         </div>
                       </TableCell>
-                    ))}
+                    )})}
                   </TableRow>
                 );
               }
@@ -1331,14 +1651,14 @@ export function PremiumComparisonTable({
                 <TableRow key={`row-${index}-${row.label}`} className={rowClassName}>
                   {row.label === 'Sub-total - Pooled Coverage' || row.label === 'Sub-total - Experience Rated Benefits' || row.label === 'TOTAL MONTHLY PREMIUM*' ? (
                     <TableCell className={`${carriers.length < 3 ? 'w-[556px]' : 'w-[445px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200' : row.type === 'total' ? 'bg-muted' : 'bg-background'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'}`} colSpan={2}>
-                      <div className="text-sm break-words leading-relaxed">
+                      <div className={`break-words leading-relaxed ${getFontSizeClass()}`}>
                         {row.label}
                       </div>
                     </TableCell>
                   ) : (
                     <>
                       <TableCell className={`${carriers.length < 3 ? 'w-[469px]' : 'w-[375px]'} sticky left-0 border-r z-10 px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : 'bg-background hover:bg-blue-50/50'} ${row.type === 'subBenefit' ? 'pl-6' : row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : row.type === 'subtotal' ? 'font-medium' : 'font-medium'} transition-colors duration-200`}>
-                        <div className="text-sm break-words leading-relaxed">
+                        <div className={`break-words leading-relaxed ${getFontSizeClass()}`}>
                           {row.label}
                         </div>
                       </TableCell>
@@ -1348,11 +1668,11 @@ export function PremiumComparisonTable({
                             value={getEditedValue(`${row.key}-volume`, row.volume || '-')}
                             onUpdate={(value) => updateEditedValue(`${row.key}-volume`, value)}
                             isNumeric={true}
-                            className="text-sm"
                             isEditMode={isEditMode}
+                            fontSize={fontSize}
                           />
                         ) : (
-                          <div className="text-sm break-words leading-relaxed">
+                          <div className={`break-words leading-relaxed ${getFontSizeClass()}`}>
                             {row.type !== 'subtotal' && 
                              row.type !== 'total' && 
                              row.type !== 'rateGuarantee' && 
@@ -1364,19 +1684,24 @@ export function PremiumComparisonTable({
                       </TableCell>
                     </>
                   )}
-                  {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => (
+                  {row.values && Array.isArray(row.values) ? row.values.map((cell: any, cellIdx: number) => {
+                    const carrierStyle = getQuoteTypeStyle(carriers[cellIdx]?.quoteType || 'Current');
+                    const baseColumnBg = row.type === 'subtotal' ? 'bg-blue-200' : row.type === 'total' ? 'bg-muted' : carrierStyle.columnBg;
+                    const hoverColumnBg = row.type === 'subtotal' ? 'hover:bg-blue-300' : row.type === 'total' ? 'hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50';
+                    
+                    return (
                     <React.Fragment key={`${row.key}-${cellIdx}`}>
-                      <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
+                      <TableCell className={`text-center px-3 py-3 align-top border-l ${baseColumnBg} ${hoverColumnBg} transition-colors duration-200`}>
                         {(row.type === 'benefit' || row.type === 'subBenefit') && cell?.unitRate && cell.unitRate !== '-' ? (
                           <EditableTableCell
                             value={getEditedValue(`${row.key}-${cellIdx}-unitRate`, cell?.unitRate || '-')}
                             onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-unitRate`, value)}
                             isNumeric={true}
-                            className="text-sm"
                             isEditMode={isEditMode}
+                            fontSize={fontSize}
                           />
                         ) : (
-                          <div className="text-sm break-words leading-relaxed">
+                          <div className={`break-words leading-relaxed ${getFontSizeClass()}`}>
                             {row.type !== 'subtotal' && 
                              row.type !== 'total' && 
                              row.type !== 'rateGuarantee' && 
@@ -1386,18 +1711,19 @@ export function PremiumComparisonTable({
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'subtotal' ? 'bg-blue-200 hover:bg-blue-300' : row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
+                      <TableCell className={`text-center px-3 py-3 align-top ${baseColumnBg} ${hoverColumnBg} transition-colors duration-200`}>
                         {(row.type === 'benefit' || row.type === 'subBenefit' || row.type === 'subtotal' || row.type === 'total') && cell?.monthlyPremium && cell.monthlyPremium !== '-' ? (
                           <EditableTableCell
                             value={getEditedValue(`${row.key}-${cellIdx}-premium`, cell?.monthlyPremium || '-')}
                             onUpdate={(value) => updateEditedValue(`${row.key}-${cellIdx}-premium`, value)}
                             isNumeric={true}
                             isCurrency={true}
-                            className={`${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'} ${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
+                            className={`${row.type === 'total' ? 'font-bold' : row.isBold ? 'font-bold' : 'font-medium'} ${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}
                             isEditMode={isEditMode}
+                            fontSize={fontSize}
                           />
                         ) : (
-                          <div className={`break-words leading-relaxed ${row.type === 'total' ? 'text-lg font-bold' : row.isBold ? 'text-sm font-bold' : 'text-sm font-medium'}`}>
+                          <div className={`break-words leading-relaxed ${row.type === 'total' ? `${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'} font-bold` : row.isBold ? `${getFontSizeClass()} font-bold` : `${getFontSizeClass()} font-medium`}`}>
                             {row.type !== 'header' ? (
                               <span className={`${cell?.monthlyPremium && cell.monthlyPremium !== '-' && parseNumericValue(cell.monthlyPremium) > 1000 ? 'text-slate-700' : ''}`}>
                                 {cell?.monthlyPremium || '-'}
@@ -1407,18 +1733,23 @@ export function PremiumComparisonTable({
                         )}
                       </TableCell>
                     </React.Fragment>
-                  )) : (
+                  )}) : (
                     // Fallback for rows without values array
-                    carriers.map((_, cellIdx) => (
+                    carriers.map((_, cellIdx) => {
+                      const carrierStyle = getQuoteTypeStyle(carriers[cellIdx]?.quoteType || 'Current');
+                      const baseColumnBg = row.type === 'total' ? 'bg-muted' : carrierStyle.columnBg;
+                      const hoverColumnBg = row.type === 'total' ? 'hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50';
+                      
+                      return (
                       <React.Fragment key={`${row.key}-empty-${cellIdx}`}>
-                        <TableCell className={`text-center px-3 py-3 align-top border-l ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                          <div className="text-sm">-</div>
+                        <TableCell className={`text-center px-3 py-3 align-top border-l ${baseColumnBg} ${hoverColumnBg} transition-colors duration-200`}>
+                          <div className={getFontSizeClass()}>-</div>
                         </TableCell>
-                        <TableCell className={`text-center px-3 py-3 align-top ${row.type === 'total' ? 'bg-muted hover:bg-muted' : cellIdx % 2 === 1 ? 'bg-slate-100 hover:bg-blue-50/50' : 'hover:bg-blue-50/50'} transition-colors duration-200`}>
-                          <div className={`${row.type === 'total' ? 'text-lg font-bold' : 'text-sm'}`}>-</div>
+                        <TableCell className={`text-center px-3 py-3 align-top ${baseColumnBg} ${hoverColumnBg} transition-colors duration-200`}>
+                          <div className={`${row.type === 'total' ? `${fontSize === 'large' ? 'text-lg' : fontSize === 'medium' ? 'text-base' : 'text-sm'} font-bold` : getFontSizeClass()}`}>-</div>
                         </TableCell>
                       </React.Fragment>
-                    ))
+                    )})
                   )}
                 </TableRow>
               );

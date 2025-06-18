@@ -458,10 +458,26 @@ export default function PlanSelectionPage() {
         selectedPlans: doc.selectedPlans,
         planQuoteTypes: doc.planQuoteTypes || {},
         planHSAOptions: doc.planHSAOptions || {},
-        planHSADetails: doc.planHSADetails || {}
+        planHSADetails: doc.planHSADetails || {},
+        // Preserve the quote type data at the root level for compatibility
+        quoteMeta: {
+          planQuoteTypes: doc.planQuoteTypes || {},
+          planHSAOptions: doc.planHSAOptions || {},
+          planHSADetails: doc.planHSADetails || {}
+        }
       }));
 
       localStorage.setItem('parsedBenefitsDocuments', JSON.stringify(filteredDocuments));
+      
+      // Debug: Log what we're saving to localStorage
+      console.log('[DEBUG] Saving to localStorage:', {
+        documentCount: filteredDocuments.length,
+        planQuoteTypesPerDoc: filteredDocuments.map((doc, idx) => ({
+          docIndex: idx,
+          planQuoteTypes: doc.planQuoteTypes,
+          quoteMeta: doc.quoteMeta
+        }))
+      });
       
       // Navigate to results
       router.push('/quote-tool/document-parser/results');
