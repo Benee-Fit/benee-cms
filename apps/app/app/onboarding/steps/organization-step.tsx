@@ -109,6 +109,14 @@ export function OrganizationStep({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData?.error || 'Failed to fetch organization info';
+        
+        // If it's a fetch error, provide a more helpful message
+        if (errorMessage.includes('fetch failed') || errorMessage.includes('Could not fetch website content')) {
+          setInfoFetchError('Unable to fetch website info automatically. You can still enter your organization details manually.');
+          // Don't throw - just return silently
+          return;
+        }
+        
         throw new Error(errorMessage);
       }
       
@@ -133,7 +141,8 @@ export function OrganizationStep({
       }
     } catch (error) {
       console.error('Error fetching organization info:', error);
-      setInfoFetchError('Could not retrieve organization info');
+      // Provide a user-friendly message instead of showing the technical error
+      setInfoFetchError('Unable to auto-fetch website info. You can enter your organization details manually.');
     } finally {
       setIsLoadingInfo(false);
     }
@@ -211,7 +220,7 @@ export function OrganizationStep({
             )}
           </div>
           {infoFetchError && (
-            <p className="text-sm text-amber-600 mt-1">{infoFetchError}</p>
+            <p className="text-sm text-gray-500 mt-1">{infoFetchError}</p>
           )}
           {formData.website && !isLoadingInfo && !infoFetchError && (
             <p className="text-sm text-gray-500 mt-1">

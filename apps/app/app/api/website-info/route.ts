@@ -37,19 +37,51 @@ export async function POST(request: Request) {
     let response: Response;
     try {
       console.log('Attempting to fetch website:', websiteUrl);
+      
+      // Add timeout and more detailed error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       response = await fetch(websiteUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; BeneeFit/1.0; +https://benee-fit.xyz)'
-        }
+          'User-Agent': 'Mozilla/5.0 (compatible; BeneeFit/1.0; +https://benee-fit.xyz)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
+        },
+        signal: controller.signal,
+        redirect: 'follow',
+        // @ts-ignore - Next.js specific option
+        cache: 'no-store'
       });
       
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        throw new Error(`Failed to fetch website: ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error('Error fetching website:', error);
+      
+      let errorMessage = 'fetch failed';
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timeout - the website took too long to respond';
+        } else if (error.message.includes('ENOTFOUND') || error.message.includes('getaddrinfo')) {
+          errorMessage = 'Could not resolve website domain - please check the URL';
+        } else if (error.message.includes('ECONNREFUSED')) {
+          errorMessage = 'Connection refused - the website may be down';
+        } else if (error.message.includes('ETIMEDOUT')) {
+          errorMessage = 'Connection timeout - the website is not responding';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       return NextResponse.json(
-        { error: `Could not fetch website content: ${error instanceof Error ? error.message : 'Unknown error'}` }, 
+        { error: `Could not fetch website content: ${errorMessage}` }, 
         { status: 422 }
       );
     }

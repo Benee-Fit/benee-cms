@@ -52,7 +52,13 @@ export const AuthProvider = ({
   return (
     <ClerkProvider
       {...properties}
-      appearance={{ layout, baseTheme, elements, variables }}
+      appearance={{ 
+        layout, 
+        baseTheme, 
+        elements, 
+        variables,
+        cssLayerName: 'clerk'
+      }}
     />
   );
 };

@@ -1,10 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
   output          = "../generated/client"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -13,7 +10,201 @@ datasource db {
   relationMode = "prisma"
 }
 
-// Enums
+model Organization {
+  id         String   @id @default(cuid())
+  clerkId    String   @unique
+  websiteUrl String?
+  orgName    String
+  orgLogo    String?
+  orgType    String?
+  orgSize    String?
+  orgEmail   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  users      User[]
+
+  @@index([clerkId])
+}
+
+model User {
+  id                String              @id @default(cuid())
+  clerkId           String              @unique
+  email             String              @unique
+  userType          UserType
+  accessLevel       AccessLevel
+  emailVerified     Boolean             @default(false)
+  isActive          Boolean             @default(true)
+  avatarUrl         String?
+  lastLoginAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?
+  orgId             String?
+  organization      Organization?       @relation(fields: [orgId], references: [id])
+  managedClients    BrokerClient[]      @relation("BrokerToClients")
+  uploadedDocuments ClientDocument[]    @relation("DocumentUploader")
+  createdReports    QuoteReport[]       @relation("ReportCreator")
+  createdShareLinks ReportShareLink[]   @relation("ShareLinkCreator")
+  brokerInsights    ClientInsightData[] @relation("BrokerInsights")
+
+  @@index([clerkId])
+  @@index([email])
+  @@index([orgId])
+}
+
+model Page {
+  id   Int    @id @default(autoincrement())
+  name String
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  title     String
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BrokerClient {
+  id                     String              @id @default(cuid())
+  companyName            String
+  policyNumber           String              @unique
+  renewalDate            DateTime
+  headcount              Int
+  premium                Decimal             @db.Decimal(10, 2)
+  revenue                Decimal             @db.Decimal(10, 2)
+  industry               String
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  brokerId               String?
+  assignedBroker         String?
+  brokerCommissionSplit  Decimal?            @db.Decimal(5, 2)
+  companyLocation        String?
+  companySize            String?
+  currentCarrier         String?
+  individualSplits       Json?
+  leadSource             String?
+  leadershipCEO          String?
+  leadershipCFO          String?
+  leadershipCHRO         String?
+  parentId               String?
+  planAdmin              String?
+  planManagementFee      Decimal?            @db.Decimal(10, 2)
+  planType               String?
+  splitWithAnotherBroker Boolean             @default(false)
+  withCarrierSince       DateTime?
+  broker                 User?               @relation("BrokerToClients", fields: [brokerId], references: [id])
+  parent                 BrokerClient?       @relation("ClientHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  divisions              BrokerClient[]      @relation("ClientHierarchy")
+  documents              ClientDocument[]
+  reports                QuoteReport[]
+  insights               ClientInsightData[] @relation("ClientInsights")
+
+  @@index([policyNumber])
+  @@index([renewalDate])
+  @@index([brokerId])
+  @@index([parentId])
+}
+
+model ClientDocument {
+  id            String       @id @default(cuid())
+  clientId      String
+  uploadedById  String?
+  fileName      String
+  fileType      String
+  fileUrl       String
+  uploadDate    DateTime     @default(now())
+  documentType  String
+  description   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  documentTitle String?
+  jsonData      Json?
+  client        BrokerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedBy    User?        @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([clientId])
+  @@index([uploadedById])
+}
+
+model QuoteReport {
+  id          String            @id @default(cuid())
+  title       String
+  clientId    String?
+  createdById String
+  data        Json
+  documentIds String[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  client      BrokerClient?     @relation(fields: [clientId], references: [id])
+  createdBy   User              @relation("ReportCreator", fields: [createdById], references: [id])
+  shareLinks  ReportShareLink[]
+
+  @@index([clientId])
+  @@index([createdById])
+}
+
+model ReportShareLink {
+  id             String      @id @default(cuid())
+  reportId       String
+  shareToken     String      @unique
+  createdById    String
+  expiresAt      DateTime?
+  password       String?
+  accessCount    Int         @default(0)
+  lastAccessedAt DateTime?
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  report         QuoteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  createdBy      User        @relation("ShareLinkCreator", fields: [createdById], references: [id])
+
+  @@index([reportId])
+  @@index([shareToken])
+  @@index([createdById])
+}
+
+model ClientInsightData {
+  id          String             @id @default(cuid())
+  clientId    String
+  brokerId    String
+  category    InsightCategory
+  type        String
+  title       String
+  description String?
+  value       Json
+  metadata    Json?
+  period      String?
+  targetValue Json?
+  isActive    Boolean            @default(true)
+  sortOrder   Int?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  client      BrokerClient       @relation("ClientInsights", fields: [clientId], references: [id], onDelete: Cascade)
+  broker      User               @relation("BrokerInsights", fields: [brokerId], references: [id])
+  timeSeries  ClientTimeSeries[]
+
+  @@index([clientId])
+  @@index([brokerId])
+  @@index([category])
+  @@index([type])
+  @@index([period])
+}
+
+model ClientTimeSeries {
+  id        String            @id @default(cuid())
+  insightId String
+  date      DateTime
+  value     Json
+  metadata  Json?
+  createdAt DateTime          @default(now())
+  insight   ClientInsightData @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@index([insightId])
+  @@index([date])
+  @@index([insightId, date])
+}
+
 enum UserType {
   ADMIN
   CLIENT
@@ -34,205 +225,4 @@ enum InsightCategory {
   REVENUE
   RISK
   OPPORTUNITY
-}
-
-// User model
-model User {
-  id            String      @id @default(cuid())
-  clerkId       String      @unique
-  email         String      @unique
-  userType      UserType
-  accessLevel   AccessLevel
-  emailVerified Boolean     @default(false)
-  isActive      Boolean     @default(true)
-  avatarUrl     String?
-  lastLoginAt   DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  deletedAt     DateTime?
-
-  // Relationships
-  managedClients    BrokerClient[]      @relation("BrokerToClients")
-  uploadedDocuments ClientDocument[]    @relation("DocumentUploader")
-  createdReports    QuoteReport[]       @relation("ReportCreator")
-  createdShareLinks ReportShareLink[]   @relation("ShareLinkCreator")
-  brokerInsights    ClientInsightData[] @relation("BrokerInsights")
-
-  @@index([clerkId])
-  @@index([email])
-}
-
-// This is a stub model.
-// Delete it and add your own Prisma models.
-model Page {
-  id   Int    @id @default(autoincrement())
-  name String
-}
-
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model BrokerClient {
-  id           String   @id @default(cuid())
-  companyName  String
-  policyNumber String   @unique
-  renewalDate  DateTime
-  headcount    Int
-  premium      Decimal  @db.Decimal(10, 2)
-  revenue      Decimal  @db.Decimal(10, 2)
-  industry     String
-  brokerId     String? // Reference to the broker managing this client
-  broker       User?    @relation("BrokerToClients", fields: [brokerId], references: [id])
-
-  // Parent-child relationship for holding companies and divisions
-  parentId  String? // Reference to parent holding company
-  parent    BrokerClient?  @relation("ClientHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  divisions BrokerClient[] @relation("ClientHierarchy")
-
-  // New fields
-  companySize            String? // Small (1-49), Medium (50-199), Large (200+)
-  companyLocation        String?
-  leadershipCEO          String?
-  leadershipCFO          String?
-  leadershipCHRO         String?
-  planAdmin              String?
-  assignedBroker         String?
-  leadSource             String?
-  brokerCommissionSplit  Decimal?  @db.Decimal(5, 2) // Percentage
-  individualSplits       Json? // Structured JSON for splits
-  planManagementFee      Decimal?  @db.Decimal(10, 2)
-  splitWithAnotherBroker Boolean   @default(false)
-  currentCarrier         String?
-  withCarrierSince       DateTime?
-  planType               String?
-
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
-  documents ClientDocument[]
-  reports   QuoteReport[]
-  insights  ClientInsightData[] @relation("ClientInsights")
-
-  @@index([policyNumber])
-  @@index([renewalDate])
-  @@index([brokerId])
-  @@index([parentId])
-}
-
-model ClientDocument {
-  id            String       @id @default(cuid())
-  clientId      String
-  client        BrokerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  uploadedById  String? // Reference to the user who uploaded the document
-  uploadedBy    User?        @relation("DocumentUploader", fields: [uploadedById], references: [id])
-  fileName      String
-  fileType      String
-  fileUrl       String
-  uploadDate    DateTime     @default(now())
-  documentType  String
-  description   String?
-  documentTitle String? // Title of the document
-  jsonData      Json? // Structured data extracted from the document
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  @@index([clientId])
-  @@index([uploadedById])
-}
-
-// For storing the quote tool report data
-model QuoteReport {
-  id          String        @id @default(cuid())
-  title       String
-  clientId    String? // Optional if reports can be created without associating with a client
-  client      BrokerClient? @relation(fields: [clientId], references: [id])
-  createdById String
-  createdBy   User          @relation("ReportCreator", fields: [createdById], references: [id])
-  data        Json // The structured report data (coverages, premiums, etc.)
-  documentIds String[] // Array of document IDs used to generate this report
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  // Relationships
-  shareLinks ReportShareLink[]
-
-  @@index([clientId])
-  @@index([createdById])
-}
-
-// For managing shareable links to reports
-model ReportShareLink {
-  id             String      @id @default(cuid())
-  reportId       String
-  report         QuoteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  shareToken     String      @unique // Unique token for the link
-  createdById    String
-  createdBy      User        @relation("ShareLinkCreator", fields: [createdById], references: [id])
-  expiresAt      DateTime? // Optional expiration date
-  password       String? // Optional password protection
-  accessCount    Int         @default(0) // Track number of times accessed
-  lastAccessedAt DateTime? // Last time the link was accessed
-  isActive       Boolean     @default(true)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-
-  @@index([reportId])
-  @@index([shareToken])
-  @@index([createdById])
-}
-
-// Client Insights Data - Flexible model for all insight types
-model ClientInsightData {
-  id       String       @id @default(cuid())
-  clientId String
-  client   BrokerClient @relation("ClientInsights", fields: [clientId], references: [id], onDelete: Cascade)
-  brokerId String
-  broker   User         @relation("BrokerInsights", fields: [brokerId], references: [id])
-
-  category    InsightCategory // METRIC, REVENUE, RISK, OPPORTUNITY
-  type        String // Specific type within category (e.g., "premium_growth", "renewal_risk")
-  title       String // Display name (e.g., "Premium Growth Rate")
-  description String? // Optional description
-
-  value    Json // Flexible JSON field for any data structure
-  metadata Json? // Additional context/settings
-
-  period      String? // Time period (e.g., "2024-Q1", "monthly", "annual")
-  targetValue Json? // Target or benchmark values
-
-  isActive  Boolean @default(true)
-  sortOrder Int? // For custom ordering
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations to time series data
-  timeSeries ClientTimeSeries[]
-
-  @@index([clientId])
-  @@index([brokerId])
-  @@index([category])
-  @@index([type])
-  @@index([period])
-}
-
-// Time series data for historical tracking and charts
-model ClientTimeSeries {
-  id        String            @id @default(cuid())
-  insightId String
-  insight   ClientInsightData @relation(fields: [insightId], references: [id], onDelete: Cascade)
-
-  date     DateTime // Data point timestamp
-  value    Json // Time-specific value
-  metadata Json? // Additional context for this data point
-
-  createdAt DateTime @default(now())
-
-  @@index([insightId])
-  @@index([date])
-  @@index([insightId, date])
 }
