@@ -532,7 +532,7 @@ export function PremiumComparisonTable({
                              result.allCoverages.map(c => c.planOptionName).filter(Boolean);
 
         for (const planName of plansToProcess) {
-          const planCoverage = result.allCoverages.find(c => c.planOptionName === planName);
+          const planCoverage: Coverage | undefined = result.allCoverages.find(c => c.planOptionName === planName);
           if (planCoverage && planCoverage.carrierName) {
             const quoteType = getPlanQuoteType(result, planCoverage);
             const uniqueKey = `${planCoverage.carrierName}-${planName}-${quoteType}`;
@@ -730,7 +730,7 @@ export function PremiumComparisonTable({
         if (!planName) continue;
         
         // Find a coverage for this plan to get the quote type
-        const planCoverage = result.allCoverages.find(c => c.planOptionName === planName);
+        const planCoverage: Coverage | undefined = result.allCoverages.find(c => c.planOptionName === planName);
         if (!planCoverage) continue;
         
         // Get quote type directly from plan quote types if available, otherwise use getPlanQuoteType

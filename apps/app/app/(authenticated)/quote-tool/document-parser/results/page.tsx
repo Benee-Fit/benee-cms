@@ -117,6 +117,18 @@ export default function DocumentParserResultsPage() {
       if (storedData) {
         const parsedDocuments = JSON.parse(storedData) as ParsedDocument[];
         
+        // Debug: Log what we loaded from localStorage
+        console.log('[DEBUG] Loaded from localStorage:', {
+          documentCount: parsedDocuments.length,
+          planQuoteTypesPerDoc: parsedDocuments.map((doc, idx) => ({
+            docIndex: idx,
+            planQuoteTypes: (doc as any).planQuoteTypes,
+            quoteMeta: (doc as any).quoteMeta,
+            selectedPlans: (doc as any).selectedPlans,
+            originalFileName: doc.originalFileName
+          }))
+        });
+        
         // Normalize and repair documents if needed
         const normalizedDocuments = parsedDocuments.map((doc, index) => {
           // Handle nested structure - if data is under processedData, extract it
@@ -126,7 +138,13 @@ export default function DocumentParserResultsPage() {
               ...doc,
               metadata: doc.processedData.metadata,
               coverages: doc.processedData.coverages,
-              planNotes: doc.processedData.planNotes || []
+              planNotes: doc.processedData.planNotes || [],
+              // IMPORTANT: Preserve plan selection data
+              planQuoteTypes: (doc as any).planQuoteTypes,
+              quoteMeta: (doc as any).quoteMeta,
+              selectedPlans: (doc as any).selectedPlans,
+              planHSAOptions: (doc as any).planHSAOptions,
+              planHSADetails: (doc as any).planHSADetails
             };
           }
           
@@ -258,6 +276,18 @@ export default function DocumentParserResultsPage() {
         
         // Update state with normalized documents
         setParsedDocuments(normalizedDocuments);
+        
+        // Debug: Log what we have after normalization
+        console.log('[DEBUG] After normalization:', {
+          documentCount: normalizedDocuments.length,
+          planQuoteTypesPerDoc: normalizedDocuments.map((doc, idx) => ({
+            docIndex: idx,
+            planQuoteTypes: (doc as any).planQuoteTypes,
+            quoteMeta: (doc as any).quoteMeta,
+            selectedPlans: (doc as any).selectedPlans,
+            originalFileName: doc.originalFileName
+          }))
+        });
         
         // Check if we actually have coverage data in any document
         const hasCoverages = normalizedDocuments.some(
