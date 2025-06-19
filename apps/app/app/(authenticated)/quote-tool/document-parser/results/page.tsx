@@ -81,6 +81,12 @@ interface ParsedDocument {
     benefitDetails: Record<string, unknown>;
   }[];
   planNotes: { note: string }[];
+  // Additional properties for plan selection data
+  planQuoteTypes?: Record<string, unknown>;
+  quoteMeta?: Record<string, unknown>;
+  selectedPlans?: Record<string, unknown>;
+  planHSAOptions?: Record<string, unknown>;
+  planHSADetails?: Record<string, unknown>;
 }
 
 export default function DocumentParserResultsPage() {
@@ -141,11 +147,11 @@ export default function DocumentParserResultsPage() {
               planNotes: doc.processedData.planNotes || []
             };
             // IMPORTANT: Preserve plan selection data as additional properties
-            (actualDoc as any).planQuoteTypes = (doc as any).planQuoteTypes;
-            (actualDoc as any).quoteMeta = (doc as any).quoteMeta;
-            (actualDoc as any).selectedPlans = (doc as any).selectedPlans;
-            (actualDoc as any).planHSAOptions = (doc as any).planHSAOptions;
-            (actualDoc as any).planHSADetails = (doc as any).planHSADetails;
+            if ((doc as any).planQuoteTypes) (actualDoc as any).planQuoteTypes = (doc as any).planQuoteTypes;
+            if ((doc as any).quoteMeta) (actualDoc as any).quoteMeta = (doc as any).quoteMeta;
+            if ((doc as any).selectedPlans) (actualDoc as any).selectedPlans = (doc as any).selectedPlans;
+            if ((doc as any).planHSAOptions) (actualDoc as any).planHSAOptions = (doc as any).planHSAOptions;
+            if ((doc as any).planHSADetails) (actualDoc as any).planHSADetails = (doc as any).planHSADetails;
           }
           
           // Check for metadata and create default if missing
