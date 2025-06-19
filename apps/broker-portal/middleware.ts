@@ -3,22 +3,14 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
 
 // This is the exact pattern Clerk expects for middleware
 export default clerkMiddleware(async (auth, req) => {
-  // Check if the route is public (sign-in or sign-up)
-  const isPublic =
-    req.nextUrl.pathname.startsWith('/sign-in') ||
-    req.nextUrl.pathname.startsWith('/sign-up');
-
-  if (isPublic) {
-    return NextResponse.next();
-  }
-
-  // For non-public routes, protect with authentication
+  // For all routes, check authentication
   try {
     await auth.protect();
     return NextResponse.next();
-  } catch (error) {
-    // Redirect to sign-in if authentication fails
-    const signInUrl = new URL('/sign-in', req.url);
+  } catch {
+    // Redirect to main app's sign-in page if authentication fails
+    const mainAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const signInUrl = new URL('/sign-in', mainAppUrl);
     signInUrl.searchParams.set('redirect_url', req.url);
     return NextResponse.redirect(signInUrl);
   }
