@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
-// This is the exact pattern Clerk expects for middleware
-export default clerkMiddleware(async (auth, req) => {
-  // For all routes, check authentication
+// Create the Clerk middleware instance
+const clerkHandler = clerkMiddleware(async (auth, req) => {
   try {
     await auth.protect();
     return NextResponse.next();
@@ -15,6 +15,23 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(signInUrl);
   }
 });
+
+// Export a custom middleware that checks for static files and non-existent routes
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
+  const { pathname } = req.nextUrl;
+  
+  // Skip middleware for static files and Next.js internals
+  if (
+    pathname.includes('.') || // Has file extension
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/_next')
+  ) {
+    return NextResponse.next();
+  }
+  
+  // For all other routes, use Clerk middleware
+  return clerkHandler(req, event);
+}
 
 // Configure which routes the middleware applies to
 export const config = {

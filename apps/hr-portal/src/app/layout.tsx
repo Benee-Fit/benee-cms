@@ -33,7 +33,7 @@ export default function RootLayout({
             <AppHeader
               portalName="Benee-fit HR Portal"
               navItems={navItems}
-              afterSignOutUrl="/sign-in"
+              afterSignOutUrl={`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-in`}
             />
             <main className="flex-grow">
               {children}

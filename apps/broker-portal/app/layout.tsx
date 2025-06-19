@@ -42,7 +42,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             <AppHeader 
               portalName="Benee-fit Broker Portal" 
               navItems={navItems} 
-              afterSignOutUrl="/sign-in" 
+              afterSignOutUrl={`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/sign-in`}
             />
             <div className="flex-grow">
               <PageLayout>{children}</PageLayout>

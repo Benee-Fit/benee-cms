@@ -1,19 +1,31 @@
 import { NextResponse } from "next/server";
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+// Define protected routes
+const isProtectedRoute = createRouteMatcher([
+  '/',
+  '/enrolment(.*)',
+  '/dashboard(.*)',
+  '/api(.*)',
+]);
 
 // This is the exact pattern Clerk expects for middleware
 export default clerkMiddleware(async (auth, req) => {
-  // For all routes, check authentication
-  try {
-    await auth.protect();
-    return NextResponse.next();
-  } catch {
-    // Redirect to main app's sign-in page if authentication fails
-    const mainAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const signInUrl = new URL('/sign-in', mainAppUrl);
-    signInUrl.searchParams.set('redirect_url', req.url);
-    return NextResponse.redirect(signInUrl);
+  // Only protect routes that match our protected routes
+  if (isProtectedRoute(req)) {
+    try {
+      await auth.protect();
+    } catch {
+      // Redirect to main app's sign-in page if authentication fails
+      const mainAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const signInUrl = new URL('/sign-in', mainAppUrl);
+      signInUrl.searchParams.set('redirect_url', req.url);
+      return NextResponse.redirect(signInUrl);
+    }
   }
+  
+  // For all other routes, let Next.js handle them (including 404s)
+  return NextResponse.next();
 });
 
 // Configure which routes the middleware applies to
