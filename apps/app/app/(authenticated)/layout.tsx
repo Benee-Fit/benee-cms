@@ -4,7 +4,6 @@ import { AppHeader } from '@repo/design-system';
 import { NotificationsProvider } from '@repo/notifications/components/provider';
 import { secure } from '@repo/security';
 import type { ReactNode } from 'react';
-import { OrganizationCheck } from './components/organization-check';
 import { PostHogIdentifier } from './components/posthog-identifier';
 
 type AppLayoutProperties = {
@@ -36,8 +35,7 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
 
   return (
     <NotificationsProvider userId={user.id}>
-      <OrganizationCheck>
-        <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col">
         <AppHeader
           portalName="Benee-fit Apps"
           navItems={navItems}
@@ -51,7 +49,6 @@ const AppLayout = async ({ children }: AppLayoutProperties) => {
         </div>
         <PostHogIdentifier />
       </div>
-      </OrganizationCheck>
     </NotificationsProvider>
   );
 };

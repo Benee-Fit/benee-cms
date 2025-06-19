@@ -1,13 +1,13 @@
 import '../polyfills';
 import { env } from '@/env';
 import { ClerkProvider } from '@clerk/nextjs';
-import { AppHeader } from '@repo/design-system';
 import { secure } from '@repo/security';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import './globals.css';
 import { PageLayout } from './components/layout/PageLayout';
+import { ConditionalHeader } from './components/layout/ConditionalHeader';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -39,14 +39,11 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       <html lang="en" suppressHydrationWarning>
         <body className={inter.className}>
           <div className="flex min-h-screen flex-col">
-            <AppHeader 
-              portalName="Benee-fit Broker Portal" 
-              navItems={navItems} 
-              afterSignOutUrl="/sign-in" 
-            />
-            <div className="flex-grow">
-              <PageLayout>{children}</PageLayout>
-            </div>
+            <ConditionalHeader navItems={navItems}>
+              <div className="flex-grow">
+                <PageLayout>{children}</PageLayout>
+              </div>
+            </ConditionalHeader>
           </div>
         </body>
       </html>

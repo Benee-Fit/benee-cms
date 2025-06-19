@@ -18,7 +18,7 @@ export default function SignInPage() {
               footerActionLink: "text-primary hover:text-primary/90",
             },
           }}
-          redirectUrl="/"
+          forceRedirectUrl="/api/auth-redirect"
         />
       </div>
     </div>

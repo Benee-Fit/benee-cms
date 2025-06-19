@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { clerkMiddleware } from '@clerk/nextjs/server';
+import { checkRoleAccess } from '@repo/auth/middleware';
 
-// This is the exact pattern Clerk expects for middleware
+// Enhanced middleware with role-based access control
 export default clerkMiddleware(async (auth, req) => {
-  // Check if the route is public (sign-in or sign-up)
-  const isPublic = req.nextUrl.pathname.startsWith('/sign-in') || 
-                  req.nextUrl.pathname.startsWith('/sign-up');
+  // Check if the route is public or an access denied page
+  const path = req.nextUrl.pathname;
+  const isPublic = 
+    path === '/sign-in' || path.startsWith('/sign-in/') ||
+    path === '/sign-up' || path.startsWith('/sign-up/') ||
+    path.startsWith('/access-denied') ||
+    path.startsWith('/api/auth-redirect') ||
+    path.startsWith('/api/health');
   
   if (isPublic) {
     return NextResponse.next();
@@ -14,6 +20,11 @@ export default clerkMiddleware(async (auth, req) => {
   // For non-public routes, protect with authentication
   try {
     await auth.protect();
+    
+    // Check role-based access - only users with appropriate roles can access this app
+    const roleCheck = checkRoleAccess(auth, req, 'HR_PORTAL', '/access-denied');
+    if (roleCheck) return roleCheck;
+    
     return NextResponse.next();
   } catch (error) {
     // Redirect to sign-in if authentication fails

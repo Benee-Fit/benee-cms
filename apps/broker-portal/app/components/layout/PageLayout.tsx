@@ -35,7 +35,10 @@ export function PageLayout({ children }: PageLayoutProps) {
   const pathname = usePathname();
   const showSidebar =
     pathname !== '/' &&
-    !pathname.includes('/upload-documents');
+    !pathname.includes('/upload-documents') &&
+    !pathname.startsWith('/sign-in') &&
+    !pathname.startsWith('/sign-up') &&
+    !pathname.startsWith('/access-denied');
 
   // Only show sidebar on sub-pages, not on homepage or header-only pages
   if (!showSidebar) {

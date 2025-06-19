@@ -10,8 +10,7 @@ export default function SignInPage() {
             formButtonPrimary: 'bg-primary hover:bg-primary/90',
           },
         }}
-        afterSignInUrl="/"
-        redirectUrl="/"
+        forceRedirectUrl="/api/auth-redirect"
       />
     </div>
   );
