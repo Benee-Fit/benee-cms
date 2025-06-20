@@ -27,7 +27,12 @@ export default authMiddleware(async (auth, req) => {
       // Redirect to main app's sign-in page
       const mainAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const signInUrl = new URL('/sign-in', mainAppUrl);
-      signInUrl.searchParams.set('redirect_url', req.url);
+      
+      // Construct the full URL for the redirect
+      const hrPortalUrl = process.env.NEXT_PUBLIC_HR_PORTAL_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+      const fullRedirectUrl = new URL(req.nextUrl.pathname + req.nextUrl.search, hrPortalUrl);
+      
+      signInUrl.searchParams.set('redirect_url', fullRedirectUrl.toString());
       return NextResponse.redirect(signInUrl);
     }
     
