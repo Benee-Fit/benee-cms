@@ -30,7 +30,8 @@ const requiresAdminOrHigher = createRouteMatcher([
   '/settings/billing(.*)',
 ]);
 
-export default authMiddleware(async (auth, req) => {
+// Handle public routes separately
+const publicRouteHandler = async (req: NextRequest) => {
   // Apply security headers
   const securityResponse = await securityHeaders();
   
@@ -39,11 +40,11 @@ export default authMiddleware(async (auth, req) => {
     return securityResponse || NextResponse.next();
   }
   return null;
-};
+}
 
 export default authMiddleware(async (auth, req) => {
   // Handle public routes before any auth logic
-  const publicResponse = publicRouteHandler(req as NextRequest);
+  const publicResponse = await publicRouteHandler(req as NextRequest);
   if (publicResponse) {
     return publicResponse;
   }
