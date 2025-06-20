@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from '@repo/design-system/components/ui/card';
 import { Settings, User, Bell, Shield, Database } from 'lucide-react';
+import { OrganizationSection } from './organization-section';
 
 export default function UserSettings() {
   return (
@@ -14,6 +15,8 @@ export default function UserSettings() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">User Settings</h1>
         <p className="text-gray-600">Manage your account preferences and settings</p>
       </div>
+
+      <OrganizationSection />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>

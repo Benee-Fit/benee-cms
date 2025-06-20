@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { authMiddleware, createRouteMatcher } from '@repo/auth/middleware';
+import { 
+  USER_ROLES,
+  PORTAL_ACCESS,
+  hasPortalAccess,
+  getRoleBasedRedirectUrl,
+  type UserRole
+} from '@repo/auth/server';
 
 // Define protected routes
 const isProtectedRoute = createRouteMatcher([
@@ -10,17 +17,27 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 // This is the exact pattern Clerk expects for middleware
-export default clerkMiddleware(async (auth, req) => {
+export default authMiddleware(async (auth, req) => {
   // Only protect routes that match our protected routes
   if (isProtectedRoute(req)) {
-    try {
-      await auth.protect();
-    } catch {
-      // Redirect to main app's sign-in page if authentication fails
+    const { userId, orgRole } = await auth();
+    
+    // Check if user is authenticated
+    if (!userId) {
+      // Redirect to main app's sign-in page
       const mainAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const signInUrl = new URL('/sign-in', mainAppUrl);
       signInUrl.searchParams.set('redirect_url', req.url);
       return NextResponse.redirect(signInUrl);
+    }
+    
+    const userRole = orgRole as UserRole | null;
+    
+    // Check if user has access to HR portal
+    if (!hasPortalAccess(userRole, PORTAL_ACCESS.HR_PORTAL)) {
+      // Redirect to appropriate portal based on role
+      const redirectUrl = getRoleBasedRedirectUrl(userRole);
+      return NextResponse.redirect(new URL(redirectUrl, req.url));
     }
   }
   

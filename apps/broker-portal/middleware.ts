@@ -1,19 +1,37 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { authMiddleware } from '@repo/auth/middleware';
+import { 
+  USER_ROLES,
+  PORTAL_ACCESS,
+  hasPortalAccess,
+  getRoleBasedRedirectUrl,
+  type UserRole
+} from '@repo/auth/server';
 
 // Create the Clerk middleware instance
-const clerkHandler = clerkMiddleware(async (auth, req) => {
-  try {
-    await auth.protect();
-    return NextResponse.next();
-  } catch {
-    // Redirect to main app's sign-in page if authentication fails
+const clerkHandler = authMiddleware(async (auth, req) => {
+  const { userId, orgRole } = await auth();
+  
+  // Check if user is authenticated
+  if (!userId) {
+    // Redirect to main app's sign-in page
     const mainAppUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const signInUrl = new URL('/sign-in', mainAppUrl);
     signInUrl.searchParams.set('redirect_url', req.url);
     return NextResponse.redirect(signInUrl);
   }
+  
+  const userRole = orgRole as UserRole | null;
+  
+  // Check if user has access to broker portal
+  if (!hasPortalAccess(userRole, PORTAL_ACCESS.BROKER_PORTAL)) {
+    // Redirect to appropriate portal based on role
+    const redirectUrl = getRoleBasedRedirectUrl(userRole);
+    return NextResponse.redirect(new URL(redirectUrl, req.url));
+  }
+  
+  return NextResponse.next();
 });
 
 // Export a custom middleware that checks for static files and non-existent routes
