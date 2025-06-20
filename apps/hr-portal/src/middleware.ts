@@ -29,7 +29,8 @@ export default authMiddleware(async (auth, req) => {
       const signInUrl = new URL('/sign-in', mainAppUrl);
       
       // Construct the full URL for the redirect
-      const hrPortalUrl = process.env.NEXT_PUBLIC_HR_PORTAL_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+      // IMPORTANT: Use the public URL from env var, NOT the internal request host
+      const hrPortalUrl = process.env.NEXT_PUBLIC_HR_PORTAL_URL || 'http://localhost:9002';
       const fullRedirectUrl = new URL(req.nextUrl.pathname + req.nextUrl.search, hrPortalUrl);
       
       signInUrl.searchParams.set('redirect_url', fullRedirectUrl.toString());

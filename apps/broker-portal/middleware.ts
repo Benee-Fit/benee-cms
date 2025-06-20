@@ -20,7 +20,8 @@ const clerkHandler = authMiddleware(async (auth, req) => {
     const signInUrl = new URL('/sign-in', mainAppUrl);
     
     // Construct the full URL for the redirect
-    const brokerPortalUrl = process.env.NEXT_PUBLIC_BROKER_PORTAL_URL || `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+    // IMPORTANT: Use the public URL from env var, NOT the internal request host
+    const brokerPortalUrl = process.env.NEXT_PUBLIC_BROKER_PORTAL_URL || 'http://localhost:3006';
     const fullRedirectUrl = new URL(req.nextUrl.pathname + req.nextUrl.search, brokerPortalUrl);
     
     signInUrl.searchParams.set('redirect_url', fullRedirectUrl.toString());
