@@ -11,8 +11,8 @@ export function AuthCallbackClient({ redirectUrl }: AuthCallbackClientProps) {
   
   // Determine the portal name based on the redirect URL
   const getPortalName = (url: string) => {
-    const brokerUrl = process.env.NEXT_PUBLIC_BROKER_URL || 'http://localhost:3006';
-    const hrUrl = process.env.NEXT_PUBLIC_HR_URL || 'http://localhost:9002';
+    const brokerUrl = process.env.NEXT_PUBLIC_BROKER_PORTAL_URL || 'http://localhost:3006';
+    const hrUrl = process.env.NEXT_PUBLIC_HR_PORTAL_URL || 'http://localhost:9002';
     
     if (url.includes(brokerUrl)) return 'Broker Portal';
     if (url.includes(hrUrl)) return 'HR Portal';
