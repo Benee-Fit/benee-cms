@@ -228,7 +228,7 @@ export default function DocumentParserPage() {
       const timeoutId = setTimeout(() => {
         console.log(`[DEBUG] Timeout reached for file: ${file.name}`);
         controller.abort();
-      }, 480000); // 8 minute timeout (Gemini API can take a while for complex documents)
+      }, 360000); // 6 minute timeout (allowing extra time for complex documents)
       
       let response;
       try {
@@ -249,7 +249,7 @@ export default function DocumentParserPage() {
         clearTimeout(timeoutId);
         
         if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
-          throw new Error(`Processing timeout for file ${file.name}. The request took longer than 8 minutes.`);
+          throw new Error(`Processing timeout for file ${file.name}. The request took longer than 6 minutes.`);
         }
         throw fetchError;
       }
@@ -292,7 +292,7 @@ export default function DocumentParserPage() {
       let errorMessage = 'Unknown error occurred';
       
       if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
-        errorMessage = `Processing timeout for file ${file.name}. The request took longer than 8 minutes.`;
+        errorMessage = `Processing timeout for file ${file.name}. The request took longer than 6 minutes.`;
       } else if (fetchError instanceof Error) {
         errorMessage = fetchError.message;
       }
@@ -310,10 +310,10 @@ export default function DocumentParserPage() {
   };
   
 
-  // Calculate estimated time remaining (4-8 minutes per file)
-  const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 360) => {
+  // Calculate estimated time remaining (2-5 minutes per file)
+  const calculateTimeRemaining = useCallback((currentIndex: number, totalFiles: number, avgTimePerFile: number = 90) => {
     const remainingFiles = totalFiles - currentIndex;
-    return remainingFiles * avgTimePerFile; // seconds (6 minutes average)
+    return remainingFiles * avgTimePerFile; // seconds (1.5 minutes average)
   }, []);
 
   // Normalize processed result
@@ -727,13 +727,13 @@ export default function DocumentParserPage() {
                     <span>Ready to process {files.length} document{files.length !== 1 ? 's' : ''}</span>
                     <Badge variant="secondary" className="text-xs">
                       {files.length === 1 
-                        ? '4-8 minutes per document' 
-                        : `${Math.ceil(files.length * 4)}-${Math.ceil(files.length * 8)} minutes total`
+                        ? '2-5 minutes per document' 
+                        : `${Math.ceil(files.length * 2)}-${Math.ceil(files.length * 5)} minutes total`
                       }
                     </Badge>
                   </div>
                   <div className="text-xs text-gray-500">
-                    ⏱️ Processing typically takes 4-8 minutes per document depending on size and complexity
+                    ⏱️ Processing typically takes 2-5 minutes per document depending on size and complexity
                   </div>
                 </div>
               )}

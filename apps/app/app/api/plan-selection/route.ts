@@ -220,32 +220,114 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         documentId: string;
         fileName: string;
         carrierName: string;
-        documentType: 'Current' | 'Renegotiated' | 'Alternative';
+        planQuoteTypes?: Record<string, string>;
+        planHSAOptions?: Record<string, boolean>;
+        planHSADetails?: Record<string, any>;
         selectedPlans: string[];
-        includeHSA: boolean;
-        hsaDetails?: any;
         processedData: any;
+        // Legacy fields for backward compatibility
+        documentType?: 'Current' | 'Renegotiated' | 'Alternative';
+        includeHSA?: boolean;
+        hsaDetails?: any;
       }>;
     };
 
     if (!documentSelections || !Array.isArray(documentSelections)) {
       return NextResponse.json(
-        { error: 'Invalid document selections format' },
+        { 
+          error: 'Invalid document selections format',
+          details: 'Expected documentSelections to be an array',
+          received: typeof documentSelections 
+        },
         { status: 400 }
       );
     }
 
+    if (documentSelections.length === 0) {
+      return NextResponse.json(
+        { 
+          error: 'No documents provided',
+          details: 'At least one document selection is required'
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate each document selection
+    for (let i = 0; i < documentSelections.length; i++) {
+      const doc = documentSelections[i];
+      if (!doc.documentId) {
+        return NextResponse.json(
+          { 
+            error: 'Missing required field',
+            details: `Document at index ${i} is missing documentId`
+          },
+          { status: 400 }
+        );
+      }
+      if (!doc.fileName) {
+        return NextResponse.json(
+          { 
+            error: 'Missing required field',
+            details: `Document at index ${i} is missing fileName`
+          },
+          { status: 400 }
+        );
+      }
+      if (!doc.carrierName) {
+        return NextResponse.json(
+          { 
+            error: 'Missing required field',
+            details: `Document at index ${i} is missing carrierName`
+          },
+          { status: 400 }
+        );
+      }
+      if (!doc.processedData) {
+        return NextResponse.json(
+          { 
+            error: 'Missing required field',
+            details: `Document at index ${i} is missing processedData`
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Process each document selection
-    const processedDocuments = documentSelections.map(doc => ({
-      documentId: doc.documentId,
-      fileName: doc.fileName,
-      carrierName: doc.carrierName,
-      documentType: doc.documentType,
-      selectedPlans: doc.selectedPlans,
-      includeHSA: doc.includeHSA,
-      hsaDetails: doc.hsaDetails,
-      filteredData: filterCoveragesByPlans(doc.processedData, doc.selectedPlans)
-    }));
+    const processedDocuments = documentSelections.map(doc => {
+      // Determine document type from planQuoteTypes or use legacy field
+      let documentType: 'Current' | 'Renegotiated' | 'Alternative' = 'Current';
+      if (doc.planQuoteTypes) {
+        const quoteTypes = Object.values(doc.planQuoteTypes);
+        if (quoteTypes.includes('Current Premium')) {
+          documentType = 'Current';
+        } else if (quoteTypes.includes('Renegotiated')) {
+          documentType = 'Renegotiated';
+        } else if (quoteTypes.includes('Alternative')) {
+          documentType = 'Alternative';
+        }
+      } else if (doc.documentType) {
+        documentType = doc.documentType;
+      }
+      
+      // Check if any plan has HSA enabled
+      const includeHSA = doc.planHSAOptions ? Object.values(doc.planHSAOptions).some(Boolean) : (doc.includeHSA || false);
+      
+      return {
+        documentId: doc.documentId,
+        fileName: doc.fileName,
+        carrierName: doc.carrierName,
+        documentType,
+        selectedPlans: doc.selectedPlans,
+        includeHSA,
+        hsaDetails: doc.planHSADetails || doc.hsaDetails,
+        planQuoteTypes: doc.planQuoteTypes,
+        planHSAOptions: doc.planHSAOptions,
+        planHSADetails: doc.planHSADetails,
+        filteredData: filterCoveragesByPlans(doc.processedData, doc.selectedPlans)
+      };
+    });
 
     // Save to session storage
     const session: PlanSelectionSession = {
@@ -264,8 +346,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sessionId: user.id
     });
   } catch (error) {
+    console.error('[DEBUG] Plan selection API error:', error);
+    
+    let errorMessage = 'Failed to save plan selections';
+    let details = 'An unknown error occurred';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      details = error.stack || error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+      details = error;
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to save plan selections' },
+      { 
+        error: errorMessage,
+        details: details,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

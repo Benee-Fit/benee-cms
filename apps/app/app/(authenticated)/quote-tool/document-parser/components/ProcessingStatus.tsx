@@ -75,13 +75,13 @@ export default function ProcessingStatus({
 
   const getEstimatedTime = (stage: ProcessingStage) => {
     const timeEstimates: Record<string, string> = {
-      upload: '~30 seconds',
-      extraction: '~2-3 minutes',
-      parsing: '~3-4 minutes',
-      saving: '~30 seconds'
+      upload: '~15 seconds',
+      extraction: '~30-60 seconds',
+      parsing: '~1-2 minutes',
+      saving: '~15 seconds'
     };
     
-    return timeEstimates[stage.id] || '~1-2 minutes';
+    return timeEstimates[stage.id] || '~30 seconds';
   };
 
 
@@ -122,7 +122,7 @@ export default function ProcessingStatus({
             <div className="flex items-center space-x-2 text-sm text-blue-800">
               <Info className="h-4 w-4" />
               <span>
-                Processing typically takes 4-8 minutes depending on document size and complexity.
+                Processing typically takes 2-5 minutes depending on document size and complexity.
               </span>
             </div>
           </div>

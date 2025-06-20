@@ -357,44 +357,85 @@ export function PremiumComparisonTable({
   // State for font size
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
   
-  // State for comparison type
-  const [comparisonType, setComparisonType] = useState<'current-vs-negotiated' | 'current-vs-alternative' | 'current-vs-go-to-market' | 'all'>('all');
+  // State for comparison type with localStorage persistence
+  const [comparisonType, setComparisonType] = useState<'renewal' | 'go-to-market' | 'negotiated' | 'alternative' | 'all'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('premiumComparisonFilter');
+      if (saved && ['renewal', 'go-to-market', 'negotiated', 'alternative', 'all'].includes(saved)) {
+        return saved as 'renewal' | 'go-to-market' | 'negotiated' | 'alternative' | 'all';
+      }
+    }
+    return 'all';
+  });
+
+  // Save comparison type to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('premiumComparisonFilter', comparisonType);
+    }
+  }, [comparisonType]);
 
   // Helper function to get plan quote type for a specific coverage
-  const getPlanQuoteType = useCallback((result: ParsedDocumentResult, coverage: Coverage): string => {
-    // Check multiple locations for plan quote types (from plan selection)
-    let planQuoteTypes = (result as any).planQuoteTypes;
+  const getPlanQuoteType = useCallback((coverage: any, result: ParsedDocumentResult): string => {
+    // First, try to get quote type from plan-specific metadata
+    const planName = coverage.planOptionName;
+    const planQuoteTypes = (result as any).planQuoteTypes || (result as any).quoteMeta?.planQuoteTypes || {};
     
-    // Also check in quoteMeta if it exists
-    if (!planQuoteTypes && (result as any).quoteMeta?.planQuoteTypes) {
-      planQuoteTypes = (result as any).quoteMeta.planQuoteTypes;
+    console.log('[DEBUG] getPlanQuoteType - planName:', planName);
+    console.log('[DEBUG] getPlanQuoteType - planQuoteTypes:', planQuoteTypes);
+    console.log('[DEBUG] getPlanQuoteType - result.category:', (result as any).category);
+    console.log('[DEBUG] getPlanQuoteType - result.metadata?.fileCategory:', (result as any).metadata?.fileCategory);
+    
+    if (planQuoteTypes && planQuoteTypes[planName]) {
+      const quoteType = planQuoteTypes[planName];
+      console.log('[DEBUG] Found plan-specific quote type:', quoteType);
+      return quoteType;
     }
     
-    if (planQuoteTypes && coverage.planOptionName) {
-      const quoteType = planQuoteTypes[coverage.planOptionName];
-      if (quoteType) {
-        console.log('[DEBUG] Found plan quote type:', {
-          carrierName: coverage.carrierName,
-          planOptionName: coverage.planOptionName,
-          quoteType: quoteType,
-          source: 'planQuoteTypes'
-        });
-        return quoteType;
+    // Fallback to document category with better detection
+    let documentCategory = (result as any).category || 
+                          (result as any).metadata?.fileCategory || 
+                          (result as any).processedData?.metadata?.fileCategory;
+    
+    // Check if document contains alternative plan indicators
+    if (!documentCategory || documentCategory === 'Current') {
+      const carrierName = coverage.carrierName?.toLowerCase() || '';
+      const planOptionName = coverage.planOptionName?.toLowerCase() || '';
+      
+      // Look for alternative indicators in plan names
+      if (planOptionName.includes('alt') || 
+          planOptionName.includes('alternative') || 
+          planOptionName.includes('option') ||
+          planOptionName.includes('excluded') ||
+          planOptionName.includes('reduced')) {
+        documentCategory = 'Alternative';
+        console.log('[DEBUG] Detected alternative plan from name:', coverage.planOptionName);
+      }
+      
+      // If still no category, check for multiple plans from same carrier (likely alternatives)
+      const sameCarrierPlans = (result.allCoverages || []).filter(cov => 
+        cov.carrierName === coverage.carrierName
+      );
+      const uniquePlanNames = [...new Set(sameCarrierPlans.map(cov => cov.planOptionName))];
+      
+      if (uniquePlanNames.length > 1 && !documentCategory) {
+        // Multiple plans from same carrier - treat as alternatives
+        documentCategory = 'Alternative';
+        console.log('[DEBUG] Multiple plans detected, categorizing as Alternative');
       }
     }
     
-    // Fallback to document category
-    const documentCategory = (result as any).category || 
-                           (result as any).metadata?.fileCategory || 
-                           (result as any).processedData?.metadata?.fileCategory ||
-                           'Current';
+    // Final fallback
+    if (!documentCategory) {
+      documentCategory = 'Current';
+    }
     
-    console.log('[DEBUG] Using document category fallback:', {
+    console.log('[DEBUG] Final document category:', {
       carrierName: coverage.carrierName,
       planOptionName: coverage.planOptionName,
       documentCategory: documentCategory,
       availablePlanQuoteTypes: planQuoteTypes ? Object.keys(planQuoteTypes) : 'none',
-      source: 'documentCategory'
+      source: 'enhanced categorization'
     });
     
     return documentCategory;
@@ -411,6 +452,7 @@ export function PremiumComparisonTable({
   // Helper function to get visual styling for quote types
   const getQuoteTypeStyle = useCallback((quoteType: string) => {
     switch (quoteType) {
+      case 'Current Premium':
       case 'Current':
         return {
           badge: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -429,8 +471,8 @@ export function PremiumComparisonTable({
         return {
           badge: 'bg-purple-100 text-purple-800 border-purple-200',
           icon: <TrendingUp className="h-3 w-3" />,
-          headerBg: 'bg-purple-50',
-          columnBg: 'bg-purple-50/30'
+          headerBg: '',
+          columnBg: ''
         };
       case 'Negotiated':
         return {
@@ -438,6 +480,13 @@ export function PremiumComparisonTable({
           icon: <RefreshCw className="h-3 w-3" />,
           headerBg: 'bg-orange-50',
           columnBg: 'bg-orange-50/30'
+        };
+      case 'Renewal':
+        return {
+          badge: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          icon: <RefreshCw className="h-3 w-3" />,
+          headerBg: 'bg-yellow-50',
+          columnBg: 'bg-yellow-50/30'
         };
       default:
         return {
@@ -449,50 +498,14 @@ export function PremiumComparisonTable({
     }
   }, []);
 
-  // Filter results based on comparison type
+  // Don't filter results at document level - we want to show all documents but filter plans within them
   const filteredResults = useMemo(() => {
-    if (comparisonType === 'all') {
-      return results;
-    }
-    
-    return results.filter(result => {
-      // Check if this result has any plans with the required quote types
-      let planQuoteTypes = (result as any).planQuoteTypes || {};
-      
-      // Also check in quoteMeta if it exists
-      if (Object.keys(planQuoteTypes).length === 0 && (result as any).quoteMeta?.planQuoteTypes) {
-        planQuoteTypes = (result as any).quoteMeta.planQuoteTypes;
-      }
-      
-      const quoteTypesInResult = Object.values(planQuoteTypes) as string[];
-      
-      // If no plan quote types, fall back to document category
-      if (quoteTypesInResult.length === 0) {
-        const category = getDocumentCategory(result);
-        
-        if (comparisonType === 'current-vs-negotiated') {
-          return category === 'Current' || category === 'Renegotiated';
-        } else if (comparisonType === 'current-vs-alternative') {
-          return category === 'Current' || category === 'Alternative';
-        } else if (comparisonType === 'current-vs-go-to-market') {
-          return category === 'Current';
-        }
-        
-        return true;
-      }
-      
-      // Filter based on plan quote types
-      if (comparisonType === 'current-vs-negotiated') {
-        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Negotiated');
-      } else if (comparisonType === 'current-vs-alternative') {
-        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Alternative');
-      } else if (comparisonType === 'current-vs-go-to-market') {
-        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('GTM');
-      }
-      
-      return true;
-    });
-  }, [results, comparisonType, getDocumentCategory]);
+    // Always return all results - filtering happens at the plan level in unsortedCarriers
+    console.log('[DEBUG] filteredResults - Input results:', results);
+    console.log('[DEBUG] filteredResults - Results length:', results?.length || 0);
+    console.log('[DEBUG] filteredResults - First result structure:', results?.[0]);
+    return results;
+  }, [results]);
   
   // Font size helper functions
   const getFontSizeClass = () => {
@@ -534,7 +547,7 @@ export function PremiumComparisonTable({
         for (const planName of plansToProcess) {
           const planCoverage: Coverage | undefined = result.allCoverages.find(c => c.planOptionName === planName);
           if (planCoverage && planCoverage.carrierName) {
-            const quoteType = getPlanQuoteType(result, planCoverage);
+            const quoteType = getPlanQuoteType(planCoverage, result);
             const uniqueKey = `${planCoverage.carrierName}-${planName}-${quoteType}`;
             
             if (!carrierOptions[uniqueKey]) {
@@ -700,46 +713,89 @@ export function PremiumComparisonTable({
     planName: string;
     displayName: string;
   }>>(() => {
+    console.log('[DEBUG] unsortedCarriers - Starting processing');
+    console.log('[DEBUG] unsortedCarriers - filteredResults:', filteredResults);
+    console.log('[DEBUG] unsortedCarriers - comparisonType:', comparisonType);
+    
     if (!filteredResults || filteredResults.length === 0) {
+      console.log('[DEBUG] unsortedCarriers - No filtered results, returning No Data Available');
       return [{ name: 'No Data Available', rateGuarantee: null, quoteType: 'Current', planName: 'Default', displayName: 'No Data Available' }];
     }
     
     const carriersMap = new Map<string, { name: string; rateGuarantee: string | null; quoteType: string; planName: string; displayName: string }>();
     
     for (const result of filteredResults) {
+      console.log('[DEBUG] Processing result:', result);
+      
       const carrierName = result.metadata?.carrierName || 
                          (result as any).processedData?.metadata?.carrierName ||
                          result.allCoverages?.[0]?.carrierName;
       
-      if (!carrierName || !result.allCoverages) continue;
+      console.log('[DEBUG] Carrier name extracted:', carrierName);
+      console.log('[DEBUG] result.allCoverages:', result.allCoverages);
+      console.log('[DEBUG] result.metadata:', result.metadata);
+      console.log('[DEBUG] result.processedData?.metadata:', (result as any).processedData?.metadata);
+      
+      if (!carrierName || !result.allCoverages) {
+        console.log('[DEBUG] Skipping result - missing carrierName or allCoverages');
+        continue;
+      }
       
       // Get selected plans for this document
       const selectedPlans = (result as any).selectedPlans || [];
+      console.log('[DEBUG] Selected plans:', selectedPlans);
       
       // Get plan quote types from multiple possible locations
       let planQuoteTypes = (result as any).planQuoteTypes || {};
       if (Object.keys(planQuoteTypes).length === 0 && (result as any).quoteMeta?.planQuoteTypes) {
         planQuoteTypes = (result as any).quoteMeta.planQuoteTypes;
       }
+      console.log('[DEBUG] Plan quote types:', planQuoteTypes);
       
       // If no plans are selected, use all plans
       const plansToProcess = selectedPlans.length > 0 ? selectedPlans : 
                            result.allCoverages.map(c => c.planOptionName).filter(Boolean);
+      console.log('[DEBUG] Plans to process:', plansToProcess);
       
       for (const planName of plansToProcess) {
+        console.log('[DEBUG] Processing plan:', planName);
         if (!planName) continue;
         
         // Find a coverage for this plan to get the quote type
         const planCoverage: Coverage | undefined = result.allCoverages.find(c => c.planOptionName === planName);
-        if (!planCoverage) continue;
+        console.log('[DEBUG] Plan coverage found:', planCoverage);
+        if (!planCoverage) {
+          console.log('[DEBUG] No coverage found for plan:', planName);
+          continue;
+        }
         
         // Get quote type directly from plan quote types if available, otherwise use getPlanQuoteType
         let quoteType = planQuoteTypes[planName];
         if (!quoteType) {
-          quoteType = getPlanQuoteType(result, planCoverage);
+          quoteType = getPlanQuoteType(planCoverage, result);
         }
+        console.log('[DEBUG] Quote type for plan', planName + ':', quoteType);
+        
+        // Filter plans based on comparison type - always include Current/Current Premium + selected type
+        if (comparisonType !== 'all') {
+          const isCurrentPremium = quoteType === 'Current Premium' || quoteType === 'Current';
+          const matchesFilter = 
+            (comparisonType === 'renewal' && quoteType === 'Renewal') ||
+            (comparisonType === 'go-to-market' && quoteType === 'GTM') ||
+            (comparisonType === 'negotiated' && quoteType === 'Negotiated') ||
+            (comparisonType === 'alternative' && quoteType === 'Alternative');
+          
+          console.log('[DEBUG] Filter check - isCurrentPremium:', isCurrentPremium, 'matchesFilter:', matchesFilter, 'quoteType:', quoteType);
+          
+          // Skip this plan if it doesn't match the filter criteria
+          if (!isCurrentPremium && !matchesFilter) {
+            console.log('[DEBUG] Skipping plan due to filter:', planName);
+            continue;
+          }
+        }
+        
         const uniqueKey = `${carrierName}-${planName}-${quoteType}`;
-        const displayName = quoteType === 'Current' ? carrierName : `${carrierName} (${quoteType})`;
+        const displayName = (quoteType === 'Current Premium' || quoteType === 'Current') ? carrierName : `${carrierName} (${quoteType})`;
         
         // Get rate guarantee
         let rateGuaranteeText: string | null = null;
@@ -748,6 +804,15 @@ export function PremiumComparisonTable({
         } else if (result.metadata?.rateGuarantees) {
           rateGuaranteeText = extractRateGuarantee(result.metadata.rateGuarantees);
         }
+        
+        console.log('[DEBUG] Adding to carriers map:', {
+          uniqueKey,
+          name: carrierName,
+          rateGuarantee: rateGuaranteeText,
+          quoteType: quoteType,
+          planName: planName,
+          displayName: displayName
+        });
         
         if (!carriersMap.has(uniqueKey)) {
           carriersMap.set(uniqueKey, {
@@ -761,7 +826,11 @@ export function PremiumComparisonTable({
       }
     }
     
+    console.log('[DEBUG] Final carriersMap size:', carriersMap.size);
+    console.log('[DEBUG] Final carriersMap contents:', Array.from(carriersMap.values()));
+    
     if (carriersMap.size === 0) {
+      console.log('[DEBUG] No carriers found, returning No Carrier Data');
       return [{ name: 'No Carrier Data', rateGuarantee: null, quoteType: 'Current', planName: 'Default', displayName: 'No Carrier Data' }];
     }
     
@@ -778,7 +847,7 @@ export function PremiumComparisonTable({
     console.log('[DEBUG] Extracted carrier-plan combinations:', carriersArray);
     
     return carriersArray;
-  }, [filteredResults, getPlanQuoteType, extractRateGuarantee]);
+  }, [filteredResults, getPlanQuoteType, extractRateGuarantee, comparisonType]);
 
   // Set default selected plan options when carriers change
   React.useEffect(() => {
@@ -1015,15 +1084,16 @@ export function PremiumComparisonTable({
       return unsortedCarriers;
     }
     
-    // Sort carriers - Current quote type ALWAYS first, then others
+    // Sort carriers - Current quote type ALWAYS first, then consistent order for others
     const sorted = [...unsortedCarriers].sort((a, b) => {
-      // ALWAYS prioritize Current quote type first, no matter what
-      if (a.quoteType === 'Current' && b.quoteType !== 'Current') return -1;
-      if (b.quoteType === 'Current' && a.quoteType !== 'Current') return 1;
+      // ALWAYS prioritize Current Premium/Current quote type first, no matter what
+      const isACurrent = a.quoteType === 'Current Premium' || a.quoteType === 'Current';
+      const isBCurrent = b.quoteType === 'Current Premium' || b.quoteType === 'Current';
+      if (isACurrent && !isBCurrent) return -1;
+      if (isBCurrent && !isACurrent) return 1;
       
-      // If both are Current (shouldn't happen) or neither is Current
-      // Then sort by quote type order: GTM, Negotiated, Alternative, others
-      const quoteTypeOrder = ['Current', 'GTM', 'Negotiated', 'Alternative'];
+      // For non-Current quotes, sort by predefined quote type order
+      const quoteTypeOrder = ['Current Premium', 'Current', 'Renewal', 'GTM', 'Negotiated', 'Alternative'];
       const orderA = quoteTypeOrder.indexOf(a.quoteType);
       const orderB = quoteTypeOrder.indexOf(b.quoteType);
       
@@ -1031,28 +1101,18 @@ export function PremiumComparisonTable({
         return orderA - orderB;
       }
       
-      // Then sort by premium within each quote type
-      const uniqueKeyA = `${a.name}-${a.planName}-${a.quoteType}`;
-      const uniqueKeyB = `${b.name}-${b.planName}-${b.quoteType}`;
-      const totalA = calculateCarrierTotals.get(uniqueKeyA) || 0;
-      const totalB = calculateCarrierTotals.get(uniqueKeyB) || 0;
-      
-      // If both have premiums, sort by premium amount
-      if (totalA > 0 && totalB > 0) {
-        return totalA - totalB;
+      // Within the same quote type, sort alphabetically by carrier name for consistency
+      if (a.quoteType === b.quoteType) {
+        return a.name.localeCompare(b.name);
       }
       
-      // If only one has premium data, put it first
-      if (totalA > 0) return -1;
-      if (totalB > 0) return 1;
-      
-      // If neither has premium data, sort alphabetically
+      // For any unknown quote types, sort alphabetically
       return a.displayName.localeCompare(b.displayName);
     });
     
     console.log('[DEBUG] Sorted carriers:', sorted.map(c => `${c.name} (${c.quoteType})`));
     return sorted;
-  }, [unsortedCarriers, calculateCarrierTotals]);
+  }, [unsortedCarriers]);
 
   /**
    * Process parsed insurance document results to create ordered rows
@@ -1393,6 +1453,58 @@ export function PremiumComparisonTable({
             {/* Comparison Type Toggle Buttons */}
             <div className="flex items-center gap-1 bg-white border rounded-lg shadow-sm p-1">
               <Button
+                variant={comparisonType === 'renewal' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('renewal')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'renewal'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Show renewal plans"
+              >
+                Renewal
+              </Button>
+              <Button
+                variant={comparisonType === 'go-to-market' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('go-to-market')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'go-to-market'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Show go to market plans"
+              >
+                Go To Market
+              </Button>
+              <Button
+                variant={comparisonType === 'negotiated' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('negotiated')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'negotiated'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Show negotiated plans"
+              >
+                Negotiated
+              </Button>
+              <Button
+                variant={comparisonType === 'alternative' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setComparisonType('alternative')}
+                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
+                  comparisonType === 'alternative'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
+                }`}
+                title="Show alternative plans"
+              >
+                Alternative
+              </Button>
+              <Button
                 variant={comparisonType === 'all' ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setComparisonType('all')}
@@ -1404,45 +1516,6 @@ export function PremiumComparisonTable({
                 title="Show all plans"
               >
                 All Plans
-              </Button>
-              <Button
-                variant={comparisonType === 'current-vs-negotiated' ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setComparisonType('current-vs-negotiated')}
-                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
-                  comparisonType === 'current-vs-negotiated'
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
-                }`}
-                title="Compare current vs negotiated plans"
-              >
-                Current vs Negotiated
-              </Button>
-              <Button
-                variant={comparisonType === 'current-vs-alternative' ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setComparisonType('current-vs-alternative')}
-                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
-                  comparisonType === 'current-vs-alternative'
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
-                }`}
-                title="Compare current vs alternative plans"
-              >
-                Current vs Alternative
-              </Button>
-              <Button
-                variant={comparisonType === 'current-vs-go-to-market' ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setComparisonType('current-vs-go-to-market')}
-                className={`h-8 px-3 text-xs font-medium transition-all duration-200 ${
-                  comparisonType === 'current-vs-go-to-market'
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                    : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
-                }`}
-                title="Compare current vs GTM plans"
-              >
-                Current vs GTM
               </Button>
             </div>
             {/* Undo/Redo buttons with enhanced UX */}
@@ -1584,9 +1657,9 @@ export function PremiumComparisonTable({
                             <span className="ml-1">{carrier.quoteType}</span>
                           </Badge>
                         </div>
-                        {carrier.planName && carrier.planName !== 'Default' && (
+                        {carrier.quoteType && (
                           <div className="text-xs text-gray-600 font-medium">
-                            {carrier.planName}
+                            {carrier.quoteType}
                           </div>
                         )}
                       </div>
@@ -1656,9 +1729,9 @@ export function PremiumComparisonTable({
                       <TableCell
                         key={`rate-guarantee-${carrierIndex}`}
                         colSpan={2}
-                        className={`text-center px-3 py-3 border-l align-top ${carrierStyle.columnBg}`}
+                        className={`text-center px-3 py-3 border-l ${carrierStyle.columnBg}`}
                       >
-                        <div className={`break-words leading-relaxed ${row.isBold ? `${getFontSizeClass()} font-bold` : getFontSizeClass()}`}>
+                        <div className="text-xs min-h-[20px] break-words leading-normal flex items-center justify-center">
                           <span className="text-slate-600">
                             {row.values && row.values[carrierIndex]?.monthlyPremium || '-'}
                           </span>

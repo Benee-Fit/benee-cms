@@ -195,8 +195,8 @@ export default function PlanSelectionPage() {
           let isFirstPlan = index === 0;
           detectedPlans.forEach((plan, planIndex) => {
             if (plan && plan.planOptionName) {
-              // Only set the first plan of the first document as 'Current'
-              planQuoteTypes[plan.planOptionName] = (isFirstPlan && planIndex === 0) ? 'Current' : 'Alternative';
+              // Only set the first plan of the first document as 'Current Premium'
+              planQuoteTypes[plan.planOptionName] = (isFirstPlan && planIndex === 0) ? 'Current Premium' : 'Alternative';
               planHSAOptions[plan.planOptionName] = false;
               planHSADetails[plan.planOptionName] = { 
                 coverageSingle: 0, 
@@ -304,21 +304,21 @@ export default function PlanSelectionPage() {
   // Update quote type for a specific plan
   const updateQuoteType = (documentId: string, planName: string, quoteType: string) => {
     setDocuments(prev => {
-      // If setting a plan to "Current", first remove "Current" from all other plans
-      if (quoteType === 'Current') {
+      // If setting a plan to "Current Premium", first remove "Current Premium" from all other plans
+      if (quoteType === 'Current Premium') {
         return prev.map(doc => {
           const updatedQuoteTypes = { ...doc.planQuoteTypes };
           
-          // Remove "Current" from all plans
+          // Remove "Current Premium" from all plans
           Object.keys(updatedQuoteTypes).forEach(plan => {
-            if (updatedQuoteTypes[plan] === 'Current') {
-              updatedQuoteTypes[plan] = 'Alternative'; // Default to Alternative when removing Current
+            if (updatedQuoteTypes[plan] === 'Current Premium') {
+              updatedQuoteTypes[plan] = 'Alternative'; // Default to Alternative when removing Current Premium
             }
           });
           
-          // Set the selected plan to "Current" if it's in this document
+          // Set the selected plan to "Current Premium" if it's in this document
           if (doc.documentId === documentId) {
-            updatedQuoteTypes[planName] = 'Current';
+            updatedQuoteTypes[planName] = 'Current Premium';
           }
           
           return { ...doc, planQuoteTypes: updatedQuoteTypes };
@@ -347,28 +347,28 @@ export default function PlanSelectionPage() {
     }
   };
 
-  // Check if any plan across all documents is set to "Current"
+  // Check if any plan across all documents is set to "Current Premium"
   const hasCurrentPlan = () => {
     return documents.some(doc => 
-      Object.values(doc.planQuoteTypes || {}).includes('Current')
+      Object.values(doc.planQuoteTypes || {}).includes('Current Premium')
     );
   };
 
   // Get available quote types for a specific plan
   const getAvailableQuoteTypesForPlan = (documentId: string, planName: string) => {
-    const defaultTypes = ['GTM', 'Negotiated', 'Alternative'];
+    const defaultTypes = ['Renewal', 'GTM', 'Negotiated', 'Alternative'];
     const allTypes = [...defaultTypes, ...customQuoteTypes];
     
-    // Check if this plan is already set to Current
+    // Check if this plan is already set to Current Premium
     const isPlanCurrent = documents.find(doc => doc.documentId === documentId)
-      ?.planQuoteTypes?.[planName] === 'Current';
+      ?.planQuoteTypes?.[planName] === 'Current Premium';
     
-    // If this plan is Current, or if no plan is Current, include "Current" as an option
+    // If this plan is Current Premium, or if no plan is Current Premium, include "Current Premium" as an option
     if (isPlanCurrent || !hasCurrentPlan()) {
-      return ['Current', ...allTypes];
+      return ['Current Premium', ...allTypes];
     }
     
-    // Otherwise, exclude "Current" from options
+    // Otherwise, exclude "Current Premium" from options
     return allTypes;
   };
 
@@ -432,28 +432,80 @@ export default function PlanSelectionPage() {
     setError(null);
 
     try {
-      // Save plan selections to API
-      const response = await fetch('/api/plan-selection', {
+      // Debug: Log request data before sending
+      const requestData = {
+        documentSelections: documents.map(doc => ({
+          documentId: doc.documentId,
+          fileName: doc.fileName,
+          carrierName: doc.carrierName,
+          planQuoteTypes: doc.planQuoteTypes || {},
+          planHSAOptions: doc.planHSAOptions || {},
+          planHSADetails: doc.planHSADetails || {},
+          selectedPlans: doc.selectedPlans,
+          processedData: doc.processedData
+        }))
+      };
+      
+      console.log('[DEBUG] Sending plan selection request:', {
+        endpoint: '/api/plan-selection',
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          documentSelections: documents.map(doc => ({
-            documentId: doc.documentId,
-            fileName: doc.fileName,
-            carrierName: doc.carrierName,
-            planQuoteTypes: doc.planQuoteTypes || {},
-            planHSAOptions: doc.planHSAOptions || {},
-            planHSADetails: doc.planHSADetails || {},
-            selectedPlans: doc.selectedPlans,
-            processedData: doc.processedData
-          }))
-        })
+        documentCount: requestData.documentSelections.length,
+        requestSize: JSON.stringify(requestData).length,
+        documentsOverview: requestData.documentSelections.map(doc => ({
+          fileName: doc.fileName,
+          carrierName: doc.carrierName,
+          quoteTypesCount: Object.keys(doc.planQuoteTypes).length,
+          hsaOptionsCount: Object.keys(doc.planHSAOptions).length,
+          selectedPlansCount: doc.selectedPlans.length
+        }))
       });
+      
+      // Save plan selections to API
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      try {
+        const response = await fetch('/api/plan-selection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestData),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        console.log('[DEBUG] Received response:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to save plan selections');
+        if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = `${errorMessage} - ${errorData.error}`;
+          }
+          if (errorData.details) {
+            errorMessage = `${errorMessage} (${errorData.details})`;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, stick with the basic HTTP error
+          console.error('[DEBUG] Could not parse error response:', parseError);
+        }
+        throw new Error(errorMessage);
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
+          throw new Error('Request timeout: The save operation took too long. Please try again.');
+        }
+        
+        throw fetchError;
       }
 
       // Update localStorage with selected plans for the results page
@@ -486,7 +538,33 @@ export default function PlanSelectionPage() {
       // Navigate to results
       router.push('/quote-tool/document-parser/results');
     } catch (err) {
-      setError('Failed to save plan selections. Please try again.');
+      console.error('[DEBUG] Plan selection save error:', err);
+      
+      let errorMessage = 'Failed to save plan selections. Please try again.';
+      
+      if (err instanceof Error) {
+        // Use the detailed error message from the server
+        errorMessage = `Save failed: ${err.message}`;
+      } else if (typeof err === 'string') {
+        errorMessage = `Save failed: ${err}`;
+      }
+      
+      // Add debugging information to help troubleshoot
+      console.error('[DEBUG] Request details:', {
+        documentCount: documents.length,
+        documentsData: documents.map(doc => ({
+          documentId: doc.documentId,
+          fileName: doc.fileName,
+          carrierName: doc.carrierName,
+          hasQuoteTypes: Object.keys(doc.planQuoteTypes || {}).length > 0,
+          hasHSAOptions: Object.keys(doc.planHSAOptions || {}).length > 0,
+          hasHSADetails: Object.keys(doc.planHSADetails || {}).length > 0,
+          selectedPlansCount: doc.selectedPlans.length,
+          hasProcessedData: !!doc.processedData
+        }))
+      });
+      
+      setError(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -523,7 +601,7 @@ export default function PlanSelectionPage() {
             <div className="flex items-center space-x-2">
               <Info className="h-4 w-4 text-blue-600 flex-shrink-0" />
               <p className="text-sm text-blue-800">
-                Review detected plans and configure quote types and HSA options. Only one plan can be marked as "Current" at a time.
+                Review detected plans and configure quote types and HSA options. Only one plan can be marked as "Current Premium" at a time.
               </p>
             </div>
           </div>
@@ -584,7 +662,7 @@ export default function PlanSelectionPage() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {document.detectedPlans.map((plan) => {
-                          const isCurrent = document.planQuoteTypes?.[plan.planOptionName] === 'Current';
+                          const isCurrent = document.planQuoteTypes?.[plan.planOptionName] === 'Current Premium';
                           return (
                             <div 
                               key={plan.planOptionName} 
@@ -604,7 +682,7 @@ export default function PlanSelectionPage() {
                                       {isCurrent && (
                                         <Badge className="bg-primary text-white text-xs">
                                           <CheckCircle className="h-3 w-3 mr-1" />
-                                          Current
+                                          Current Premium
                                         </Badge>
                                       )}
                                     </div>
@@ -645,7 +723,7 @@ export default function PlanSelectionPage() {
                                     <QuoteTypeSelector
                                       documentId={document.documentId}
                                       planName={plan.planOptionName}
-                                      currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current'}
+                                      currentQuoteType={document.planQuoteTypes?.[plan.planOptionName] || 'Current Premium'}
                                       availableTypes={getAvailableQuoteTypesForPlan(document.documentId, plan.planOptionName)}
                                       onQuoteTypeChange={updateQuoteType}
                                       onAddCustomType={addCustomQuoteType}
