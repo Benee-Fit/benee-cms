@@ -7,14 +7,15 @@ import {
   type UserRole
 } from '@repo/auth/server';
 import { NextResponse } from 'next/server';
-import type { NextMiddleware } from 'next/server';
+import type { NextRequest, NextMiddleware } from 'next/server';
 
 
-
-// Define public routes
+// Define public routes that should bypass auth checks completely
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/_clerk/(.*)', // Add Clerk's own routes
+  '/api/auth/(.*)', // Add any auth-related API routes
 ]);
 
 // Define protected routes that require specific roles
@@ -24,12 +25,20 @@ const requiresAdminOrHigher = createRouteMatcher([
   '/settings/billing(.*)',
 ]);
 
-export default authMiddleware(async (auth, req) => {
-
-  
-  // Check if route is public
+// This function runs before Clerk's authMiddleware to handle public routes
+const publicRouteHandler = (req: NextRequest) => {
+  // If it's a public route, skip auth checks entirely
   if (isPublicRoute(req)) {
     return NextResponse.next();
+  }
+  return null;
+};
+
+export default authMiddleware(async (auth, req) => {
+  // Handle public routes before any auth logic
+  const publicResponse = publicRouteHandler(req as NextRequest);
+  if (publicResponse) {
+    return publicResponse;
   }
   
   // Get auth info
@@ -37,7 +46,7 @@ export default authMiddleware(async (auth, req) => {
   
   // Require authentication
   if (!userId) {
-    return redirectToSignIn();
+    return redirectToSignIn({ returnBackUrl: req.url });
   }
   
   const userRole = orgRole as UserRole | null;
