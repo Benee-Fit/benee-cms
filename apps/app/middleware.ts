@@ -21,6 +21,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/_clerk/(.*)', // Add Clerk's own routes
   '/api/auth/(.*)', // Add any auth-related API routes
+  '/dashboard(.*)', // Temporarily add dashboard to prevent potential redirect loops 
 ]);
 
 // Define protected routes that require specific roles
