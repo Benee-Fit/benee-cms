@@ -52,6 +52,7 @@ interface DocumentWithPlans {
     coverageFamily: number; 
     wellnessSingle: number; 
     wellnessFamily: number;
+    adminFee: number;
   }>; // planName -> HSA details
 }
 
@@ -189,6 +190,7 @@ export default function PlanSelectionPage() {
             coverageFamily: number; 
             wellnessSingle: number; 
             wellnessFamily: number;
+            adminFee: number;
           }> = {};
           let isFirstPlan = index === 0;
           detectedPlans.forEach((plan, planIndex) => {
@@ -200,7 +202,8 @@ export default function PlanSelectionPage() {
                 coverageSingle: 0, 
                 coverageFamily: 0, 
                 wellnessSingle: 0, 
-                wellnessFamily: 0 
+                wellnessFamily: 0,
+                adminFee: 0 
               };
             }
           });
@@ -353,7 +356,7 @@ export default function PlanSelectionPage() {
 
   // Get available quote types for a specific plan
   const getAvailableQuoteTypesForPlan = (documentId: string, planName: string) => {
-    const defaultTypes = ['Go To Market', 'Negotiated', 'Alternative'];
+    const defaultTypes = ['GTM', 'Negotiated', 'Alternative'];
     const allTypes = [...defaultTypes, ...customQuoteTypes];
     
     // Check if this plan is already set to Current
@@ -394,7 +397,7 @@ export default function PlanSelectionPage() {
   };
 
   // Update HSA details for a specific plan
-  const updatePlanHSADetails = (documentId: string, planName: string, field: 'coverageSingle' | 'coverageFamily' | 'wellnessSingle' | 'wellnessFamily', value: number) => {
+  const updatePlanHSADetails = (documentId: string, planName: string, field: 'coverageSingle' | 'coverageFamily' | 'wellnessSingle' | 'wellnessFamily' | 'adminFee', value: number) => {
     setDocuments(prev => prev.map(doc => 
       doc.documentId === documentId 
         ? { 
@@ -406,7 +409,8 @@ export default function PlanSelectionPage() {
                   coverageSingle: 0, 
                   coverageFamily: 0, 
                   wellnessSingle: 0, 
-                  wellnessFamily: 0 
+                  wellnessFamily: 0,
+                  adminFee: 0 
                 }),
                 [field]: value
               }
@@ -748,6 +752,25 @@ export default function PlanSelectionPage() {
                                               />
                                             </div>
                                           </div>
+                                        </div>
+                                        
+                                        {/* Admin Fee */}
+                                        <div>
+                                          <Label className="text-xs font-medium text-gray-700 mb-1 block">Admin Fee ($)</Label>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={document.planHSADetails?.[plan.planOptionName]?.adminFee || 0}
+                                            onChange={(e) => updatePlanHSADetails(
+                                              document.documentId, 
+                                              plan.planOptionName, 
+                                              'adminFee', 
+                                              Number(e.target.value)
+                                            )}
+                                            className="h-7 text-xs"
+                                            placeholder="0.00"
+                                          />
                                         </div>
                                       </div>
                                     )}

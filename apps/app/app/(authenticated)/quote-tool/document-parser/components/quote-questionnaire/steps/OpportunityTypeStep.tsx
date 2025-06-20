@@ -3,8 +3,8 @@ import { Label } from '@repo/design-system/components/ui/label';
 import { Card, CardContent } from '@repo/design-system/components/ui/card';
 
 interface OpportunityTypeStepProps {
-  value: 'renewal' | 'go-to-market' | null;
-  onChange: (value: 'renewal' | 'go-to-market') => void;
+  value: 'renewal' | 'gtm' | null;
+  onChange: (value: 'renewal' | 'gtm') => void;
 }
 
 export default function OpportunityTypeStep({ value, onChange }: OpportunityTypeStepProps) {
@@ -17,7 +17,7 @@ export default function OpportunityTypeStep({ value, onChange }: OpportunityType
       
       <RadioGroup
         value={value || ''}
-        onValueChange={(newValue) => onChange(newValue as 'renewal' | 'go-to-market')}
+        onValueChange={(newValue) => onChange(newValue as 'renewal' | 'gtm')}
         className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
         <Label htmlFor="renewal" className="cursor-pointer">
@@ -38,15 +38,15 @@ export default function OpportunityTypeStep({ value, onChange }: OpportunityType
           </Card>
         </Label>
 
-        <Label htmlFor="go-to-market" className="cursor-pointer">
+        <Label htmlFor="gtm" className="cursor-pointer">
           <Card className={`cursor-pointer hover:shadow-md transition-all duration-200 border-2 h-32 ${
-            value === 'go-to-market' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
+            value === 'gtm' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
           }`}>
             <CardContent className="p-6 h-full flex flex-col justify-center">
               <div className="text-center">
-                <RadioGroupItem value="go-to-market" id="go-to-market" className="sr-only" />
+                <RadioGroupItem value="gtm" id="gtm" className="sr-only" />
                 <div className="text-lg font-medium text-gray-900">
-                  Go to Market
+                  GTM
                 </div>
                 <p className="text-sm text-gray-600 mt-1 leading-tight">
                   Shopping the market for competitive options

@@ -418,7 +418,7 @@ export function PremiumComparisonTable({
           headerBg: 'bg-blue-50',
           columnBg: 'bg-blue-50/30'
         };
-      case 'Go To Market':
+      case 'GTM':
         return {
           badge: 'bg-green-100 text-green-800 border-green-200',
           icon: <Target className="h-3 w-3" />,
@@ -487,7 +487,7 @@ export function PremiumComparisonTable({
       } else if (comparisonType === 'current-vs-alternative') {
         return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Alternative');
       } else if (comparisonType === 'current-vs-go-to-market') {
-        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('Go To Market');
+        return quoteTypesInResult.includes('Current') || quoteTypesInResult.includes('GTM');
       }
       
       return true;
@@ -766,6 +766,15 @@ export function PremiumComparisonTable({
     }
     
     const carriersArray = Array.from(carriersMap.values());
+    
+    // Ensure at least one plan is marked as "Current" if none exists
+    const hasCurrentPlan = carriersArray.some(c => c.quoteType === 'Current');
+    if (!hasCurrentPlan && carriersArray.length > 0) {
+      // Mark the first plan as Current
+      carriersArray[0].quoteType = 'Current';
+      carriersArray[0].displayName = carriersArray[0].name;
+    }
+    
     console.log('[DEBUG] Extracted carrier-plan combinations:', carriersArray);
     
     return carriersArray;
@@ -1006,11 +1015,21 @@ export function PremiumComparisonTable({
       return unsortedCarriers;
     }
     
-    // Sort carriers with Current quote type first, then by premium
-    return unsortedCarriers.sort((a, b) => {
-      // Prioritize Current quote type first
+    // Sort carriers - Current quote type ALWAYS first, then others
+    const sorted = [...unsortedCarriers].sort((a, b) => {
+      // ALWAYS prioritize Current quote type first, no matter what
       if (a.quoteType === 'Current' && b.quoteType !== 'Current') return -1;
       if (b.quoteType === 'Current' && a.quoteType !== 'Current') return 1;
+      
+      // If both are Current (shouldn't happen) or neither is Current
+      // Then sort by quote type order: GTM, Negotiated, Alternative, others
+      const quoteTypeOrder = ['Current', 'GTM', 'Negotiated', 'Alternative'];
+      const orderA = quoteTypeOrder.indexOf(a.quoteType);
+      const orderB = quoteTypeOrder.indexOf(b.quoteType);
+      
+      if (orderA !== -1 && orderB !== -1 && orderA !== orderB) {
+        return orderA - orderB;
+      }
       
       // Then sort by premium within each quote type
       const uniqueKeyA = `${a.name}-${a.planName}-${a.quoteType}`;
@@ -1030,6 +1049,9 @@ export function PremiumComparisonTable({
       // If neither has premium data, sort alphabetically
       return a.displayName.localeCompare(b.displayName);
     });
+    
+    console.log('[DEBUG] Sorted carriers:', sorted.map(c => `${c.name} (${c.quoteType})`));
+    return sorted;
   }, [unsortedCarriers, calculateCarrierTotals]);
 
   /**
@@ -1418,9 +1440,9 @@ export function PremiumComparisonTable({
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
                     : 'hover:bg-gray-50 hover:text-gray-700 text-gray-600'
                 }`}
-                title="Compare current vs go to market plans"
+                title="Compare current vs GTM plans"
               >
-                Current vs Go to Market
+                Current vs GTM
               </Button>
             </div>
             {/* Undo/Redo buttons with enhanced UX */}
