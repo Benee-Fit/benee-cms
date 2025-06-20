@@ -6,7 +6,7 @@ export interface BrokerSplit {
 
 export interface QuoteQuestionnaireData {
   clientType: 'new' | 'existing' | null;
-  opportunityType: 'renewal' | 'go-to-market' | null;
+  opportunityType: 'renewal' | 'gtm' | null;
   companyName: string;
   planManagementFee: number | null;
   isJointCase: boolean | null;

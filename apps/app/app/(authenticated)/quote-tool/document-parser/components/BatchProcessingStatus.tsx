@@ -165,7 +165,7 @@ export default function BatchProcessingStatus({
           <div className="flex items-center space-x-2 text-sm text-blue-800">
             <Info className="h-4 w-4" />
             <span>
-              Processing takes 4-8 minutes per document depending on size and complexity. 
+              Processing takes 2-5 minutes per document depending on size and complexity. 
               You can fill out the questionnaire while waiting.
             </span>
           </div>
