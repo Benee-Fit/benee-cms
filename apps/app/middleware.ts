@@ -6,9 +6,14 @@ import {
   getRoleBasedRedirectUrl,
   type UserRole
 } from '@repo/auth/server';
+import {
+  noseconeMiddleware,
+  noseconeOptions,
+} from '@repo/security/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextMiddleware } from 'next/server';
 
+const securityHeaders = noseconeMiddleware(noseconeOptions);
 
 // Define public routes that should bypass auth checks completely
 const isPublicRoute = createRouteMatcher([
@@ -25,11 +30,13 @@ const requiresAdminOrHigher = createRouteMatcher([
   '/settings/billing(.*)',
 ]);
 
-// This function runs before Clerk's authMiddleware to handle public routes
-const publicRouteHandler = (req: NextRequest) => {
-  // If it's a public route, skip auth checks entirely
+export default authMiddleware(async (auth, req) => {
+  // Apply security headers
+  const securityResponse = await securityHeaders();
+  
+  // Check if route is public
   if (isPublicRoute(req)) {
-    return NextResponse.next();
+    return securityResponse || NextResponse.next();
   }
   return null;
 };
@@ -69,7 +76,7 @@ export default authMiddleware(async (auth, req) => {
     }
   }
   
-  return NextResponse.next();
+  return securityResponse || NextResponse.next();
 }) as unknown as NextMiddleware;
 
 export const config = {
