@@ -77,6 +77,8 @@ export default authMiddleware(async (auth, req) => {
     }
   }
   
+  // Apply security headers for protected routes
+  const securityResponse = await securityHeaders();
   return securityResponse || NextResponse.next();
 }) as unknown as NextMiddleware;
 
