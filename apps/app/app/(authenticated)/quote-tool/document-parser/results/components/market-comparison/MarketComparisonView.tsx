@@ -25,6 +25,28 @@ const MarketComparisonView = ({
   // State
   const [activeTab, setActiveTab] = useState('premium');
 
+  // Extract HSA data from parsed documents
+  const extractHSAData = () => {
+    const hsaData: Record<string, Record<string, {
+      coverageSingle: number;
+      coverageFamily: number;
+      wellnessSingle: number;
+      wellnessFamily: number;
+      adminFee: number;
+    }>> = {};
+
+    for (const doc of parsedDocuments) {
+      const carrierName = doc.metadata?.carrierName;
+      if (carrierName && (doc as any).planHSADetails) {
+        hsaData[carrierName] = (doc as any).planHSADetails;
+      }
+    }
+
+    return hsaData;
+  };
+
+  const planHSADetails = extractHSAData();
+
   // Check if any document has the new enhanced format
   const enhancedData = parsedDocuments.find(doc => 
     doc.processedData && 
@@ -229,6 +251,7 @@ const MarketComparisonView = ({
           <PremiumComparisonTable 
             results={premiumDocuments} 
             highLevelOverview={enhancedData?.highLevelOverview}
+            planHSADetails={planHSADetails}
           />
         </TabsContent>
 
