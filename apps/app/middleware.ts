@@ -6,25 +6,15 @@ import {
   getRoleBasedRedirectUrl,
   type UserRole
 } from '@repo/auth/server';
-import {
-  noseconeMiddleware,
-  noseconeOptions,
-} from '@repo/security/middleware';
 import { NextResponse } from 'next/server';
 import type { NextMiddleware } from 'next/server';
 
-const securityHeaders = noseconeMiddleware(noseconeOptions);
+
 
 // Define public routes
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/auth/callback(.*)',
-  '/',
-  '/pricing',
-  '/about',
-  '/contact',
-  '/blog(.*)',
 ]);
 
 // Define protected routes that require specific roles
@@ -35,12 +25,11 @@ const requiresAdminOrHigher = createRouteMatcher([
 ]);
 
 export default authMiddleware(async (auth, req) => {
-  // Apply security headers
-  const securityResponse = await securityHeaders();
+
   
   // Check if route is public
   if (isPublicRoute(req)) {
-    return securityResponse || NextResponse.next();
+    return NextResponse.next();
   }
   
   // Get auth info
@@ -71,7 +60,7 @@ export default authMiddleware(async (auth, req) => {
     }
   }
   
-  return securityResponse || NextResponse.next();
+  return NextResponse.next();
 }) as unknown as NextMiddleware;
 
 export const config = {
